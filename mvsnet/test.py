@@ -49,7 +49,7 @@ tf.app.flags.DEFINE_integer('batch_size', 1,
 
 # params for config
 tf.app.flags.DEFINE_string('pretrained_model_ckpt_path', 
-                           '/data/dtu/tf_model/mvsnet_arxiv/model.ckpt',
+                           '/Users/chrisheinrich/ml/MVSNet/model/model.ckpt',
                            """Path to restore the model.""")
 tf.app.flags.DEFINE_integer('ckpt_step', 70000,
                             """ckpt step.""")
