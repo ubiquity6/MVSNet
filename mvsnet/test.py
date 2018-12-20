@@ -175,6 +175,7 @@ def mvsnet_pipeline(mvs_list):
     # GPU grows incrementally
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
+    config.intra_op_parallelism_threads=8
 
     with tf.Session(config=config) as sess:   
 
