@@ -34,9 +34,9 @@ tf.app.flags.DEFINE_integer('default_depth_interval', 1,
                             """Depth interval when training.""")
 tf.app.flags.DEFINE_integer('max_d', 192, 
                             """Maximum depth step when training.""")
-tf.app.flags.DEFINE_integer('max_w', 1152, 
+tf.app.flags.DEFINE_integer('max_w', 128, 
                             """Maximum image width when training.""")
-tf.app.flags.DEFINE_integer('max_h', 864, 
+tf.app.flags.DEFINE_integer('max_h', 96, 
                             """Maximum image height when training.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25, 
                             """Downsample scale for building cost volume (W and H).""")
@@ -49,7 +49,7 @@ tf.app.flags.DEFINE_integer('batch_size', 1,
 
 # params for config
 tf.app.flags.DEFINE_string('pretrained_model_ckpt_path', 
-                           '/Users/chrisheinrich/ml/MVSNet/model/model.ckpt',
+                           '../model/model.ckpt',
                            """Path to restore the model.""")
 tf.app.flags.DEFINE_integer('ckpt_step', 70000,
                             """ckpt step.""")
@@ -65,13 +65,16 @@ class MVSGenerator:
     
     def __iter__(self):
         while True:
+            target_frame_index = 0
             for data in self.sample_list: 
                 
                 # read input data
                 images = []
                 cams = []
                 image_index = int(os.path.splitext(os.path.basename(data[0]))[0])
+                print("Image index is: ", image_index)
                 selected_view_num = int(len(data) / 2)
+                pose_file_path = os.path.join(FLAGS.dense_folder, 'poses.txt' )
 
                 for view in range(min(self.view_num, selected_view_num)):
                     # image = cv2.imread(data[2 * view])
@@ -84,6 +87,9 @@ class MVSGenerator:
                     cam[1][3][1] = cam[1][3][1] * FLAGS.interval_scale
                     images.append(image)
                     cams.append(cam)
+                    if view == 0:
+                        with open(pose_file_path, 'a') as f:
+                            f.write(pose_string(cam))
 
                 if selected_view_num < self.view_num:
                     for view in range(selected_view_num, self.view_num):
@@ -112,6 +118,7 @@ class MVSGenerator:
                 # crop to fit network
                 croped_images, croped_cams = crop_mvs_input(scaled_input_images, scaled_input_cams)
                 image_shape = croped_images[0].shape
+                print("cropped image shape: ", image_shape)
 
                 # center images
                 centered_images = []
@@ -130,6 +137,8 @@ class MVSGenerator:
                 croped_images = np.stack(croped_images, axis=0)
                 scaled_cams = np.stack(scaled_cams, axis=0)
                 self.counter += 1
+                print("Image index: ", image_index)
+                print("Scaled cams: ", scaled_cams)
                 yield (scaled_images, centered_images, scaled_cams, real_cams, image_index) 
 
 def mvsnet_pipeline(mvs_list):
@@ -175,7 +184,8 @@ def mvsnet_pipeline(mvs_list):
     # GPU grows incrementally
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
-    config.intra_op_parallelism_threads=8
+    config.intra_op_parallelism_threads=1
+    #config.inter_op_parallelism_threads=10
 
     with tf.Session(config=config) as sess:   
 
@@ -224,11 +234,18 @@ def mvsnet_pipeline(mvs_list):
             prob_map_path = output_folder + ('/%08d_prob.pfm' % out_index)
             out_ref_image_path = output_folder + ('/%08d.jpg' % out_index)
             out_ref_cam_path = output_folder + ('/%08d.txt' % out_index)
+            #png outputs
+            prob_png = output_folder + ('/%08d_prob.png' % out_index)
+            depth_png = output_folder + ('/%08d_depth.png' % out_index)
 
             # save output
             write_pfm(init_depth_map_path, out_init_depth_image)
             write_pfm(depth_map_path, out_estimated_depth_image)
             write_pfm(prob_map_path, out_prob_map)
+            # for png outputs
+            write_depth_map(depth_png, out_estimated_depth_image)
+            write_confidence_map(prob_png, out_prob_map)
+
             out_ref_image = cv2.cvtColor(out_ref_image, cv2.COLOR_RGB2BGR)
             image_file = file_io.FileIO(out_ref_image_path, mode='w')
             scipy.misc.imsave(image_file, out_ref_image)

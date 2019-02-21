@@ -13,6 +13,7 @@ import random
 import math
 import re
 import sys
+import imageio
 
 import cv2
 import numpy as np
@@ -128,6 +129,44 @@ def load_cam(file):
         cam[1][3][1] = 0
 
     return cam
+
+def pose_string(cam):
+    row_0 = cam[0,0,:]
+    row_1 = cam[0,1,:]
+    row_2 = cam[0,2,:]
+    pose_string = ''
+    pose_string += str(row_0[0]) + ' '
+    pose_string += str(row_0[1])+ ' '
+    pose_string += str(row_0[2])+ ' '
+    pose_string += str(row_0[3]/1000)+ ' '
+    pose_string += str(row_1[0])+ ' '
+    pose_string += str(row_1[1])+ ' '
+    pose_string += str(row_1[2])+ ' '
+    pose_string += str(row_1[3]/1000)+ ' '
+    pose_string += str(row_2[0])+ ' '
+    pose_string += str(row_2[1])+ ' '
+    pose_string += str(row_2[2])+ ' '
+    pose_string += str(row_2[3]/1000)
+    pose_string += '\n'
+    print(pose_string)
+    return pose_string
+
+def write_depth_map(file_path, image):
+    # convert to int and clip to range of [0, 2^16 -1]
+
+    image = np.clip(image, 0, 65535).astype(np.uint16)
+    imageio.imsave(file_path, image)
+    file_path_scaled = file_path.replace('.png','_scaled.png')
+    # rescales the image so max distance is 6.5 meters, making contrast more visible
+    image_scaled = np.clip(image*50, 0, 65535).astype(np.uint16)
+    imageio.imsave(file_path_scaled, image_scaled)
+
+def write_confidence_map(file_path, image):
+    # we convert probabilities in range [0,1] to ints in range [0, 2^16-1]
+    scale_factor = 65535
+    image *= scale_factor
+    image = np.clip(image, 0, 65535).astype(np.uint16)
+    imageio.imsave(file_path, image)
 
 def write_cam(file, cam):
     # f = open(file, "w")

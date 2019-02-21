@@ -70,6 +70,7 @@ tf.app.flags.DEFINE_integer('ckpt_step', 0,
                             """ckpt step.""")
 tf.app.flags.DEFINE_boolean('is_training', True,
                             """Flag to training model""")
+tf.app.flags.DEFINE_string('mode','training',"""mode can be set to training or validation""")
 
 # Params for solver.
 tf.app.flags.DEFINE_float('base_lr', 0.001,
@@ -304,7 +305,7 @@ def train(traning_list):
 def main(argv=None):  # pylint: disable=unused-argument
     """ program entrance """
     # Prepare all training samples
-    sample_list = gen_dtu_resized_path(FLAGS.dtu_data_root)
+    sample_list = gen_dtu_resized_path(FLAGS.dtu_data_root, FLAGS.mode)
     # Shuffle
     random.shuffle(sample_list)
     # Training entrance.
