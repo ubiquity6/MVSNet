@@ -34,9 +34,9 @@ tf.app.flags.DEFINE_integer('default_depth_interval', 1,
                             """Depth interval when training.""")
 tf.app.flags.DEFINE_integer('max_d', 192, 
                             """Maximum depth step when training.""")
-tf.app.flags.DEFINE_integer('max_w', 1152, 
+tf.app.flags.DEFINE_integer('max_w', 640, 
                             """Maximum image width when training.""")
-tf.app.flags.DEFINE_integer('max_h', 864, 
+tf.app.flags.DEFINE_integer('max_h', 480, 
                             """Maximum image height when training.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25, 
                             """Downsample scale for building cost volume (W and H).""")
@@ -175,6 +175,7 @@ def mvsnet_pipeline(mvs_list):
     # GPU grows incrementally
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
+    config.intra_op_parallelism_threads=1
 
     with tf.Session(config=config) as sess:   
 

@@ -27,11 +27,11 @@ from model import inference, mvsnet_loss, depth_refine
 from homography_warping import get_homographies, homography_warping
 
 # params for datasets
-tf.app.flags.DEFINE_string('dtu_data_root', '/data/dtu/', 
+tf.app.flags.DEFINE_string('dtu_data_root', '../mvs_training/dtu/', 
                            """Path to dtu dataset.""")
-tf.app.flags.DEFINE_string('log_dir', '/data/tf_log',
+tf.app.flags.DEFINE_string('log_dir', '../logs',
                            """Path to store the log.""")
-tf.app.flags.DEFINE_string('save_dir', '/data/tf_model',
+tf.app.flags.DEFINE_string('save_dir', '../model',
                            """Path to save the model.""")
 tf.app.flags.DEFINE_boolean('train_dtu', True, 
                             """Whether to train.""")
@@ -61,12 +61,12 @@ tf.app.flags.DEFINE_float('val_ratio', 0,
                           """ratio of validation set when splitting dataset.""")
 
 # params for config
-tf.app.flags.DEFINE_string('pretrained_model_ckpt_path', None,
+tf.app.flags.DEFINE_string('pretrained_model_ckpt_path', '../model/model.ckpt',
                            """Path to restore the model.""")
 # tf.app.flags.DEFINE_string('pretrained_model_ckpt_path', 
 #                            '/home/yoyo/Documents/software/tfmatch/mvs/tf_model/model.ckpt',
 #                            """Path to restore the model.""")
-tf.app.flags.DEFINE_integer('ckpt_step', 0,
+tf.app.flags.DEFINE_integer('ckpt_step', 70000,
                             """ckpt step.""")
 tf.app.flags.DEFINE_boolean('is_training', True,
                             """Flag to training model""")
@@ -78,7 +78,7 @@ tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
 tf.app.flags.DEFINE_integer('stepvalue', 10000,
                             """Step interval to decay learning rate.""")
-tf.app.flags.DEFINE_integer('snapshot', 5000,
+tf.app.flags.DEFINE_integer('snapshot', 2000,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.9,
                           """Learning rate decay rate.""")

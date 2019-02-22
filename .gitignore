@@ -1,2 +1,6 @@
 model/*
 test_data/*
+mvs_training/*
+logs/*
+*.pyc
+*.rar
