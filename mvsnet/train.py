@@ -301,69 +301,68 @@ def train(traning_list, validation_list):
                 sess.run(training_iterator.initializer)
                 sess.run(validation_iterator.initializer)
                 
-                if step % FLAGS.train_steps_per_val != 0:
-                    for i in range(int(training_sample_size / FLAGS.num_gpus)):
-                        training_status = True
-                        # run one batch
-                        start_time = time.time()
-                        try:
-                            out_summary_op, out_opt, out_loss, out_less_one, out_less_three = sess.run(
-                            [summary_op, train_opt, loss, less_one_accuracy, less_three_accuracy])
-                        except tf.errors.OutOfRangeError:
-                            print("End of dataset")  # ==> "End of dataset"
-                            break
-                        duration = time.time() - start_time
+                for i in range(int(training_sample_size / FLAGS.num_gpus)):
+                    training_status = True
+                    # run one batch
+                    start_time = time.time()
+                    try:
+                        out_summary_op, out_opt, out_loss, out_less_one, out_less_three = sess.run(
+                        [summary_op, train_opt, loss, less_one_accuracy, less_three_accuracy])
+                    except tf.errors.OutOfRangeError:
+                        print("End of dataset")  # ==> "End of dataset"
+                        break
+                    duration = time.time() - start_time
 
-                        # print info
-                        if step % FLAGS.display == 0:
-                            print(Notify.INFO,
-                                'epoch, %d, step %d, total_step %d, loss = %.4f, (< 1px) = %.4f, (< 3px) = %.4f (%.3f sec/step)' %
-                                (epoch, step, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
-                        
-                        # write summary
-                        if step % (FLAGS.display * 10) == 0 and FLAGS.is_training:
-                            summary_writer.add_summary(out_summary_op, total_step)
+                    # print info
+                    if step % FLAGS.display == 0:
+                        print(Notify.INFO,
+                            'epoch, %d, step %d, total_step %d, loss = %.4f, (< 1px) = %.4f, (< 3px) = %.4f (%.3f sec/step)' %
+                            (epoch, step, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
                     
-                        # save the model checkpoint periodically
-                        if (total_step % FLAGS.snapshot == 0 or step == (training_sample_size - 1)) and FLAGS.is_training:
-                            checkpoint_path = os.path.join(FLAGS.save_dir, 'model.ckpt')
-                            saver.save(sess, checkpoint_path, global_step=total_step)
-                        step += FLAGS.batch_size * FLAGS.num_gpus
-                        total_step += FLAGS.batch_size * FLAGS.num_gpus
+                    # write summary
+                    if step % (FLAGS.display * 10) == 0 and FLAGS.is_training:
+                        summary_writer.add_summary(out_summary_op, total_step)
+                
+                    # save the model checkpoint periodically
+                    if (total_step % FLAGS.snapshot == 0 or step == (training_sample_size - 1)) and FLAGS.is_training:
+                        checkpoint_path = os.path.join(FLAGS.save_dir, 'model.ckpt')
+                        saver.save(sess, checkpoint_path, global_step=total_step)
+                    step += FLAGS.batch_size * FLAGS.num_gpus
+                    total_step += FLAGS.batch_size * FLAGS.num_gpus
 
-                else:
-                    val_loss = []
-                    val_less_one = []
-                    val_less_three = []
-                    for i in range(int(FLAGS.val_batch_size / FLAGS.num_gpus)):
+                    # Validate model against validation set of data
+                    if i % FLAGS.train_steps_per_val == 0:
                         training_status = False
-                        # run one batch
-                        start_time = time.time()
-                        try:
-                            out_loss, out_less_one, out_less_three = sess.run(
-                            [loss, less_one_accuracy, less_three_accuracy])
-                        except tf.errors.OutOfRangeError:
-                            print("End of validation dataset")  # ==> "End of dataset"
-                            break
-                        duration = time.time() - start_time
+                        val_loss = []
+                        val_less_one = []
+                        val_less_three = []
+                        for i in range(int(FLAGS.val_batch_size / FLAGS.num_gpus)):
+                            # run one batch
+                            start_time = time.time()
+                            try:
+                                out_loss, out_less_one, out_less_three = sess.run(
+                                [loss, less_one_accuracy, less_three_accuracy])
+                            except tf.errors.OutOfRangeError:
+                                print("End of validation dataset")  # ==> "End of dataset"
+                                break
+                            duration = time.time() - start_time
 
-                        # print info
-                        if step % FLAGS.display == 0:
-                            print(Notify.INFO,'-- validating --',
-                                'epoch, %d, training step %d, val loss = %.4f, val (< 1px) = %.4f, val (< 3px) = %.4f (%.3f sec/step)' %
-                                (epoch, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
-                        val_loss.append(out_loss)
-                        val_less_one.append(out_less_one)
-                        val_less_three.append(out_less_three)
-                    l = np.mean(np.asarray(val_loss))
-                    l1 = np.mean(np.asarray(val_less_one))
-                    l3 = np.mean(np.asarray(val_less_three))
-                    
-                    with open(val_sum_file, 'a+') as f:
-                        f.write('{},{},{},{}\n'.format(total_step,l,l1,l3))
+                            # print info
+                            if step % FLAGS.display == 0:
+                                print(Notify.INFO,'-- validating --',
+                                    'epoch, %d, training step %d, val loss = %.4f, val (< 1px) = %.4f, val (< 3px) = %.4f (%.3f sec/step)' %
+                                    (epoch, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
+                            val_loss.append(out_loss)
+                            val_less_one.append(out_less_one)
+                            val_less_three.append(out_less_three)
+                        l = np.mean(np.asarray(val_loss))
+                        l1 = np.mean(np.asarray(val_less_one))
+                        l3 = np.mean(np.asarray(val_less_three))
+                        
+                        with open(val_sum_file, 'a+') as f:
+                            f.write('{},{},{},{}\n'.format(total_step,l,l1,l3))
 
-                    print(Notify.INFO, 'VAL STEP COMPLETED. Average loss: {}, Average less one {}, Average less three {}'.format(l,l1,l3))
-                    step += 1
+                        print(Notify.INFO, 'VAL STEP COMPLETED. Average loss: {}, Average less one {}, Average less three {}'.format(l,l1,l3))
                         
 
 def main(argv=None):  # pylint: disable=unused-argument
