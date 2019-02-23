@@ -349,7 +349,7 @@ def train(traning_list, validation_list):
 
                         # print info
                         if step % FLAGS.display == 0:
-                            print(Notify.INFO,
+                            print(Notify.INFO,'-- validating --',
                                 'epoch, %d, training step %d, val loss = %.4f, val (< 1px) = %.4f, val (< 3px) = %.4f (%.3f sec/step)' %
                                 (epoch, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
                         val_loss.append(out_loss)
@@ -365,7 +365,6 @@ def train(traning_list, validation_list):
                     print(Notify.INFO, 'VAL STEP COMPLETED. Average loss: {}, Average less one {}, Average less three {}'.format(l,l1,l3))
                     step += 1
                         
-
 
 def main(argv=None):  # pylint: disable=unused-argument
     """ program entrance """
