@@ -59,6 +59,10 @@ tf.app.flags.DEFINE_integer('epoch', 6,
                             """training epoch""")
 tf.app.flags.DEFINE_float('val_ratio', 0, 
                           """ratio of validation set when splitting dataset.""")
+tf.app.flags.DEFINE_float('val_batch_size', 10, 
+                          """Number of images to run validation on when validation.""")
+tf.app.flags.DEFINE_float('train_steps_per_val', 100, 
+                          """Number of samples to train on before running a round of validation.""")
 
 # params for config
 tf.app.flags.DEFINE_string('pretrained_model_ckpt_path', '../model/model.ckpt',
@@ -155,10 +159,12 @@ def average_gradients(tower_grads):
         average_grads.append(grad_and_var)
     return average_grads
 
-def train(traning_list):
+def train(traning_list, validation_list):
     """ training mvsnet """
     training_sample_size = len(traning_list)
+    validation_sample_size = len(validation_list)
     print ('sample number: ', training_sample_size)
+    print("validation number:", validation_sample_size)
 
     with tf.Graph().as_default(), tf.device('/cpu:0'): 
         ########## data iterator #########
@@ -172,6 +178,19 @@ def train(traning_list):
         # iterators
         training_iterator = training_set.make_initializable_iterator()
 
+        # validation generator
+        validation_generator = iter(MVSGenerator(validation_list, FLAGS.view_num))
+        # dataset from generator
+        validation_set = tf.data.Dataset.from_generator(lambda: validation_generator, generator_data_type)
+        validation_set = validation_set.batch(FLAGS.batch_size)
+        validation_set = validation_set.prefetch(buffer_size=1)
+        # iterators
+        validation_iterator = validation_set.make_initializable_iterator()
+
+        training_status = True # Set to true when training, false when validating
+       
+
+
         ########## optimization options ##########
         global_step = tf.Variable(0, trainable=False, name='global_step')
         lr_op = tf.train.exponential_decay(FLAGS.base_lr, global_step=global_step, 
@@ -183,7 +202,11 @@ def train(traning_list):
             with tf.device('/gpu:%d' % i):
                 with tf.name_scope('Model_tower%d' % i) as scope:
                     # generate data
-                    images, cams, depth_image = training_iterator.get_next()
+                    if training_status:
+                        images, cams, depth_image = training_iterator.get_next()
+                    else:
+                        images, cams, depth_image = validation_iterator.get_next()
+                    
                     images.set_shape(tf.TensorShape([None, FLAGS.view_num, None, None, 3]))
                     cams.set_shape(tf.TensorShape([None, FLAGS.view_num, 2, 4, 4]))
                     depth_image.set_shape(tf.TensorShape([None, None, None, 1]))
@@ -210,7 +233,7 @@ def train(traning_list):
                         depth_map, depth_image, depth_interval)
                     loss1, less_one_accuracy, less_three_accuracy = mvsnet_loss(
                         refined_depth_map, depth_image, depth_interval)
-                    loss = (loss0 + loss1) / 2
+                    loss = (loss0 + loss1) / 2  # (CH) Looks like for the loss they take an evenly weighted average of refined and unrefined
 
                     # retain the summaries from the final tower.
                     summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
@@ -270,43 +293,69 @@ def train(traning_list):
                 # training of one epoch
                 step = 0
                 sess.run(training_iterator.initializer)
-                for _ in range(int(training_sample_size / FLAGS.num_gpus)):
+                sess.run(validation_iterator.initializer)
+                
+                if step % FLAGS.train_steps_per_val != 0:
+                    for i in range(int(training_sample_size / FLAGS.num_gpus)):
+                        training_status = True
+                        # run one batch
+                        start_time = time.time()
+                        try:
+                            out_summary_op, out_opt, out_loss, out_less_one, out_less_three = sess.run(
+                            [summary_op, train_opt, loss, less_one_accuracy, less_three_accuracy])
+                        except tf.errors.OutOfRangeError:
+                            print("End of dataset")  # ==> "End of dataset"
+                            break
+                        duration = time.time() - start_time
 
-                    # run one batch
-                    start_time = time.time()
-                    try:
-                        out_summary_op, out_opt, out_loss, out_less_one, out_less_three = sess.run(
-                        [summary_op, train_opt, loss, less_one_accuracy, less_three_accuracy])
-                    except tf.errors.OutOfRangeError:
-                        print("End of dataset")  # ==> "End of dataset"
-                        break
-                    duration = time.time() - start_time
-
-                    # print info
-                    if step % FLAGS.display == 0:
-                        print(Notify.INFO,
-                            'epoch, %d, step %d, total_step %d, loss = %.4f, (< 1px) = %.4f, (< 3px) = %.4f (%.3f sec/step)' %
-                            (epoch, step, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
+                        # print info
+                        if step % FLAGS.display == 0:
+                            print(Notify.INFO,
+                                'epoch, %d, step %d, total_step %d, loss = %.4f, (< 1px) = %.4f, (< 3px) = %.4f (%.3f sec/step)' %
+                                (epoch, step, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
+                        
+                        # write summary
+                        if step % (FLAGS.display * 10) == 0 and FLAGS.is_training:
+                            summary_writer.add_summary(out_summary_op, total_step)
                     
-                    # write summary
-                    if step % (FLAGS.display * 10) == 0 and FLAGS.is_training:
-                        summary_writer.add_summary(out_summary_op, total_step)
-                   
-                    # save the model checkpoint periodically
-                    if (total_step % FLAGS.snapshot == 0 or step == (training_sample_size - 1)) and FLAGS.is_training:
-                        checkpoint_path = os.path.join(FLAGS.save_dir, 'model.ckpt')
-                        saver.save(sess, checkpoint_path, global_step=total_step)
-                    step += FLAGS.batch_size * FLAGS.num_gpus
-                    total_step += FLAGS.batch_size * FLAGS.num_gpus
+                        # save the model checkpoint periodically
+                        if (total_step % FLAGS.snapshot == 0 or step == (training_sample_size - 1)) and FLAGS.is_training:
+                            checkpoint_path = os.path.join(FLAGS.save_dir, 'model.ckpt')
+                            saver.save(sess, checkpoint_path, global_step=total_step)
+                        step += FLAGS.batch_size * FLAGS.num_gpus
+                        total_step += FLAGS.batch_size * FLAGS.num_gpus
+
+                else:
+                    for i in range(int(FLAGS.val_batch_size / FLAGS.num_gpus)):
+                        training_status = False
+                        # run one batch
+                        start_time = time.time()
+                        try:
+                            out_loss, out_less_one, out_less_three = sess.run(
+                            [loss, less_one_accuracy, less_three_accuracy])
+                        except tf.errors.OutOfRangeError:
+                            print("End of validation dataset")  # ==> "End of dataset"
+                            break
+                        duration = time.time() - start_time
+
+                        # print info
+                        if step % FLAGS.display == 0:
+                            print(Notify.INFO,
+                                'epoch, %d, training step %d, val loss = %.4f, val (< 1px) = %.4f, val (< 3px) = %.4f (%.3f sec/step)' %
+                                (epoch, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
+                        
+
 
 def main(argv=None):  # pylint: disable=unused-argument
     """ program entrance """
     # Prepare all training samples
-    sample_list = gen_dtu_resized_path(FLAGS.dtu_data_root, FLAGS.mode)
+    sample_list = gen_dtu_resized_path(FLAGS.dtu_data_root)
+    validation_list = gen_dtu_resized_path(FLAGS.dtu_data_root,'validation')
     # Shuffle
     random.shuffle(sample_list)
+    random.shuffle(validation_list)
     # Training entrance.
-    train(sample_list)
+    train(sample_list, validation_list)
 
 
 if __name__ == '__main__':
