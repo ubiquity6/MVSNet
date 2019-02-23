@@ -363,6 +363,7 @@ def train(traning_list, validation_list):
                             f.write('{},{},{},{}\n'.format(total_step,l,l1,l3))
 
                         print(Notify.INFO, 'VAL STEP COMPLETED. Average loss: {}, Average less one {}, Average less three {}'.format(l,l1,l3))
+                        print(Notify.INFO, 'Validation output summary saved to: {}'.val_sum_file)
                         
 
 def main(argv=None):  # pylint: disable=unused-argument
