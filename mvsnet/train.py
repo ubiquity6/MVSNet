@@ -165,6 +165,12 @@ def train(traning_list, validation_list):
     validation_sample_size = len(validation_list)
     print ('sample number: ', training_sample_size)
     print("validation number:", validation_sample_size)
+    train_session_start = time.time()
+    print("Training starting at time:", train_session_start)
+    val_sum_file = os.path.join(FLAGS.log_dir,'validation_summary-{}.txt'.format(train_session_start))
+    with open(val_sum_file,'w+') as f:
+        header = 'train_step,val_loss,val_less_one,val_less_three\n'
+        f.write(header)
 
     with tf.Graph().as_default(), tf.device('/cpu:0'): 
         ########## data iterator #########
@@ -326,6 +332,9 @@ def train(traning_list, validation_list):
                         total_step += FLAGS.batch_size * FLAGS.num_gpus
 
                 else:
+                    val_loss = []
+                    val_less_one = []
+                    val_less_three = []
                     for i in range(int(FLAGS.val_batch_size / FLAGS.num_gpus)):
                         training_status = False
                         # run one batch
@@ -343,6 +352,17 @@ def train(traning_list, validation_list):
                             print(Notify.INFO,
                                 'epoch, %d, training step %d, val loss = %.4f, val (< 1px) = %.4f, val (< 3px) = %.4f (%.3f sec/step)' %
                                 (epoch, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
+                        val_loss.append(out_loss)
+                        val_less_one.append(out_less_one)
+                        val_less_three.append(out_less_three)
+                    l = np.mean(np.asarray(val_loss))
+                    l1 = np.mean(np.asarray(val_less_one))
+                    l3 = np.mean(np.asarray(val_less_three))
+                    
+                    with open(val_sum_file, 'a+') as f:
+                        f.write('{},{},{},{}\n'.format(total_step,l,l1,l3))
+
+                    print(Notify.INFO, 'VAL STEP COMPLETED. Average loss: {}, Average less one {}, Average less three {}'.format(l,l1,l3))
                         
 
 
