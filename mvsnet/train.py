@@ -39,7 +39,7 @@ tf.app.flags.DEFINE_boolean('train_dtu', True,
 # params for training
 tf.app.flags.DEFINE_integer('num_gpus', 1, 
                             """Number of GPUs.""")
-tf.app.flags.DEFINE_integer('view_num', 3, 
+tf.app.flags.DEFINE_integer('view_num', 5, 
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 128, 
                             """Maximum depth step when training.""")
