@@ -349,7 +349,7 @@ def train(traning_list, validation_list):
 
                             # print info
                             if step % FLAGS.display == 0:
-                                print(Notify.INFO,'-- validating --',
+                                print(Notify.INFO,'_validating_',
                                     'epoch, %d, training step %d, val loss = %.4f, val (< 1px) = %.4f, val (< 3px) = %.4f (%.3f sec/step)' %
                                     (epoch, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
                             val_loss.append(out_loss)
@@ -362,7 +362,7 @@ def train(traning_list, validation_list):
                         with open(val_sum_file, 'a+') as f:
                             f.write('{},{},{},{}\n'.format(total_step,l,l1,l3))
 
-                        print(Notify.INFO, 'VAL STEP COMPLETED. Average loss: {}, Average less one {}, Average less three {}'.format(l,l1,l3))
+                        print(Notify.INFO, '\n VAL STEP COMPLETED. Average loss: {}, Average less one: {}, Average less three: {}\n'.format(l,l1,l3))
                         print(Notify.INFO, 'Validation output summary saved to: {}'.val_sum_file)
                         
 
