@@ -350,7 +350,7 @@ def train(traning_list, validation_list):
                             # print info
                             if step % FLAGS.display == 0:
                                 print(Notify.INFO,'_validating_',
-                                    'epoch, %d, training step %d, val loss = %.4f, val (< 1px) = %.4f, val (< 3px) = %.4f (%.3f sec/step)' %
+                                    'epoch, %d, train step %d, val loss = %.4f, val (< 1px) = %.4f, val (< 3px) = %.4f (%.3f sec/step)' %
                                     (epoch, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
                             val_loss.append(out_loss)
                             val_less_one.append(out_less_one)
