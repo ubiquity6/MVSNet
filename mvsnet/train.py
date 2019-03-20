@@ -1,10 +1,16 @@
 #!/usr/bin/env python
+from __future__ import print_function
+
+from homography_warping import get_homographies, homography_warping
+from model import inference, mvsnet_loss, depth_refine
+from preprocess import *
+from tools.common import Notify
+from mvs_data_generation.cluster_generator import ClusterGenerator
 """
 Copyright 2018, Yao Yao, HKUST.
 Training script.
 """
 
-from __future__ import print_function
 
 import os
 import time
@@ -20,58 +26,55 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 
 sys.path.append("../")
-from tools.common import Notify
 
-from preprocess import *
-from model import inference, mvsnet_loss, depth_refine
-from homography_warping import get_homographies, homography_warping
 
 # params for datasets
-tf.app.flags.DEFINE_string('dtu_data_root', '../mvs_training/dtu/', 
+tf.app.flags.DEFINE_string('dtu_data_root', '/Users/chrisheinrich/ubiquity/ubq/ai/mvsnet/train_data',
                            """Path to dtu dataset.""")
 tf.app.flags.DEFINE_string('log_dir', '../logs',
                            """Path to store the log.""")
 tf.app.flags.DEFINE_string('save_dir', '../model',
                            """Path to save the model.""")
-tf.app.flags.DEFINE_boolean('train_dtu', True, 
+tf.app.flags.DEFINE_boolean('train_dtu', True,
                             """Whether to train.""")
 
 # params for training
-tf.app.flags.DEFINE_integer('num_gpus', 1, 
+tf.app.flags.DEFINE_integer('num_gpus', 1,
                             """Number of GPUs.""")
-tf.app.flags.DEFINE_integer('view_num', 5, 
+tf.app.flags.DEFINE_integer('view_num', 5,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 128, 
+tf.app.flags.DEFINE_integer('max_d', 128,
                             """Maximum depth step when training.""")
-tf.app.flags.DEFINE_integer('max_w', 640, 
+tf.app.flags.DEFINE_integer('max_w', 640,
                             """Maximum image width when training.""")
-tf.app.flags.DEFINE_integer('max_h', 512, 
+tf.app.flags.DEFINE_integer('max_h', 512,
                             """Maximum image height when training.""")
-tf.app.flags.DEFINE_float('sample_scale', 0.25, 
-                            """Downsample scale for building cost volume.""")
-tf.app.flags.DEFINE_integer('base_image_size', 128, 
+tf.app.flags.DEFINE_float('sample_scale', 0.25,
+                          """Downsample scale for building cost volume.""")
+tf.app.flags.DEFINE_integer('base_image_size', 128,
                             """Base image size to fit the network.""")
-tf.app.flags.DEFINE_float('interval_scale', 1.6, 
-                            """Downsample scale for building cost volume.""")
-tf.app.flags.DEFINE_integer('batch_size', 1, 
+tf.app.flags.DEFINE_float('interval_scale', 1.6,
+                          """Downsample scale for building cost volume.""")
+tf.app.flags.DEFINE_integer('batch_size', 1,
                             """training batch size""")
-tf.app.flags.DEFINE_integer('epoch', 6, 
+tf.app.flags.DEFINE_integer('epoch', 6,
                             """training epoch""")
-tf.app.flags.DEFINE_float('val_ratio', 0, 
+tf.app.flags.DEFINE_float('val_ratio', 0,
                           """ratio of validation set when splitting dataset.""")
-tf.app.flags.DEFINE_float('val_batch_size', 10, 
+tf.app.flags.DEFINE_float('val_batch_size', 10,
                           """Number of images to run validation on when validation.""")
-tf.app.flags.DEFINE_float('train_steps_per_val', 100, 
+tf.app.flags.DEFINE_float('train_steps_per_val', 100,
                           """Number of samples to train on before running a round of validation.""")
 
 # params for config
 tf.app.flags.DEFINE_string('pretrained_model_ckpt_path', '../model/model.ckpt',
                            """Path to restore the model.""")
-tf.app.flags.DEFINE_integer('ckpt_step', 70000,
+tf.app.flags.DEFINE_integer('ckpt_step', 92000,
                             """ckpt step.""")
 tf.app.flags.DEFINE_boolean('is_training', True,
                             """Flag to training model""")
-tf.app.flags.DEFINE_string('mode','training',"""mode can be set to training or validation""")
+tf.app.flags.DEFINE_string(
+    'mode', 'training', """mode can be set to training or validation""")
 
 # Params for solver.
 tf.app.flags.DEFINE_float('base_lr', 0.001,
@@ -84,20 +87,24 @@ tf.app.flags.DEFINE_integer('snapshot', 2000,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.9,
                           """Learning rate decay rate.""")
+tf.app.flags.DEFINE_boolean('external_data_gen', True,
+                            """Whether or not to use the new external data gen""")
 
 FLAGS = tf.app.flags.FLAGS
 
+
 class MVSGenerator:
     """ data generator class, tf only accept generator without param """
+
     def __init__(self, sample_list, view_num):
         self.sample_list = sample_list
         self.view_num = view_num
         self.sample_num = len(sample_list)
         self.counter = 0
-    
+
     def __iter__(self):
         while True:
-            for data in self.sample_list: 
+            for data in self.sample_list:
                 start_time = time.time()
 
                 ###### read input data ######
@@ -113,8 +120,10 @@ class MVSGenerator:
 
                 # mask out-of-range depth pixels (in a relaxed range)
                 depth_start = cams[0][1, 3, 0] + cams[0][1, 3, 1]
-                depth_end = cams[0][1, 3, 0] + (FLAGS.max_d - 2) * cams[0][1, 3, 1]
-                depth_image = mask_depth_image(depth_image, depth_start, depth_end)
+                depth_end = cams[0][1, 3, 0] + \
+                    (FLAGS.max_d - 2) * cams[0][1, 3, 1]
+                depth_image = mask_depth_image(
+                    depth_image, depth_start, depth_end)
 
                 # return mvs input
                 self.counter += 1
@@ -122,7 +131,11 @@ class MVSGenerator:
                 # print(Notify.INFO, 'prepocess: %.3f sec/step)' % duration, Notify.ENDC)
                 images = np.stack(images, axis=0)
                 cams = np.stack(cams, axis=0)
-                yield (images, cams, depth_image) 
+                print('image shape', images.shape)
+                print('cams shape', cams.shape)
+                print('depth shape', depth_image.shape)
+                yield (images, cams, depth_image)
+
 
 def average_gradients(tower_grads):
     """Calculate the average gradient for each shared variable across all towers.
@@ -159,47 +172,65 @@ def average_gradients(tower_grads):
         average_grads.append(grad_and_var)
     return average_grads
 
-def train(traning_list, validation_list):
+
+def train(training_list=None, validation_list=None):
     """ training mvsnet """
+
+    """
     training_sample_size = len(traning_list)
     validation_sample_size = len(validation_list)
-    print ('sample number: ', training_sample_size)
+    print('sample number: ', training_sample_size)
     print("validation number:", validation_sample_size)
+    """
+
     train_session_start = time.time()
     print("Training starting at time:", train_session_start)
-    val_sum_file = os.path.join(FLAGS.log_dir,'validation_summary-{}.txt'.format(train_session_start))
-    with open(val_sum_file,'w+') as f:
+    val_sum_file = os.path.join(
+        FLAGS.log_dir, 'validation_summary-{}.txt'.format(train_session_start))
+    with open(val_sum_file, 'w+') as f:
         header = 'train_step,val_loss,val_less_one,val_less_three\n'
         f.write(header)
 
-    with tf.Graph().as_default(), tf.device('/cpu:0'): 
+    with tf.Graph().as_default(), tf.device('/cpu:0'):
         ########## data iterator #########
         # training generators
-        training_generator = iter(MVSGenerator(traning_list, FLAGS.view_num))
+        if FLAGS.external_data_gen:
+            base = '/Users/chrisheinrich/data/mvs-training'
+            train_gen = ClusterGenerator(base, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
+                                         FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='training')
+            training_generator = iter(train_gen)
+            training_sample_size = len(train_gen.train_clusters)
+            validation_generator = iter(ClusterGenerator(base, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
+                                                         FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='validation'))
+        else:
+            training_sample_size = len(training_list)
+            training_generator = iter(
+                MVSGenerator(training_list, FLAGS.view_num))
+            validation_generator = iter(
+                MVSGenerator(validation_list, FLAGS.view_num))
+
         generator_data_type = (tf.float32, tf.float32, tf.float32)
         # dataset from generator
-        training_set = tf.data.Dataset.from_generator(lambda: training_generator, generator_data_type)
+        training_set = tf.data.Dataset.from_generator(
+            lambda: training_generator, generator_data_type)
         training_set = training_set.batch(FLAGS.batch_size)
         training_set = training_set.prefetch(buffer_size=1)
         # iterators
         training_iterator = training_set.make_initializable_iterator()
 
-        # validation generator
-        validation_generator = iter(MVSGenerator(validation_list, FLAGS.view_num))
         # dataset from generator
-        validation_set = tf.data.Dataset.from_generator(lambda: validation_generator, generator_data_type)
+        validation_set = tf.data.Dataset.from_generator(
+            lambda: validation_generator, generator_data_type)
         validation_set = validation_set.batch(FLAGS.batch_size)
         validation_set = validation_set.prefetch(buffer_size=1)
         # iterators
         validation_iterator = validation_set.make_initializable_iterator()
 
-        training_status = True # Set to true when training, false when validating
-       
-
+        training_status = True  # Set to true when training, false when validating
 
         ########## optimization options ##########
         global_step = tf.Variable(0, trainable=False, name='global_step')
-        lr_op = tf.train.exponential_decay(FLAGS.base_lr, global_step=global_step, 
+        lr_op = tf.train.exponential_decay(FLAGS.base_lr, global_step=global_step,
                                            decay_steps=FLAGS.stepvalue, decay_rate=FLAGS.gamma, name='lr')
         opt = tf.train.RMSPropOptimizer(learning_rate=lr_op)
 
@@ -212,10 +243,13 @@ def train(traning_list, validation_list):
                         images, cams, depth_image = training_iterator.get_next()
                     else:
                         images, cams, depth_image = validation_iterator.get_next()
-                    
-                    images.set_shape(tf.TensorShape([None, FLAGS.view_num, None, None, 3]))
-                    cams.set_shape(tf.TensorShape([None, FLAGS.view_num, 2, 4, 4]))
-                    depth_image.set_shape(tf.TensorShape([None, None, None, 1]))
+
+                    images.set_shape(tf.TensorShape(
+                        [None, FLAGS.view_num, None, None, 3]))
+                    cams.set_shape(tf.TensorShape(
+                        [None, FLAGS.view_num, 2, 4, 4]))
+                    depth_image.set_shape(
+                        tf.TensorShape([None, None, None, 1]))
                     depth_start = tf.reshape(
                         tf.slice(cams, [0, 0, 1, 3, 0], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
                     depth_interval = tf.reshape(
@@ -229,56 +263,62 @@ def train(traning_list, validation_list):
                     depth_map, prob_map = inference(
                         images, cams, FLAGS.max_d, depth_start, depth_interval, is_master_gpu)
 
-                    # refinement 
-                    ref_image = tf.squeeze(tf.slice(images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
+                    # refinement
+                    ref_image = tf.squeeze(
+                        tf.slice(images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
                     refined_depth_map = depth_refine(
                         depth_map, ref_image, FLAGS.max_d, depth_start, depth_interval, is_master_gpu)
-                    
+
                     # loss
                     loss0, less_one_temp, less_three_temp = mvsnet_loss(
                         depth_map, depth_image, depth_interval)
                     loss1, less_one_accuracy, less_three_accuracy = mvsnet_loss(
                         refined_depth_map, depth_image, depth_interval)
-                    loss = (loss0 + loss1) / 2  # (CH) Looks like for the loss they take an evenly weighted average of refined and unrefined
+                    # (CH) Looks like for the loss they take an evenly weighted average of refined and unrefined
+                    loss = (loss0 + loss1) / 2
 
                     # retain the summaries from the final tower.
-                    summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
+                    summaries = tf.get_collection(
+                        tf.GraphKeys.SUMMARIES, scope)
 
                     # calculate the gradients for the batch of data on this CIFAR tower.
                     grads = opt.compute_gradients(loss)
 
                     # keep track of the gradients across all towers.
                     tower_grads.append(grads)
-        
+
         # average gradient
         grads = average_gradients(tower_grads)
-        
+
         # training opt
         train_opt = opt.apply_gradients(grads, global_step=global_step)
 
-        # summary 
+        # summary
         summaries.append(tf.summary.scalar('loss', loss))
-        summaries.append(tf.summary.scalar('less_one_accuracy', less_one_accuracy))
-        summaries.append(tf.summary.scalar('less_three_accuracy', less_three_accuracy))
+        summaries.append(tf.summary.scalar(
+            'less_one_accuracy', less_one_accuracy))
+        summaries.append(tf.summary.scalar(
+            'less_three_accuracy', less_three_accuracy))
         summaries.append(tf.summary.scalar('lr', lr_op))
         weights_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
         for var in weights_list:
             summaries.append(tf.summary.histogram(var.op.name, var))
         for grad, var in grads:
             if grad is not None:
-                summaries.append(tf.summary.histogram(var.op.name + '/gradients', grad))
-        
+                summaries.append(tf.summary.histogram(
+                    var.op.name + '/gradients', grad))
+
         # saver
-        saver = tf.train.Saver(tf.global_variables(), max_to_keep=None)        
+        saver = tf.train.Saver(tf.global_variables(), max_to_keep=None)
         summary_op = tf.summary.merge(summaries)
 
         # initialization option
         init_op = tf.global_variables_initializer()
-        config = tf.ConfigProto(allow_soft_placement = True)
+        config = tf.ConfigProto(allow_soft_placement=True)
         config.gpu_options.allow_growth = True
 
-        with tf.Session(config=config) as sess:     
-            
+        with tf.Session(config=config) as sess:
+
             # initialization
             total_step = 0
             sess.run(init_op)
@@ -290,7 +330,7 @@ def train(traning_list, validation_list):
                 restorer.restore(
                     sess, '-'.join([FLAGS.pretrained_model_ckpt_path, str(FLAGS.ckpt_step)]))
                 print(Notify.INFO, 'Pre-trained model restored from %s' %
-                    ('-'.join([FLAGS.pretrained_model_ckpt_path, str(FLAGS.ckpt_step)])), Notify.ENDC)
+                      ('-'.join([FLAGS.pretrained_model_ckpt_path, str(FLAGS.ckpt_step)])), Notify.ENDC)
                 total_step = FLAGS.ckpt_step
 
             # training several epochs
@@ -300,14 +340,14 @@ def train(traning_list, validation_list):
                 step = 0
                 sess.run(training_iterator.initializer)
                 sess.run(validation_iterator.initializer)
-                
+
                 for i in range(int(training_sample_size / FLAGS.num_gpus)):
                     training_status = True
                     # run one batch
                     start_time = time.time()
                     try:
                         out_summary_op, out_opt, out_loss, out_less_one, out_less_three = sess.run(
-                        [summary_op, train_opt, loss, less_one_accuracy, less_three_accuracy])
+                            [summary_op, train_opt, loss, less_one_accuracy, less_three_accuracy])
                     except tf.errors.OutOfRangeError:
                         print("End of dataset")  # ==> "End of dataset"
                         break
@@ -316,17 +356,19 @@ def train(traning_list, validation_list):
                     # print info
                     if step % FLAGS.display == 0:
                         print(Notify.INFO,
-                            'epoch, %d, step %d, total_step %d, loss = %.4f, (< 1px) = %.4f, (< 3px) = %.4f (%.3f sec/step)' %
-                            (epoch, step, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
-                    
+                              'epoch, %d, step %d, total_step %d, loss = %.4f, (< 1px) = %.4f, (< 3px) = %.4f (%.3f sec/step)' %
+                              (epoch, step, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
+
                     # write summary
                     if step % (FLAGS.display * 10) == 0 and FLAGS.is_training:
                         summary_writer.add_summary(out_summary_op, total_step)
-                
+
                     # save the model checkpoint periodically
                     if (total_step % FLAGS.snapshot == 0 or step == (training_sample_size - 1)) and FLAGS.is_training:
-                        checkpoint_path = os.path.join(FLAGS.save_dir, 'model.ckpt')
-                        saver.save(sess, checkpoint_path, global_step=total_step)
+                        checkpoint_path = os.path.join(
+                            FLAGS.save_dir, 'model.ckpt')
+                        saver.save(sess, checkpoint_path,
+                                   global_step=total_step)
                     step += FLAGS.batch_size * FLAGS.num_gpus
                     total_step += FLAGS.batch_size * FLAGS.num_gpus
 
@@ -341,43 +383,50 @@ def train(traning_list, validation_list):
                             start_time = time.time()
                             try:
                                 out_loss, out_less_one, out_less_three = sess.run(
-                                [loss, less_one_accuracy, less_three_accuracy])
+                                    [loss, less_one_accuracy, less_three_accuracy])
                             except tf.errors.OutOfRangeError:
-                                print("End of validation dataset")  # ==> "End of dataset"
+                                # ==> "End of dataset"
+                                print("End of validation dataset")
                                 break
                             duration = time.time() - start_time
 
                             # print info
                             if step % FLAGS.display == 0:
-                                print(Notify.INFO,'_validating_',
-                                    'epoch, %d, train step %d, val loss = %.4f, val (< 1px) = %.4f, val (< 3px) = %.4f (%.3f sec/step)' %
-                                    (epoch, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
+                                print(Notify.INFO, '_validating_',
+                                      'epoch, %d, train step %d, val loss = %.4f, val (< 1px) = %.4f, val (< 3px) = %.4f (%.3f sec/step)' %
+                                      (epoch, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
                             val_loss.append(out_loss)
                             val_less_one.append(out_less_one)
                             val_less_three.append(out_less_three)
                         l = np.mean(np.asarray(val_loss))
                         l1 = np.mean(np.asarray(val_less_one))
                         l3 = np.mean(np.asarray(val_less_three))
-                        
-                        with open(val_sum_file, 'a+') as f:
-                            f.write('{},{},{},{}\n'.format(total_step,l,l1,l3))
 
-                        print(Notify.INFO, '\n VAL STEP COMPLETED. Average loss: {}, Average less one: {}, Average less three: {}\n'.format(l,l1,l3))
-                        print(Notify.INFO, 'Validation output summary saved to: {}'.val_sum_file)
-                        
+                        with open(val_sum_file, 'a+') as f:
+                            f.write('{},{},{},{}\n'.format(
+                                total_step, l, l1, l3))
+
+                        print(Notify.INFO, '\n VAL STEP COMPLETED. Average loss: {}, Average less one: {}, Average less three: {}\n'.format(
+                            l, l1, l3))
+                        print(
+                            Notify.INFO, 'Validation output summary saved to: {}'.format(val_sum_file))
+
 
 def main(argv=None):  # pylint: disable=unused-argument
     """ program entrance """
     # Prepare all training samples
-    sample_list = gen_dtu_resized_path(FLAGS.dtu_data_root)
-    validation_list = gen_dtu_resized_path(FLAGS.dtu_data_root,'validation')
-    # Shuffle
-    random.shuffle(sample_list)
-    random.shuffle(validation_list)
-    # Training entrance.
-    train(sample_list, validation_list)
+    if FLAGS.external_data_gen:
+        train()
+    else:
+        sample_list = gen_dtu_resized_path(FLAGS.dtu_data_root)
+        validation_list = gen_dtu_resized_path(
+            FLAGS.dtu_data_root, 'validation')
+        # Shuffle
+        random.shuffle(sample_list)
+        random.shuffle(validation_list)
+        train(sample_list, validation_list)
 
 
 if __name__ == '__main__':
-    print ('Training MVSNet with %d views' % FLAGS.view_num)
+    print('Training MVSNet with %d views' % FLAGS.view_num)
     tf.app.run()

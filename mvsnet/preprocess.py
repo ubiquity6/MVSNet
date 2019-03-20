@@ -422,6 +422,17 @@ def gen_dtu_mvs_path(dtu_data_folder, mode='training'):
         
     return sample_list
 
+
+
+def gen_data(data_root, val_ratio = 0.1):
+    """ The data_root directory should contain multiple sessions, which are then parsed into
+    the data structure that the train data generator expects """
+    session_list = os.listdir(data_root)
+    
+
+
+
+
 def gen_mvs_list(mode='training'):
     """output paths in a list: [[I1_path1,  C1_path, I2_path, C2_path, ...(, D1_path)], [...], ...]"""
     sample_list = []

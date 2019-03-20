@@ -4,3 +4,7 @@ mvs_training/*
 logs/*
 *.pyc
 *.rar
+notebooks/*
+mvsnet/mvs_data_generation/*
+*.DS_Store
+
