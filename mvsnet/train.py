@@ -84,7 +84,7 @@ tf.app.flags.DEFINE_integer('snapshot', 250,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.9,
                           """Learning rate decay rate.""")
-tf.app.flags.DEFINE_boolean('external_data_gen', True,
+tf.app.flags.DEFINE_boolean('external_data_gen', False,
                             """Whether or not to use the new external data gen""")
 tf.app.flags.DEFINE_float('val_batch_size', 10,
                           """Number of images to run validation on when validation.""")

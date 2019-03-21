@@ -18,6 +18,7 @@ import sys
 import math
 import argparse
 import numpy as np
+import imageio
 
 import cv2
 import tensorflow as tf
@@ -60,7 +61,7 @@ tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for MVSNet""")
 tf.app.flags.DEFINE_bool('inverse_depth', True,
                          """Whether to apply inverse depth for R-MVSNet""")
-tf.app.flags.DEFINE_boolean('external_data_gen', False,
+tf.app.flags.DEFINE_boolean('external_data_gen', True,
                             """Whether or not to use the new external data gen""")
 
 FLAGS = tf.app.flags.FLAGS
@@ -163,6 +164,10 @@ class MVSGenerator:
                 print('--scaled image shape', scaled_images.shape)
                 print('--scaled cams shape', scaled_cams.shape)
                 print('--centered image shape', centered_images[0].shape)
+
+                image_path = os.path.join(
+                    FLAGS.dense_folder, 'centered_images', '{}.jpg'.format(image_index))
+                imageio.imsave(image_path, centered_images[0].astype(np.uint8))
 
                 self.counter += 1
                 yield (scaled_images, centered_images, scaled_cams, image_index)
