@@ -38,9 +38,9 @@ tf.app.flags.DEFINE_integer('view_num', 5,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 200,
                             """Maximum depth step when testing.""")
-tf.app.flags.DEFINE_integer('max_w', 640,
+tf.app.flags.DEFINE_integer('max_w', 1024,
                             """Maximum image width when testing.""")
-tf.app.flags.DEFINE_integer('max_h', 480,
+tf.app.flags.DEFINE_integer('max_h', 768,
                             """Maximum image height when testing.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume (W and H).""")
@@ -60,7 +60,7 @@ tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for MVSNet""")
 tf.app.flags.DEFINE_bool('inverse_depth', True,
                          """Whether to apply inverse depth for R-MVSNet""")
-tf.app.flags.DEFINE_boolean('external_data_gen', True,
+tf.app.flags.DEFINE_boolean('external_data_gen', False,
                             """Whether or not to use the new external data gen""")
 
 FLAGS = tf.app.flags.FLAGS

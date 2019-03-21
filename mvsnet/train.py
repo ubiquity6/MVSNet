@@ -44,22 +44,22 @@ tf.app.flags.DEFINE_integer('ckpt_step', 100000,
                             """ckpt step.""")
 
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 2,
+tf.app.flags.DEFINE_integer('view_num', 4,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 192,
+tf.app.flags.DEFINE_integer('max_d', 128,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('max_w', 640,
                             """Maximum image width when training.""")
-tf.app.flags.DEFINE_integer('max_h', 512,
+tf.app.flags.DEFINE_integer('max_h', 480,
                             """Maximum image height when training.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume.""")
-tf.app.flags.DEFINE_float('interval_scale', 1.06,
+tf.app.flags.DEFINE_float('interval_scale', 1.0,
                           """Downsample scale for building cost volume.""")
 tf.app.flags.DEFINE_float('base_image_size', 8,
                           """Base image size""")
 # network architectures
-tf.app.flags.DEFINE_string('regularization', 'GRU',
+tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method.""")
 tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for 3DCNNs""")
@@ -73,13 +73,14 @@ tf.app.flags.DEFINE_integer('epoch', 6,
                             """Training epoch number.""")
 tf.app.flags.DEFINE_float('val_ratio', 0,
                           """Ratio of validation set when splitting dataset.""")
-tf.app.flags.DEFINE_float('base_lr', 0.001,
+                          ## TODO: decrease base_lr back to 0.001
+tf.app.flags.DEFINE_float('base_lr', 0.0001,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
 tf.app.flags.DEFINE_integer('stepvalue', 10000,
                             """Step interval to decay learning rate.""")
-tf.app.flags.DEFINE_integer('snapshot', 2000,
+tf.app.flags.DEFINE_integer('snapshot', 250,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.9,
                           """Learning rate decay rate.""")
@@ -291,9 +292,9 @@ def train(training_list=None, validation_list=None):
                             refined_depth_map = depth_map
 
                         # regression loss
-                        loss0, less_one_temp, less_three_temp = mvsnet_loss(
+                        loss0, less_one_temp, less_three_temp = mvsnet_regression_loss(
                             depth_map, depth_image, depth_interval)
-                        loss1, less_one_accuracy, less_three_accuracy = mvsnet_loss(
+                        loss1, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
                             refined_depth_map, depth_image, depth_interval)
                         loss = (loss0 + loss1) / 2
 
