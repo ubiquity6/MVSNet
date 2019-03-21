@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+
+from __future__ import print_function
 from loss import *
 from model import *
 from preprocess import *
@@ -9,7 +11,6 @@ Copyright 2019, Yao Yao, HKUST.
 Test script.
 """
 
-from __future__ import print_function
 
 import os
 import time
@@ -53,13 +54,13 @@ tf.app.flags.DEFINE_bool('adaptive_scaling', True,
                          """Let image size to fit the network, including 'scaling', 'cropping'""")
 
 # network architecture
-tf.app.flags.DEFINE_string('regularization', '3DCNNs',
+tf.app.flags.DEFINE_string('regularization', 'GRU',
                            """Regularization method, including '3DCNNs' and 'GRU'""")
 tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for MVSNet""")
 tf.app.flags.DEFINE_bool('inverse_depth', True,
                          """Whether to apply inverse depth for R-MVSNet""")
-tf.app.flags.DEFINE_boolean('external_data_gen', True,
+tf.app.flags.DEFINE_boolean('external_data_gen', False,
                             """Whether or not to use the new external data gen""")
 
 FLAGS = tf.app.flags.FLAGS
@@ -159,6 +160,9 @@ class MVSGenerator:
                 scaled_images = np.stack(scaled_images, axis=0)
                 croped_images = np.stack(croped_images, axis=0)
                 scaled_cams = np.stack(scaled_cams, axis=0)
+                print('--scaled image shape', scaled_images.shape)
+                print('--scaled cams', scaled_cams.shape)
+
                 self.counter += 1
                 yield (scaled_images, centered_images, scaled_cams, image_index)
 
@@ -292,8 +296,9 @@ def mvsnet_pipeline(mvs_list=None):
             # save output
             write_pfm(init_depth_map_path, out_init_depth_image)
             write_pfm(prob_map_path, out_prob_map)
+
             # for png outputs
-            write_depth_map(depth_png, out_estimated_depth_image)
+            write_depth_map(depth_png, out_init_depth_image)
             write_confidence_map(prob_png, out_prob_map)
 
             out_ref_image = cv2.cvtColor(out_ref_image, cv2.COLOR_RGB2BGR)

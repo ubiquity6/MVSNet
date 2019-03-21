@@ -8,4 +8,5 @@ notebooks/*
 mvsnet/mvs_data_generation/*
 *.DS_Store
 old-models/*
+commands.md
 
