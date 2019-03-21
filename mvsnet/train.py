@@ -38,40 +38,40 @@ tf.app.flags.DEFINE_string('model_dir', '../model',
                            """Path to save the model.""")
 tf.app.flags.DEFINE_boolean('train_dtu', True,
                             """Whether to train.""")
-tf.app.flags.DEFINE_boolean('use_pretrain', True, 
+tf.app.flags.DEFINE_boolean('use_pretrain', True,
                             """Whether to train.""")
 tf.app.flags.DEFINE_integer('ckpt_step', 92000,
                             """ckpt step.""")
 
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 3, 
+tf.app.flags.DEFINE_integer('view_num', 3,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 192, 
+tf.app.flags.DEFINE_integer('max_d', 192,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('max_w', 640,
                             """Maximum image width when training.""")
 tf.app.flags.DEFINE_integer('max_h', 512,
                             """Maximum image height when training.""")
-tf.app.flags.DEFINE_float('sample_scale', 0.25, 
-                            """Downsample scale for building cost volume.""")
-tf.app.flags.DEFINE_float('interval_scale', 1.06, 
-                            """Downsample scale for building cost volume.""")
+tf.app.flags.DEFINE_float('sample_scale', 0.25,
+                          """Downsample scale for building cost volume.""")
+tf.app.flags.DEFINE_float('interval_scale', 1.06,
+                          """Downsample scale for building cost volume.""")
 tf.app.flags.DEFINE_float('base_image_size', 8,
                           """Base image size""")
 # network architectures
 tf.app.flags.DEFINE_string('regularization', 'GRU',
                            """Regularization method.""")
 tf.app.flags.DEFINE_boolean('refinement', False,
-                           """Whether to apply depth map refinement for 3DCNNs""")
+                            """Whether to apply depth map refinement for 3DCNNs""")
 
 # training parameters
-tf.app.flags.DEFINE_integer('num_gpus', 1, 
+tf.app.flags.DEFINE_integer('num_gpus', 1,
                             """Number of GPUs.""")
-tf.app.flags.DEFINE_integer('batch_size', 1, 
+tf.app.flags.DEFINE_integer('batch_size', 1,
                             """Training batch size.""")
-tf.app.flags.DEFINE_integer('epoch', 6, 
+tf.app.flags.DEFINE_integer('epoch', 6,
                             """Training epoch number.""")
-tf.app.flags.DEFINE_float('val_ratio', 0, 
+tf.app.flags.DEFINE_float('val_ratio', 0,
                           """Ratio of validation set when splitting dataset.""")
 tf.app.flags.DEFINE_float('base_lr', 0.001,
                           """Base learning rate.""")
@@ -86,9 +86,9 @@ tf.app.flags.DEFINE_float('gamma', 0.9,
 tf.app.flags.DEFINE_boolean('external_data_gen', True,
                             """Whether or not to use the new external data gen""")
 tf.app.flags.DEFINE_float('val_batch_size', 10,
-                            """Number of images to run validation on when validation.""")
+                          """Number of images to run validation on when validation.""")
 tf.app.flags.DEFINE_float('train_steps_per_val', 100,
-                            """Number of samples to train on before running a round of validation.""")
+                          """Number of samples to train on before running a round of validation.""")
 
 
 FLAGS = tf.app.flags.FLAGS
@@ -131,28 +131,23 @@ class MVSGenerator:
                 duration = time.time() - start_time
                 images = np.stack(images, axis=0)
                 cams = np.stack(cams, axis=0)
-<<<<<<< HEAD
                 print('image shape', images.shape)
                 print('cams shape', cams.shape)
                 print('depth shape', depth_image.shape)
                 yield (images, cams, depth_image)
 
-=======
-                print('Forward pass: d_min = %f, d_max = %f.' % \
-                    (cams[0][1, 3, 0], cams[0][1, 3, 0] + (FLAGS.max_d - 1) * cams[0][1, 3, 1]))
-                yield (images, cams, depth_image) 
->>>>>>> upstream/master
-
                 # return backward mvs input for GRU
                 if FLAGS.regularization == 'GRU':
                     self.counter += 1
                     start_time = time.time()
-                    cams[0][1, 3, 0] = cams[0][1, 3, 0] + (FLAGS.max_d - 1) * cams[0][1, 3, 1]
+                    cams[0][1, 3, 0] = cams[0][1, 3, 0] + \
+                        (FLAGS.max_d - 1) * cams[0][1, 3, 1]
                     cams[0][1, 3, 1] = -cams[0][1, 3, 1]
                     duration = time.time() - start_time
-                    print('Back pass: d_min = %f, d_max = %f.' % \
-                        (cams[0][1, 3, 0], cams[0][1, 3, 0] + (FLAGS.max_d - 1) * cams[0][1, 3, 1]))
-                    yield (images, cams, depth_image) 
+                    print('Back pass: d_min = %f, d_max = %f.' %
+                          (cams[0][1, 3, 0], cams[0][1, 3, 0] + (FLAGS.max_d - 1) * cams[0][1, 3, 1]))
+                    yield (images, cams, depth_image)
+
 
 def average_gradients(tower_grads):
     """Calculate the average gradient for each shared variable across all towers.
@@ -208,7 +203,7 @@ def train(training_list=None, validation_list=None):
         header = 'train_step,val_loss,val_less_one,val_less_three\n'
         f.write(header)
 
-    with tf.Graph().as_default(), tf.device('/cpu:0'): 
+    with tf.Graph().as_default(), tf.device('/cpu:0'):
 
         ########## data iterator #########
         # training generators
@@ -290,8 +285,8 @@ def train(training_list=None, validation_list=None):
                         if FLAGS.refinement:
                             ref_image = tf.squeeze(
                                 tf.slice(images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
-                            refined_depth_map = depth_refine(depth_map, ref_image, 
-                                    FLAGS.max_d, depth_start, depth_interval, is_master_gpu)
+                            refined_depth_map = depth_refine(depth_map, ref_image,
+                                                             FLAGS.max_d, depth_start, depth_interval, is_master_gpu)
                         else:
                             refined_depth_map = depth_map
 
@@ -312,7 +307,7 @@ def train(training_list=None, validation_list=None):
                         loss, mae, less_one_accuracy, less_three_accuracy, depth_map = \
                             mvsnet_classification_loss(
                                 prob_volume, depth_image, FLAGS.max_d, depth_start, depth_interval)
-                    
+
                     # retain the summaries from the final tower.
                     summaries = tf.get_collection(
                         tf.GraphKeys.SUMMARIES, scope)
@@ -362,11 +357,13 @@ def train(training_list=None, validation_list=None):
 
             # load pre-trained model
             if FLAGS.use_pretrain:
-                pretrained_model_path = os.path.join(FLAGS.model_dir, FLAGS.regularization, 'model.ckpt')
+                pretrained_model_path = os.path.join(
+                    FLAGS.model_dir, FLAGS.regularization, 'model.ckpt')
                 restorer = tf.train.Saver(tf.global_variables())
-                restorer.restore(sess, '-'.join([pretrained_model_path, str(FLAGS.ckpt_step)]))
+                restorer.restore(
+                    sess, '-'.join([pretrained_model_path, str(FLAGS.ckpt_step)]))
                 print(Notify.INFO, 'Pre-trained model restored from %s' %
-                    ('-'.join([pretrained_model_path, str(FLAGS.ckpt_step)])), Notify.ENDC)
+                      ('-'.join([pretrained_model_path, str(FLAGS.ckpt_step)])), Notify.ENDC)
                 total_step = FLAGS.ckpt_step
 
             # training several epochs
@@ -401,11 +398,13 @@ def train(training_list=None, validation_list=None):
 
                     # save the model checkpoint periodically
                     if (total_step % FLAGS.snapshot == 0 or step == (training_sample_size - 1)):
-                        model_folder = os.path.join(FLAGS.model_dir, FLAGS.regularization)
+                        model_folder = os.path.join(
+                            FLAGS.model_dir, FLAGS.regularization)
                         if not os.path.exists(model_folder):
                             os.mkdir(model_folder)
                         ckpt_path = os.path.join(model_folder, 'model.ckpt')
-                        print(Notify.INFO, 'Saving model to %s' % ckpt_path, Notify.ENDC)
+                        print(Notify.INFO, 'Saving model to %s' %
+                              ckpt_path, Notify.ENDC)
                         saver.save(sess, ckpt_path, global_step=total_step)
                     step += FLAGS.batch_size * FLAGS.num_gpus
                     total_step += FLAGS.batch_size * FLAGS.num_gpus
