@@ -39,9 +39,9 @@ tf.app.flags.DEFINE_integer('view_num', 5,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 200,
                             """Maximum depth step when testing.""")
-tf.app.flags.DEFINE_integer('max_w', 1024,
+tf.app.flags.DEFINE_integer('max_w', 1280,
                             """Maximum image width when testing.""")
-tf.app.flags.DEFINE_integer('max_h', 768,
+tf.app.flags.DEFINE_integer('max_h', 960,
                             """Maximum image height when testing.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume (W and H).""")
