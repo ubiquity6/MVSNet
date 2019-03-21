@@ -53,7 +53,7 @@ tf.app.flags.DEFINE_bool('adaptive_scaling', True,
                          """Let image size to fit the network, including 'scaling', 'cropping'""")
 
 # network architecture
-tf.app.flags.DEFINE_string('regularization', 'GRU',
+tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method, including '3DCNNs' and 'GRU'""")
 tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for MVSNet""")
@@ -174,7 +174,7 @@ def mvsnet_pipeline(mvs_list=None):
     # testing set
     if FLAGS.external_data_gen:
         data_gen = ClusterGenerator(FLAGS.dense_folder, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
-                                    FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='training')
+                                    FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='test')
         mvs_generator = iter(data_gen)
         sample_size = len(data_gen.train_clusters)
 
