@@ -30,7 +30,7 @@ sys.path.append("../")
 
 
 # params for datasets
-tf.app.flags.DEFINE_string('dtu_data_root', '/Users/chrisheinrich/ubiquity/ubq/ai/mvsnet/train_data',
+tf.app.flags.DEFINE_string('train_data_root', '/Users/chrisheinrich/data/mvs-training',
                            """Path to dtu dataset.""")
 tf.app.flags.DEFINE_string('log_dir', '../logs',
                            """Path to store the log.""")
@@ -40,11 +40,11 @@ tf.app.flags.DEFINE_boolean('train_dtu', True,
                             """Whether to train.""")
 tf.app.flags.DEFINE_boolean('use_pretrain', True,
                             """Whether to train.""")
-tf.app.flags.DEFINE_integer('ckpt_step', 92000,
+tf.app.flags.DEFINE_integer('ckpt_step', 100000,
                             """ckpt step.""")
 
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 3,
+tf.app.flags.DEFINE_integer('view_num', 2,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 192,
                             """Maximum depth step when training.""")
@@ -209,7 +209,7 @@ def train(training_list=None, validation_list=None):
         # training generators
         if FLAGS.external_data_gen:
             base = '/Users/chrisheinrich/data/mvs-training'
-            train_gen = ClusterGenerator(base, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
+            train_gen = ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
                                          FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='training')
             training_generator = iter(train_gen)
             training_sample_size = len(train_gen.train_clusters)
@@ -455,9 +455,9 @@ def main(argv=None):  # pylint: disable=unused-argument
     if FLAGS.external_data_gen:
         train()
     else:
-        sample_list = gen_dtu_resized_path(FLAGS.dtu_data_root)
+        sample_list = gen_dtu_resized_path(FLAGS.train_data_root)
         validation_list = gen_dtu_resized_path(
-            FLAGS.dtu_data_root, 'validation')
+            FLAGS.train_data_root, 'validation')
         # Shuffle
         random.shuffle(sample_list)
         random.shuffle(validation_list)
