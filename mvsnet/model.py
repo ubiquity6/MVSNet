@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
-Copyright 2018, Yao Yao, HKUST.
-Model architectures.
+Copyright 2019, Yao Yao, HKUST.
+Loss formulations.
 """
 
 import sys
@@ -11,7 +11,8 @@ import numpy as np
 
 sys.path.append("../")
 from cnn_wrapper.mvsnet import *
-from homography_warping import get_homographies, homography_warping
+from convgru import ConvGRUCell
+from homography_warping import *
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -68,7 +69,6 @@ def get_propability_map(cv, depth_map, depth_start, depth_interval):
 
     return prob_map
 
-
 def inference(images, cams, depth_num, depth_start, depth_interval, is_master_gpu=True):
     """ infer depth image from multi-view images and cameras """
 
@@ -81,13 +81,13 @@ def inference(images, cams, depth_num, depth_start, depth_interval, is_master_gp
 
     # image feature extraction    
     if is_master_gpu:
-        ref_tower = UniNetDS2({'data': ref_image}, is_training=True, reuse=False)
+        ref_tower = UNetDS2GN({'data': ref_image}, is_training=True, reuse=False)
     else:
-        ref_tower = UniNetDS2({'data': ref_image}, is_training=True, reuse=True)
+        ref_tower = UNetDS2GN({'data': ref_image}, is_training=True, reuse=True)
     view_towers = []
     for view in range(1, FLAGS.view_num):
         view_image = tf.squeeze(tf.slice(images, [0, view, 0, 0, 0], [-1, 1, -1, -1, -1]), axis=1)
-        view_tower = UniNetDS2({'data': view_image}, is_training=True, reuse=True)
+        view_tower = UNetDS2GN({'data': view_image}, is_training=True, reuse=True)
         view_towers.append(view_tower)
 
     # get all homographies
@@ -108,7 +108,8 @@ def inference(images, cams, depth_num, depth_start, depth_interval, is_master_gp
             for view in range(0, FLAGS.view_num - 1):
                 homography = tf.slice(view_homographies[view], begin=[0, d, 0, 0], size=[-1, 1, 3, 3])
                 homography = tf.squeeze(homography, axis=1)
-                warped_view_feature = homography_warping(view_towers[view].get_output(), homography)
+				# warped_view_feature = homography_warping(view_towers[view].get_output(), homography)
+                warped_view_feature = tf_transform_homography(view_towers[view].get_output(), homography)
                 ave_feature = ave_feature + warped_view_feature
                 ave_feature2 = ave_feature2 + tf.square(warped_view_feature)
             ave_feature = ave_feature / FLAGS.view_num
@@ -160,16 +161,16 @@ def inference_mem(images, cams, depth_num, depth_start, depth_interval, is_maste
 
     # image feature extraction    
     if is_master_gpu:
-        ref_tower = UniNetDS2({'data': ref_image}, is_training=True, reuse=False)
+        ref_tower = UNetDS2GN({'data': ref_image}, is_training=True, reuse=False)
     else:
-        ref_tower = UniNetDS2({'data': ref_image}, is_training=True, reuse=True)
+        ref_tower = UNetDS2GN({'data': ref_image}, is_training=True, reuse=True)
     ref_feature = ref_tower.get_output()
     ref_feature2 = tf.square(ref_feature)
 
     view_features = []
     for view in range(1, FLAGS.view_num):
         view_image = tf.squeeze(tf.slice(images, [0, view, 0, 0, 0], [-1, 1, -1, -1, -1]), axis=1)
-        view_tower = UniNetDS2({'data': view_image}, is_training=True, reuse=True)
+        view_tower = UNetDS2GN({'data': view_image}, is_training=True, reuse=True)
         view_features.append(view_tower.get_output())
     view_features = tf.stack(view_features, axis=0)
 
@@ -201,7 +202,8 @@ def inference_mem(images, cams, depth_num, depth_start, depth_interval, is_maste
                 """Loop body."""
                 homography = tf.slice(view_homographies[view], begin=[0, d, 0, 0], size=[-1, 1, 3, 3])
                 homography = tf.squeeze(homography, axis=1)
-                warped_view_feature = homography_warping(view_features[view], homography)
+                # warped_view_feature = homography_warping(view_features[view], homography)
+                warped_view_feature = tf_transform_homography(view_features[view], homography)
                 ave_feature = tf.assign_add(ave_feature, warped_view_feature)
                 ave_feature2 = tf.assign_add(ave_feature2, tf.square(warped_view_feature))
                 view = tf.add(view, 1)
@@ -244,11 +246,219 @@ def inference_mem(images, cams, depth_num, depth_start, depth_interval, is_maste
     # probability map
     prob_map = get_propability_map(probability_volume, estimated_depth_map, depth_start, depth_interval)
 
-    # filtered_depth_map = tf.cast(tf.greater_equal(prob_map, 0.8), dtype='float32') * estimated_depth_map
-
-    # return filtered_depth_map, prob_map
+    # return filtered_depth_map, 
     return estimated_depth_map, prob_map
 
+
+def inference_prob_recurrent(images, cams, depth_num, depth_start, depth_interval, is_master_gpu=True):
+    """ infer disparity image from stereo images and cameras """
+
+    # dynamic gpu params
+    depth_end = depth_start + (tf.cast(depth_num, tf.float32) - 1) * depth_interval
+
+    # reference image
+    ref_image = tf.squeeze(tf.slice(images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
+    ref_cam = tf.squeeze(tf.slice(cams, [0, 0, 0, 0, 0], [-1, 1, 2, 4, 4]), axis=1)
+
+    # image feature extraction    
+    if is_master_gpu:
+        ref_tower = UNetDS2GN({'data': ref_image}, is_training=True, reuse=False)
+    else:
+        ref_tower = UNetDS2GN({'data': ref_image}, is_training=True, reuse=True)
+    view_towers = []
+    for view in range(1, FLAGS.view_num):
+        view_image = tf.squeeze(tf.slice(images, [0, view, 0, 0, 0], [-1, 1, -1, -1, -1]), axis=1)
+        view_tower = UNetDS2GN({'data': view_image}, is_training=True, reuse=True)
+        view_towers.append(view_tower)
+
+    # get all homographies
+    view_homographies = []
+    for view in range(1, FLAGS.view_num):
+        view_cam = tf.squeeze(tf.slice(cams, [0, view, 0, 0, 0], [-1, 1, 2, 4, 4]), axis=1)
+        homographies = get_homographies(ref_cam, view_cam, depth_num=depth_num,
+                                        depth_start=depth_start, depth_interval=depth_interval)
+        view_homographies.append(homographies)
+
+    gru1_filters = 16
+    gru2_filters = 4
+    gru3_filters = 2
+    feature_shape = [FLAGS.batch_size, FLAGS.max_h/4, FLAGS.max_w/4, 32]
+    gru_input_shape = [feature_shape[1], feature_shape[2]]
+    state1 = tf.zeros([FLAGS.batch_size, feature_shape[1], feature_shape[2], gru1_filters])
+    state2 = tf.zeros([FLAGS.batch_size, feature_shape[1], feature_shape[2], gru2_filters])
+    state3 = tf.zeros([FLAGS.batch_size, feature_shape[1], feature_shape[2], gru3_filters])
+    conv_gru1 = ConvGRUCell(shape=gru_input_shape, kernel=[3, 3], filters=gru1_filters)
+    conv_gru2 = ConvGRUCell(shape=gru_input_shape, kernel=[3, 3], filters=gru2_filters)
+    conv_gru3 = ConvGRUCell(shape=gru_input_shape, kernel=[3, 3], filters=gru3_filters)
+
+    exp_div = tf.zeros([FLAGS.batch_size, feature_shape[1], feature_shape[2], 1])
+    soft_depth_map = tf.zeros([FLAGS.batch_size, feature_shape[1], feature_shape[2], 1])
+
+    with tf.name_scope('cost_volume_homography'):
+
+        # forward cost volume
+        depth_costs = []
+        for d in range(depth_num):
+
+            # compute cost (variation metric)
+            ave_feature = ref_tower.get_output()
+            ave_feature2 = tf.square(ref_tower.get_output())
+
+            for view in range(0, FLAGS.view_num - 1):
+                homography = tf.slice(
+                    view_homographies[view], begin=[0, d, 0, 0], size=[-1, 1, 3, 3])
+                homography = tf.squeeze(homography, axis=1)
+                # warped_view_feature = homography_warping(view_towers[view].get_output(), homography)
+                warped_view_feature = tf_transform_homography(view_towers[view].get_output(), homography)
+                ave_feature = ave_feature + warped_view_feature
+                ave_feature2 = ave_feature2 + tf.square(warped_view_feature)
+            ave_feature = ave_feature / FLAGS.view_num
+            ave_feature2 = ave_feature2 / FLAGS.view_num 
+            cost = ave_feature2 - tf.square(ave_feature) 
+            
+            # gru
+            reg_cost1, state1 = conv_gru1(-cost, state1, scope='conv_gru1')
+            reg_cost2, state2 = conv_gru2(reg_cost1, state2, scope='conv_gru2')
+            reg_cost3, state3 = conv_gru3(reg_cost2, state3, scope='conv_gru3')
+            reg_cost = tf.layers.conv2d(
+                reg_cost3, 1, 3, padding='same', reuse=tf.AUTO_REUSE, name='prob_conv')
+            depth_costs.append(reg_cost)
+            
+        prob_volume = tf.stack(depth_costs, axis=1)
+        prob_volume = tf.nn.softmax(prob_volume, axis=1, name='prob_volume')
+
+    return prob_volume
+
+def inference_winner_take_all(images, cams, depth_num, depth_start, depth_end, 
+                              is_master_gpu=True, reg_type='GRU', inverse_depth=False):
+    """ infer disparity image from stereo images and cameras """
+
+    if not inverse_depth:
+        depth_interval = (depth_end - depth_start) / (tf.cast(depth_num, tf.float32) - 1)
+
+    # reference image
+    ref_image = tf.squeeze(tf.slice(images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
+    ref_cam = tf.squeeze(tf.slice(cams, [0, 0, 0, 0, 0], [-1, 1, 2, 4, 4]), axis=1)
+
+    # image feature extraction    
+    if is_master_gpu:
+        ref_tower = UNetDS2GN({'data': ref_image}, is_training=True, reuse=False)
+    else:
+        ref_tower = UNetDS2GN({'data': ref_image}, is_training=True, reuse=True)
+    view_towers = []
+    for view in range(1, FLAGS.view_num):
+        view_image = tf.squeeze(tf.slice(images, [0, view, 0, 0, 0], [-1, 1, -1, -1, -1]), axis=1)
+        view_tower = UNetDS2GN({'data': view_image}, is_training=True, reuse=True)
+        view_towers.append(view_tower)
+
+    # get all homographies
+    view_homographies = []
+    for view in range(1, FLAGS.view_num):
+        view_cam = tf.squeeze(tf.slice(cams, [0, view, 0, 0, 0], [-1, 1, 2, 4, 4]), axis=1)
+        if inverse_depth:
+            homographies = get_homographies_inv_depth(ref_cam, view_cam, depth_num=depth_num,
+                                depth_start=depth_start, depth_end=depth_end)
+        else:
+            homographies = get_homographies(ref_cam, view_cam, depth_num=depth_num,
+                                            depth_start=depth_start, depth_interval=depth_interval)
+        view_homographies.append(homographies)
+
+    # gru unit
+    gru1_filters = 16
+    gru2_filters = 4
+    gru3_filters = 2
+    feature_shape = [FLAGS.batch_size, FLAGS.max_h/4, FLAGS.max_w/4, 32]
+    gru_input_shape = [feature_shape[1], feature_shape[2]]
+    state1 = tf.zeros([FLAGS.batch_size, feature_shape[1], feature_shape[2], gru1_filters])
+    state2 = tf.zeros([FLAGS.batch_size, feature_shape[1], feature_shape[2], gru2_filters])
+    state3 = tf.zeros([FLAGS.batch_size, feature_shape[1], feature_shape[2], gru3_filters])
+    conv_gru1 = ConvGRUCell(shape=gru_input_shape, kernel=[3, 3], filters=gru1_filters)
+    conv_gru2 = ConvGRUCell(shape=gru_input_shape, kernel=[3, 3], filters=gru2_filters)
+    conv_gru3 = ConvGRUCell(shape=gru_input_shape, kernel=[3, 3], filters=gru3_filters)
+
+    # initialize variables
+    exp_sum = tf.Variable(tf.zeros(
+        [FLAGS.batch_size, feature_shape[1], feature_shape[2], 1]),
+        name='exp_sum', trainable=False, collections=[tf.GraphKeys.LOCAL_VARIABLES])
+    depth_image = tf.Variable(tf.zeros(
+        [FLAGS.batch_size, feature_shape[1], feature_shape[2], 1]),
+        name='depth_image', trainable=False, collections=[tf.GraphKeys.LOCAL_VARIABLES])
+    max_prob_image = tf.Variable(tf.zeros(
+        [FLAGS.batch_size, feature_shape[1], feature_shape[2], 1]),
+        name='max_prob_image', trainable=False, collections=[tf.GraphKeys.LOCAL_VARIABLES])
+    init_map = tf.zeros([FLAGS.batch_size, feature_shape[1], feature_shape[2], 1])
+
+    # define winner take all loop
+    def body(depth_index, state1, state2, state3, depth_image, max_prob_image, exp_sum, incre):
+        """Loop body."""
+
+        # calculate cost 
+        ave_feature = ref_tower.get_output()
+        ave_feature2 = tf.square(ref_tower.get_output())
+        for view in range(0, FLAGS.view_num - 1):
+            homographies = view_homographies[view]
+            homographies = tf.transpose(homographies, perm=[1, 0, 2, 3])
+            homography = homographies[depth_index]
+            # warped_view_feature = homography_warping(view_towers[view].get_output(), homography)
+            warped_view_feature = tf_transform_homography(view_towers[view].get_output(), homography)
+            ave_feature = ave_feature + warped_view_feature
+            ave_feature2 = ave_feature2 + tf.square(warped_view_feature)
+        ave_feature = ave_feature / FLAGS.view_num
+        ave_feature2 = ave_feature2 / FLAGS.view_num
+        cost = ave_feature2 - tf.square(ave_feature)
+        cost.set_shape([FLAGS.batch_size, feature_shape[1], feature_shape[2], 32])
+
+        # gru
+        reg_cost1, state1 = conv_gru1(-cost, state1, scope='conv_gru1')
+        reg_cost2, state2 = conv_gru2(reg_cost1, state2, scope='conv_gru2')
+        reg_cost3, state3 = conv_gru3(reg_cost2, state3, scope='conv_gru3')
+        reg_cost = tf.layers.conv2d(
+            reg_cost3, 1, 3, padding='same', reuse=tf.AUTO_REUSE, name='prob_conv')
+        prob = tf.exp(reg_cost)
+
+        # index
+        d_idx = tf.cast(depth_index, tf.float32) 
+        if inverse_depth:
+            inv_depth_start = tf.div(1.0, depth_start)
+            inv_depth_end = tf.div(1.0, depth_end)
+            inv_interval = (inv_depth_start - inv_depth_end) / (tf.cast(depth_num, 'float32') - 1)
+            inv_depth = inv_depth_start - d_idx * inv_interval
+            depth = tf.div(1.0, inv_depth)
+        else:
+            depth = depth_start + d_idx * depth_interval
+        temp_depth_image = tf.reshape(depth, [FLAGS.batch_size, 1, 1, 1])
+        temp_depth_image = tf.tile(
+            temp_depth_image, [1, feature_shape[1], feature_shape[2], 1])
+
+        # update the best
+        update_flag_image = tf.cast(tf.less(max_prob_image, prob), dtype='float32')
+        new_max_prob_image = update_flag_image * prob + (1 - update_flag_image) * max_prob_image
+        new_depth_image = update_flag_image * temp_depth_image + (1 - update_flag_image) * depth_image
+        max_prob_image = tf.assign(max_prob_image, new_max_prob_image)
+        depth_image = tf.assign(depth_image, new_depth_image)
+
+        # update counter
+        exp_sum = tf.assign_add(exp_sum, prob)
+        depth_index = tf.add(depth_index, incre)
+
+        return depth_index, state1, state2, state3, depth_image, max_prob_image, exp_sum, incre
+    
+    # run forward loop
+    exp_sum = tf.assign(exp_sum, init_map)
+    depth_image = tf.assign(depth_image, init_map)
+    max_prob_image = tf.assign(max_prob_image, init_map)
+    depth_index = tf.constant(0)
+    incre = tf.constant(1)
+    cond = lambda depth_index, *_: tf.less(depth_index, depth_num)
+    _, state1, state2, state3, depth_image, max_prob_image, exp_sum, incre = tf.while_loop(
+        cond, body
+        , [depth_index, state1, state2, state3, depth_image, max_prob_image, exp_sum, incre]
+        , back_prop=False, parallel_iterations=1)
+
+    # get output
+    forward_exp_sum = exp_sum + 1e-7
+    forward_depth_map = depth_image
+    return forward_depth_map, max_prob_image / forward_exp_sum
 
 def depth_refine(init_depth_map, image, depth_num, depth_start, depth_interval, is_master_gpu=True):
     """ refine depth image with the image """
@@ -281,48 +491,3 @@ def depth_refine(init_depth_map, image, depth_num, depth_start, depth_interval, 
     refined_depth_map = tf.multiply(norm_depth_map, depth_scale_mat) + depth_start_mat
 
     return refined_depth_map
-
-def non_zero_mean_absolute_diff(y_true, y_pred, interval):
-    """ non zero mean absolute loss for one batch """
-    with tf.name_scope('MAE'):
-        shape = tf.shape(y_pred)
-        interval = tf.reshape(interval, [shape[0]])
-        mask_true = tf.cast(tf.not_equal(y_true, 0.0), dtype='float32')
-        denom = tf.reduce_sum(mask_true, axis=[1, 2, 3]) + 1e-7
-        masked_abs_error = tf.abs(mask_true * (y_true - y_pred))            # 4D
-        masked_mae = tf.reduce_sum(masked_abs_error, axis=[1, 2, 3])        # 1D
-        masked_mae = tf.reduce_sum((masked_mae / interval) / denom)         # 1
-    return masked_mae
-
-def less_one_percentage(y_true, y_pred, interval):
-    """ less one accuracy for one batch """
-    with tf.name_scope('less_one_error'):
-        shape = tf.shape(y_pred)
-        mask_true = tf.cast(tf.not_equal(y_true, 0.0), dtype='float32')
-        denom = tf.reduce_sum(mask_true) + 1e-7
-        interval_image = tf.tile(tf.reshape(interval, [shape[0], 1, 1, 1]), [1, shape[1], shape[2], 1])
-        abs_diff_image = tf.abs(y_true - y_pred) / interval_image
-        less_one_image = mask_true * tf.cast(tf.less_equal(abs_diff_image, 1.0), dtype='float32')
-    return tf.reduce_sum(less_one_image) / denom
-
-def less_three_percentage(y_true, y_pred, interval):
-    """ less three accuracy for one batch """
-    with tf.name_scope('less_three_error'):
-        shape = tf.shape(y_pred)
-        mask_true = tf.cast(tf.not_equal(y_true, 0.0), dtype='float32')
-        denom = tf.reduce_sum(mask_true) + 1e-7
-        interval_image = tf.tile(tf.reshape(interval, [shape[0], 1, 1, 1]), [1, shape[1], shape[2], 1])
-        abs_diff_image = tf.abs(y_true - y_pred) / interval_image
-        less_three_image = mask_true * tf.cast(tf.less_equal(abs_diff_image, 3.0), dtype='float32')
-    return tf.reduce_sum(less_three_image) / denom
-
-def mvsnet_loss(estimated_disp_image, disp_image, depth_interval):
-    """ compute loss and accuracy """
-    # non zero mean absulote loss
-    masked_mae = non_zero_mean_absolute_diff(disp_image, estimated_disp_image, depth_interval)
-    # less one accuracy
-    less_one_accuracy = less_one_percentage(disp_image, estimated_disp_image, depth_interval)
-    # less three accuracy
-    less_three_accuracy = less_three_percentage(disp_image, estimated_disp_image, depth_interval)
-
-    return masked_mae, less_one_accuracy, less_three_accuracy
