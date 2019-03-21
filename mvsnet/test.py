@@ -161,7 +161,8 @@ class MVSGenerator:
                 croped_images = np.stack(croped_images, axis=0)
                 scaled_cams = np.stack(scaled_cams, axis=0)
                 print('--scaled image shape', scaled_images.shape)
-                print('--scaled cams', scaled_cams.shape)
+                print('--scaled cams shape', scaled_cams.shape)
+                print('--centered image shape', centered_images[0].shape)
 
                 self.counter += 1
                 yield (scaled_images, centered_images, scaled_cams, image_index)
