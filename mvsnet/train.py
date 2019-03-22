@@ -30,7 +30,7 @@ sys.path.append("../")
 
 
 # params for datasets
-tf.app.flags.DEFINE_string('train_data_root', '/Users/chrisheinrich/data/mvs-training',
+tf.app.flags.DEFINE_string('train_data_root', '../mvs-training-7scenes',
                            """Path to dtu dataset.""")
 tf.app.flags.DEFINE_string('log_dir', '../logs',
                            """Path to store the log.""")
@@ -44,9 +44,9 @@ tf.app.flags.DEFINE_integer('ckpt_step', 100000,
                             """ckpt step.""")
 
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 4,
+tf.app.flags.DEFINE_integer('view_num', 5,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 128,
+tf.app.flags.DEFINE_integer('max_d', 200,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('max_w', 640,
                             """Maximum image width when training.""")
@@ -80,11 +80,11 @@ tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
 tf.app.flags.DEFINE_integer('stepvalue', 10000,
                             """Step interval to decay learning rate.""")
-tf.app.flags.DEFINE_integer('snapshot', 250,
+tf.app.flags.DEFINE_integer('snapshot', 2000,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.9,
                           """Learning rate decay rate.""")
-tf.app.flags.DEFINE_boolean('external_data_gen', False,
+tf.app.flags.DEFINE_boolean('external_data_gen', True,
                             """Whether or not to use the new external data gen""")
 tf.app.flags.DEFINE_float('val_batch_size', 10,
                           """Number of images to run validation on when validation.""")
@@ -209,12 +209,11 @@ def train(training_list=None, validation_list=None):
         ########## data iterator #########
         # training generators
         if FLAGS.external_data_gen:
-            base = '/Users/chrisheinrich/data/mvs-training'
             train_gen = ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
                                          FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='training')
             training_generator = iter(train_gen)
             training_sample_size = len(train_gen.train_clusters)
-            validation_generator = iter(ClusterGenerator(base, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
+            validation_generator = iter(ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
                                                          FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='validation'))
         else:
             training_sample_size = len(training_list)
