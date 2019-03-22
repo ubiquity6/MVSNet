@@ -290,6 +290,7 @@ def mvsnet_pipeline(mvs_list=None):
             out_index = np.squeeze(out_index)
 
             # paths
+            """
             init_depth_map_path = output_folder + \
                 ('/%08d_init.pfm' % out_index)
             prob_map_path = output_folder + ('/%08d_prob.pfm' % out_index)
@@ -298,6 +299,20 @@ def mvsnet_pipeline(mvs_list=None):
             # png outputs
             prob_png = output_folder + ('/%08d_prob.png' % out_index)
             depth_png = output_folder + ('/%08d_depth.png' % out_index)
+            """
+            init_depth_map_path = os.path.join(
+                output_folder, '{}_init.pfm'.format(out_index))
+            prob_map_path = os.path.join(
+                output_folder, '{}_prob.pfm'.format(out_index))
+            out_ref_image_path = os.path.join(
+                output_folder, '{}.jpg'.format(out_index))
+            out_ref_cam_path = os.path.join(
+                output_folder, '{}.txt'.format(out_index))
+            # png outputs
+            prob_png = os.path.join(
+                output_folder, '{}_prob.png'.format(out_index))
+            depth_png = os.path.join(
+                output_folder, '{}_depth.png'.format(out_index))
 
             # save output
             write_pfm(init_depth_map_path, out_init_depth_image)
