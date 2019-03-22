@@ -140,7 +140,6 @@ def mvsnet_to_gipuma(dense_folder, gipuma_point_folder):
         os.mkdir(gipuma_image_folder)
 
     # convert cameras
-    #image_names = os.listdir(image_folder)
     for image_name in image_names:
         image_prefix = os.path.splitext(image_name)[0]
         in_cam_file = os.path.join(depth_folder, image_prefix+'.txt')
@@ -148,7 +147,6 @@ def mvsnet_to_gipuma(dense_folder, gipuma_point_folder):
         mvsnet_to_gipuma_cam(in_cam_file, out_cam_file)
 
     # copy images to gipuma image folder
-    #image_names = os.listdir(image_folder)
     for image_name in image_names:
         in_image_file = os.path.join(depth_folder, image_name)
         out_image_file = os.path.join(gipuma_image_folder, image_name)
@@ -180,7 +178,6 @@ def probability_filter(dense_folder, prob_threshold):
     print(' -- Image Names --\n', image_names)
 
     # convert cameras
-   #image_names = os.listdir(image_folder)
     for image_name in image_names:
         image_prefix = os.path.splitext(image_name)[0]
         print('Got image_prefix:', image_prefix)
