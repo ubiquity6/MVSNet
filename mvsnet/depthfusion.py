@@ -175,12 +175,10 @@ def probability_filter(dense_folder, prob_threshold):
     glob_pattern = os.path.join(depth_folder, '*.jpg')
     image_paths = glob.glob(glob_pattern)
     image_names = [f.replace(depth_folder + '/', '') for f in image_paths]
-    print(' -- Image Names --\n', image_names)
 
     # convert cameras
     for image_name in image_names:
         image_prefix = os.path.splitext(image_name)[0]
-        print('Got image_prefix:', image_prefix)
         init_depth_map_path = os.path.join(
             depth_folder, image_prefix+'_init.pfm')
         prob_map_path = os.path.join(depth_folder, image_prefix+'_prob.pfm')
