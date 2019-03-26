@@ -204,17 +204,21 @@ def train(training_list=None, validation_list=None):
         header = 'train_step,val_loss,val_less_one,val_less_three\n'
         f.write(header)
 
+    flip_cams = False
+    if FLAGS.regularization == 'GRU':
+        flip_cams = True
+
     with tf.Graph().as_default(), tf.device('/cpu:0'):
 
         ########## data iterator #########
         # training generators
         if FLAGS.external_data_gen:
             train_gen = ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
-                                         FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='training')
+                                         FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='training', flip_cams=flip_cams)
             training_generator = iter(train_gen)
             training_sample_size = len(train_gen.train_clusters)
             validation_generator = iter(ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
-                                                         FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='validation'))
+                                                         FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='validation',flip_cams=flip_cams))
         else:
             training_sample_size = len(training_list)
             training_generator = iter(
