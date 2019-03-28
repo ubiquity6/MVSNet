@@ -4,7 +4,7 @@ Copyright 2019, Yao Yao, HKUST.
 MVSNet sub-models.
 """
 
-from cnn_wrapper.network import Network
+from network import Network
 
 
 ########################################################################################

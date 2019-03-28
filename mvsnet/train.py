@@ -30,15 +30,15 @@ sys.path.append("../")
 
 
 # params for datasets
-tf.app.flags.DEFINE_string('train_data_root', '/Users/chrisheinrich/data/7scene-data/train',
+tf.app.flags.DEFINE_string('train_data_root', None,
                            """Path to dtu dataset.""")
-tf.app.flags.DEFINE_string('log_dir', '../logs',
+tf.app.flags.DEFINE_string('log_dir', None,
                            """Path to store the log.""")
-tf.app.flags.DEFINE_string('model_dir', '../model',
+tf.app.flags.DEFINE_string('model_dir', None,
                            """Path to save the model.""")
 tf.app.flags.DEFINE_boolean('train_dtu', True,
                             """Whether to train.""")
-tf.app.flags.DEFINE_boolean('use_pretrain', True,
+tf.app.flags.DEFINE_boolean('use_pretrain', False,
                             """Whether to train.""")
 tf.app.flags.DEFINE_integer('ckpt_step', 100000,
                             """ckpt step.""")
@@ -69,7 +69,7 @@ tf.app.flags.DEFINE_integer('num_gpus', 1,
                             """Number of GPUs.""")
 tf.app.flags.DEFINE_integer('batch_size', 1,
                             """Training batch size.""")
-tf.app.flags.DEFINE_integer('epoch', 6,
+tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
 tf.app.flags.DEFINE_float('val_ratio', 0,
                           """Ratio of validation set when splitting dataset.""")

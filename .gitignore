@@ -10,4 +10,7 @@ mvsnet/mvs_data_generation/*
 old-models/*
 commands.md
 fused-point-clouds/*
+dist/*
+MANIFEST
+MVSNet.egg-info/*
 

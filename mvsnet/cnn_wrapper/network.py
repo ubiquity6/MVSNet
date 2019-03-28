@@ -13,7 +13,7 @@ import sys
 import numpy as np
 import tensorflow as tf
 
-from tools.common import Notify
+from ..tools.common import Notify
 
 DEFAULT_PADDING = 'SAME'
 

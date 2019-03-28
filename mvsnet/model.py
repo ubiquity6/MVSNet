@@ -9,7 +9,7 @@ import math
 import tensorflow as tf
 import numpy as np
 
-sys.path.append("../")
+#sys.path.append("../")
 from cnn_wrapper.mvsnet import *
 from convgru import ConvGRUCell
 from homography_warping import *
