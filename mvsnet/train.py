@@ -44,13 +44,13 @@ tf.app.flags.DEFINE_integer('ckpt_step', 100000,
                             """ckpt step.""")
 
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 5,
+tf.app.flags.DEFINE_integer('view_num', 3,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 200,
                             """Maximum depth step when training.""")
-tf.app.flags.DEFINE_integer('max_w', 640,
+tf.app.flags.DEFINE_integer('max_w', 128,
                             """Maximum image width when training.""")
-tf.app.flags.DEFINE_integer('max_h', 480,
+tf.app.flags.DEFINE_integer('max_h', 96,
                             """Maximum image height when training.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume.""")
@@ -405,6 +405,8 @@ def train(training_list=None, validation_list=None):
                         summary_writer.add_summary(out_summary_op, total_step)
 
                     # save the model checkpoint periodically
+                    # Commenting out temporarily
+                    """
                     if (total_step % FLAGS.snapshot == 0 or step == (training_sample_size - 1)):
                         model_folder = os.path.join(
                             FLAGS.model_dir, FLAGS.regularization)
@@ -416,6 +418,7 @@ def train(training_list=None, validation_list=None):
                         saver.save(sess, ckpt_path, global_step=total_step)
                     step += FLAGS.batch_size * FLAGS.num_gpus
                     total_step += FLAGS.batch_size * FLAGS.num_gpus
+                    """
 
                     # Validate model against validation set of data
                     if i % FLAGS.train_steps_per_val == 0:
