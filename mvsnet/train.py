@@ -24,7 +24,7 @@ import cv2
 import numpy as np
 import tensorflow as tf
 
-sys.path.append("../")
+#sys.path.append("../")
 
 
 # params for datasets
@@ -34,6 +34,8 @@ tf.app.flags.DEFINE_string('log_dir', None,
                            """Path to store the log.""")
 tf.app.flags.DEFINE_string('model_dir', None,
                            """Path to save the model.""")
+tf.app.flags.DEFINE_string('job-dir', None,
+                           """Path to save job artifacts""")
 tf.app.flags.DEFINE_boolean('train_dtu', True,
                             """Whether to train.""")
 tf.app.flags.DEFINE_boolean('use_pretrain', False,
@@ -196,6 +198,7 @@ def train(training_list=None, validation_list=None):
 
     train_session_start = time.time()
     print("Training starting at time:", train_session_start)
+    print("Tensorflow version:", tf.__version__)
 
     """
     val_sum_file = os.path.join(
