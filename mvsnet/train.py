@@ -12,7 +12,6 @@ Copyright 2019, Yao Yao, HKUST.
 Training script.
 """
 
-
 import os
 import time
 import sys
@@ -23,9 +22,6 @@ from random import randint
 import cv2
 import numpy as np
 import tensorflow as tf
-
-#sys.path.append("../")
-
 
 # params for datasets
 tf.app.flags.DEFINE_string('train_data_root', None,
@@ -44,13 +40,13 @@ tf.app.flags.DEFINE_integer('ckpt_step', 100000,
                             """ckpt step.""")
 
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 3,
+tf.app.flags.DEFINE_integer('view_num', 5,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 200,
                             """Maximum depth step when training.""")
-tf.app.flags.DEFINE_integer('max_w', 128,
+tf.app.flags.DEFINE_integer('max_w', 640,
                             """Maximum image width when training.""")
-tf.app.flags.DEFINE_integer('max_h', 96,
+tf.app.flags.DEFINE_integer('max_h', 480,
                             """Maximum image height when training.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume.""")
@@ -406,19 +402,19 @@ def train(training_list=None, validation_list=None):
 
                     # save the model checkpoint periodically
                     # Commenting out temporarily
-                    """
+          
                     if (total_step % FLAGS.snapshot == 0 or step == (training_sample_size - 1)):
                         model_folder = os.path.join(
                             FLAGS.model_dir, FLAGS.regularization)
-                        if not os.path.exists(model_folder):
-                            os.mkdir(model_folder)
+                       # if not os.path.exists(model_folder):
+                        #    os.mkdir(model_folder)
                         ckpt_path = os.path.join(model_folder, 'model.ckpt')
                         print(Notify.INFO, 'Saving model to %s' %
                               ckpt_path, Notify.ENDC)
                         saver.save(sess, ckpt_path, global_step=total_step)
                     step += FLAGS.batch_size * FLAGS.num_gpus
                     total_step += FLAGS.batch_size * FLAGS.num_gpus
-                    """
+    
 
                     # Validate model against validation set of data
                     if i % FLAGS.train_steps_per_val == 0:
