@@ -196,11 +196,14 @@ def train(training_list=None, validation_list=None):
 
     train_session_start = time.time()
     print("Training starting at time:", train_session_start)
+
+    """
     val_sum_file = os.path.join(
         FLAGS.log_dir, 'validation_summary-{}.txt'.format(train_session_start))
     with open(val_sum_file, 'w+') as f:
         header = 'train_step,val_loss,val_less_one,val_less_three\n'
         f.write(header)
+        """
 
     flip_cams = False
     if FLAGS.regularization == 'GRU':
@@ -441,14 +444,14 @@ def train(training_list=None, validation_list=None):
                         l1 = np.mean(np.asarray(val_less_one))
                         l3 = np.mean(np.asarray(val_less_three))
 
+                        print(Notify.INFO, '\n VAL STEP COMPLETED. Average loss: {}, Average less one: {}, Average less three: {}\n'.format(l, l1, l3))
+                        """
                         with open(val_sum_file, 'a+') as f:
                             f.write('{},{},{},{}\n'.format(
                                 total_step, l, l1, l3))
-
-                        print(Notify.INFO, '\n VAL STEP COMPLETED. Average loss: {}, Average less one: {}, Average less three: {}\n'.format(
-                            l, l1, l3))
                         print(
                             Notify.INFO, 'Validation output summary saved to: {}'.format(val_sum_file))
+                        """
 
 
 def main(argv=None):  # pylint: disable=unused-argument
