@@ -5,7 +5,7 @@ from homography_warping import get_homographies, homography_warping
 from model import *
 from preprocess import *
 from loss import *
-from tools.common import Notify
+from cnn_wrapper.common import Notify
 from mvs_data_generation.cluster_generator import ClusterGenerator
 """
 Copyright 2019, Yao Yao, HKUST.
