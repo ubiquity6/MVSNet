@@ -5,4 +5,4 @@
 
 Small python package for downloading U6 datasets using python.
 
-Example usage `python download_7scenes.py <destination-directory>`
+Example usage from top package `python -m datasets.download.download_7scenes <destination-directory>`
