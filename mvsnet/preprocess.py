@@ -105,7 +105,7 @@ def mask_depth_image(depth_image, min_depth, max_depth):
     depth_image = np.expand_dims(depth_image, 2)
     return depth_image
 
-def load_cam(file, interval_scale=1):
+def load_cam(file, interval_scale=1, max_d = None):
     """ read camera txt file """
     cam = np.zeros((2, 4, 4))
     words = file.read().split()
@@ -124,7 +124,10 @@ def load_cam(file, interval_scale=1):
     if len(words) == 29:
         cam[1][3][0] = words[27]
         cam[1][3][1] = float(words[28]) * interval_scale
-        cam[1][3][2] = FLAGS.max_d
+        if max_d is None:
+            cam[1][3][2] = FLAGS.max_d
+        else:
+            cam[1][3][2] = max_d
         cam[1][3][3] = cam[1][3][0] + cam[1][3][1] * cam[1][3][2]
     elif len(words) == 30:
         cam[1][3][0] = words[27]
@@ -141,8 +144,10 @@ def load_cam(file, interval_scale=1):
         cam[1][3][1] = 0
         cam[1][3][2] = 0
         cam[1][3][3] = 0
-
     return cam
+
+def load_cam_from_path(path, interval_scale = 1.0, max_d = None):
+    return load_cam(open(path), interval_scale, max_d)
 
 def pose_string(cam):
     row_0 = cam[0,0,:]
@@ -165,15 +170,22 @@ def pose_string(cam):
     print(pose_string)
     return pose_string
 
-def write_depth_map(file_path, image):
-    # convert to int and clip to range of [0, 2^16 -1]
 
-    image = np.clip(image, 0, 65535).astype(np.uint16)
-    imageio.imsave(file_path, image)
-    file_path_scaled = file_path.replace('.png','_scaled.png')
+def write_visualization_depth_map(image, file_path):
+    file_path_scaled = file_path.replace('.png', '_scaled.png')
     # rescales the image so max distance is 6.5 meters, making contrast more visible
     image_scaled = np.clip(image*50, 0, 65535).astype(np.uint16)
     imageio.imsave(file_path_scaled, image_scaled)
+
+def write_depth_map(file_path, image, visualization = False):
+    # convert to int and clip to range of [0, 2^16 -1]
+    image = np.clip(image, 0, 65535).astype(np.uint16)
+    imageio.imsave(file_path, image)
+    if visualization:
+        write_visualization_depth_map(image, file_path)
+
+
+
 
 def write_confidence_map(file_path, image):
     # we convert probabilities in range [0,1] to ints in range [0, 2^16-1]

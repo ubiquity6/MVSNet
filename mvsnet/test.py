@@ -29,7 +29,7 @@ sys.path.append("../")
 tf.app.flags.DEFINE_string('dense_folder', None,
                            """Root path to dense folder.""")
 tf.app.flags.DEFINE_string('model_dir',
-                           '../model',
+                           './model',
                            """Path to restore the model.""")
 tf.app.flags.DEFINE_integer('ckpt_step', 100000,
                             """ckpt step.""")

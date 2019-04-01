@@ -8,7 +8,11 @@ import scipy
 import cv2
 from tensorflow.python.lib.io import file_io
 import tensorflow as tf
-tf.enable_eager_execution()
+
+# Flag that determines if we are running on GCP or local
+GCP = False
+if GCP:
+    tf.enable_eager_execution()
 """
 
 Cluster objects represent the visibility information used for MVS reconstruction
@@ -57,9 +61,12 @@ class Cluster:
 
     def load_depth(self, index):
         try:
-            depth_raw = tf.read_file(self.depth_path(index))
-            depth = tf.image.decode_png(depth_raw, dtype=tf.uint16).numpy()
-            return depth
+            if GCP:
+                depth_raw = tf.read_file(self.depth_path(index))
+                depth = tf.image.decode_png(depth_raw, dtype=tf.uint16).numpy()
+                return depth
+            else:
+                return imageio.imread(self.depth_path(index))
         except Exception as e:
             self.logger.warn('Depth map at path {} does not exist'.format(
                 self.depth_path(index)))
