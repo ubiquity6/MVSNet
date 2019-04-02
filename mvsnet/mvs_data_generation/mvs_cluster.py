@@ -10,7 +10,7 @@ from tensorflow.python.lib.io import file_io
 import tensorflow as tf
 
 # Flag that determines if we are running on GCP or local
-GCP = False
+GCP = True
 if GCP:
     tf.enable_eager_execution()
 """
