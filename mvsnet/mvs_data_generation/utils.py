@@ -100,7 +100,7 @@ def scale_image(image, scale=1, interpolation='linear'):
 
 
 def scale_and_reshape_depth(depth, output_scale):
-    # Scale depth image again
+    # Scale depth image to output_scale * image_scale
     depth = scale_image(
         depth, scale=output_scale, interpolation='nearest')
     # Increase rank of depth array and set shape[2] = 1

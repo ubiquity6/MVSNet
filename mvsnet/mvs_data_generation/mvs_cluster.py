@@ -134,6 +134,8 @@ class Cluster:
         for index in self.indices:
             images.append(self.load_image(index))
         self.set_rescale(images)
+        if len(images) > 0:
+            self.original_image_shape = images[0].shape
         return images
 
     def depth_maps(self):
@@ -147,7 +149,17 @@ class Cluster:
 
     def masked_reference_depth(self):
         depth = self.reference_depth()
-        return mask_depth_image(depth, self.min_depth, self.max_depth)
+        # Make sure depth has same scale as reference image
+        try:
+            scale = float(self.original_image_shape[0]) / float(depth.shape[0])
+            print("rescaling depth", scale)
+            depth = scale_image(
+                depth, scale=scale, interpolation='nearest')
+        except Exception as e:
+            self.logger.warn('Failed to resize depth to input image size')
+            pass
+        
+        return  mask_depth_image(depth, self.min_depth, self.max_depth)
 
     def set_rescale(self, images):
         h_scale = 0
