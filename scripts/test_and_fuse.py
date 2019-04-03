@@ -29,7 +29,7 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--test_folder_root', type=str, default='../data/7scenes/test /')
+    parser.add_argument('--test_folder_root', type=str, default='../data/7scenes/test/')
     parser.add_argument('--fusibile_path', type=str,
                         default='/home/chrisheinrich/fusibile/fusibile')
     parser.add_argument('--prob_threshold', type=float, default='0.6')
