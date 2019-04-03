@@ -14,7 +14,7 @@ on the file system.
 def main(args):
     all_urls = []
     start_time = time.time()
-    ply_folder = os.path.join(args.ply_folder,start_time)
+    ply_folder = os.path.join(args.ply_folder,str(start_time))
     for d in os.listdir(args.test_folder_root):
         dense_folder = os.path.join(args.test_folder_root, d)
         if args.no_test is not True:
