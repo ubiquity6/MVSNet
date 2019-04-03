@@ -4,20 +4,15 @@ import argparse
 import utils as ut
 import time
 
+"""
+A simple script for running prediction on a multiple sessions, fusing the resulting point clouds,
+and then uploading the results to sketchfab, as well as copying them to a more convenient location
+on the file system.
+"""
 
-dense_folders = [
-    '../data/7scenes/test/office_9_mvs_training/',
-    '../data/7scenes/test/fire_4_mvs_training/',
-    '../data/7scenes/test/redkitchen_14_mvs_training/',
-    '../data/7scenes/test/stairs_4_mvs_training/',
-    '../data/7scenes/test/chess_5_mvs_training/',
-    '../data/7scenes/test/heads_1_mvs_training/',
-    '../data/7scenes/test/umpkin_7_mvs_training/',
-]
-
-all_urls = []
 
 def main(args):
+    all_urls = []
     start_time = time.time()
     ply_folder = os.path.join(args.ply_folder,start_time)
     for d in os.listdir(args.test_folder_root):
@@ -29,7 +24,7 @@ def main(args):
         ply_paths = ut.get_fusion_plys(dense_folder)
         urls = ut.handle_plys(ply_paths, dense_folder, ply_folder)
         all_urls.append(urls)
-    print('Models uploaded to:',all_urls)
+    print('Models uploaded to:', all_urls)
 
 
 if __name__ == '__main__':
