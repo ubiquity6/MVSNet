@@ -152,7 +152,6 @@ class Cluster:
         # Make sure depth has same scale as reference image
         try:
             scale = float(self.original_image_shape[0]) / float(depth.shape[0])
-            print("rescaling depth", scale)
             depth = scale_image(
                 depth, scale=scale, interpolation='nearest')
         except Exception as e:

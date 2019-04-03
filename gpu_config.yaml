@@ -1,4 +1,4 @@
 trainingInput:
   scaleTier: CUSTOM
-  masterType: standard_v100
+  masterType: large_model_v100
   parameterServerCount: 0

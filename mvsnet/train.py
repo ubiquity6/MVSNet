@@ -34,7 +34,7 @@ tf.app.flags.DEFINE_string('job-dir', None,
                            """Path to save job artifacts""")
 tf.app.flags.DEFINE_boolean('train_dtu', True,
                             """Whether to train.""")
-tf.app.flags.DEFINE_boolean('use_pretrain', True,
+tf.app.flags.DEFINE_boolean('use_pretrain', False,
                             """Whether to train.""")
 tf.app.flags.DEFINE_integer('ckpt_step', 100000,
                             """ckpt step.""")
@@ -42,7 +42,7 @@ tf.app.flags.DEFINE_integer('ckpt_step', 100000,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 5,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 256,
+tf.app.flags.DEFINE_integer('max_d', 200,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('max_w', 640,
                             """Maximum image width when training.""")
@@ -70,13 +70,13 @@ tf.app.flags.DEFINE_integer('epoch', None,
 tf.app.flags.DEFINE_float('val_ratio', 0,
                           """Ratio of validation set when splitting dataset.""")
                           ## TODO: decrease base_lr back to 0.001
-tf.app.flags.DEFINE_float('base_lr', 0.0005,
+tf.app.flags.DEFINE_float('base_lr', 0.001,
                           """Base learning rate.""")
-tf.app.flags.DEFINE_integer('display', 1,
+tf.app.flags.DEFINE_integer('display', 5,
                             """Interval of loginfo display.""")
-tf.app.flags.DEFINE_integer('stepvalue', 10000,
+tf.app.flags.DEFINE_integer('stepvalue', 60000,
                             """Step interval to decay learning rate.""")
-tf.app.flags.DEFINE_integer('snapshot', 5000,
+tf.app.flags.DEFINE_integer('snapshot', 50000,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.9,
                           """Learning rate decay rate.""")
