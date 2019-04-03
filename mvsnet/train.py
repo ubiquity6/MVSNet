@@ -22,6 +22,7 @@ from random import randint
 import cv2
 import numpy as np
 import tensorflow as tf
+from tensorflow.python.lib.io import file_io
 
 # params for datasets
 tf.app.flags.DEFINE_string('train_data_root', None,
@@ -80,8 +81,6 @@ tf.app.flags.DEFINE_integer('snapshot', 50000,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.9,
                           """Learning rate decay rate.""")
-tf.app.flags.DEFINE_boolean('external_data_gen', True,
-                            """Whether or not to use the new external data gen""")
 tf.app.flags.DEFINE_float('val_batch_size', 20,
                           """Number of images to run validation on when validation.""")
 tf.app.flags.DEFINE_float('train_steps_per_val', 200,
@@ -89,61 +88,6 @@ tf.app.flags.DEFINE_float('train_steps_per_val', 200,
 
 
 FLAGS = tf.app.flags.FLAGS
-
-
-class MVSGenerator:
-    """ data generator class, tf only accept generator without param """
-
-    def __init__(self, sample_list, view_num):
-        self.sample_list = sample_list
-        self.view_num = view_num
-        self.sample_num = len(sample_list)
-        self.counter = 0
-
-    def __iter__(self):
-        while True:
-            for data in self.sample_list:
-                start_time = time.time()
-
-                ###### read input data ######
-                images = []
-                cams = []
-                for view in range(self.view_num):
-                    image = center_image(cv2.imread(data[2 * view]))
-                    cam = load_cam(open(data[2 * view + 1]))
-                    cam[1][3][1] = cam[1][3][1] * FLAGS.interval_scale
-                    images.append(image)
-                    cams.append(cam)
-                depth_image = load_pfm(open(data[2 * self.view_num]))
-
-                # mask out-of-range depth pixels (in a relaxed range)
-                depth_start = cams[0][1, 3, 0] + cams[0][1, 3, 1]
-                depth_end = cams[0][1, 3, 0] + \
-                    (FLAGS.max_d - 2) * cams[0][1, 3, 1]
-                depth_image = mask_depth_image(
-                    depth_image, depth_start, depth_end)
-
-                # return mvs input
-                self.counter += 1
-                duration = time.time() - start_time
-                images = np.stack(images, axis=0)
-                cams = np.stack(cams, axis=0)
-                print('image shape', images.shape)
-                print('cams shape', cams.shape)
-                print('depth shape', depth_image.shape)
-                yield (images, cams, depth_image)
-
-                # return backward mvs input for GRU
-                if FLAGS.regularization == 'GRU':
-                    self.counter += 1
-                    start_time = time.time()
-                    cams[0][1, 3, 0] = cams[0][1, 3, 0] + \
-                        (FLAGS.max_d - 1) * cams[0][1, 3, 1]
-                    cams[0][1, 3, 1] = -cams[0][1, 3, 1]
-                    duration = time.time() - start_time
-                    print('Back pass: d_min = %f, d_max = %f.' %
-                          (cams[0][1, 3, 0], cams[0][1, 3, 0] + (FLAGS.max_d - 1) * cams[0][1, 3, 1]))
-                    yield (images, cams, depth_image)
 
 
 def average_gradients(tower_grads):
@@ -185,24 +129,17 @@ def average_gradients(tower_grads):
 def train(training_list=None, validation_list=None):
     """ training mvsnet """
 
-    """
-    training_sample_size = len(traning_list)
-    validation_sample_size = len(validation_list)
-    print('sample number: ', training_sample_size)
-    print("validation number:", validation_sample_size)
-    """
-
     train_session_start = time.time()
     print("Training starting at time:", train_session_start)
     print("Tensorflow version:", tf.__version__)
 
-    """
+
     val_sum_file = os.path.join(
         FLAGS.log_dir, 'validation_summary-{}.txt'.format(train_session_start))
-    with open(val_sum_file, 'w+') as f:
+    with file_io.FileIO(val_sum_file, 'w+') as f:
         header = 'train_step,val_loss,val_less_one,val_less_three\n'
         f.write(header)
-        """
+
 
     flip_cams = False
     if FLAGS.regularization == 'GRU':
@@ -212,19 +149,13 @@ def train(training_list=None, validation_list=None):
 
         ########## data iterator #########
         # training generators
-        if FLAGS.external_data_gen:
-            train_gen = ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
-                                         FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='training', flip_cams=flip_cams)
-            training_generator = iter(train_gen)
-            training_sample_size = len(train_gen.train_clusters)
-            validation_generator = iter(ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
-                                                         FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='validation',flip_cams=flip_cams))
-        else:
-            training_sample_size = len(training_list)
-            training_generator = iter(
-                MVSGenerator(training_list, FLAGS.view_num))
-            validation_generator = iter(
-                MVSGenerator(validation_list, FLAGS.view_num))
+        train_gen = ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
+                                        FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='training', flip_cams=flip_cams)
+        training_generator = iter(train_gen)
+        training_sample_size = len(train_gen.train_clusters)
+        validation_generator = iter(ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
+                                                        FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='validation',flip_cams=flip_cams))
+
         if FLAGS.regularization == 'GRU':
             training_sample_size = training_sample_size * 2
 
@@ -447,28 +378,18 @@ def train(training_list=None, validation_list=None):
                         l3 = np.mean(np.asarray(val_less_three))
 
                         print(Notify.INFO, '\n VAL STEP COMPLETED. Average loss: {}, Average less one: {}, Average less three: {}\n'.format(l, l1, l3))
-                        """
-                        with open(val_sum_file, 'a+') as f:
+
+                        with file_io.FileIO(val_sum_file, 'a+') as f:
                             f.write('{},{},{},{}\n'.format(
                                 total_step, l, l1, l3))
                         print(
                             Notify.INFO, 'Validation output summary saved to: {}'.format(val_sum_file))
-                        """
+  
 
 
 def main(argv=None):  # pylint: disable=unused-argument
     """ program entrance """
-    # Prepare all training samples
-    if FLAGS.external_data_gen:
-        train()
-    else:
-        sample_list = gen_dtu_resized_path(FLAGS.train_data_root)
-        validation_list = gen_dtu_resized_path(
-            FLAGS.train_data_root, 'validation')
-        # Shuffle
-        random.shuffle(sample_list)
-        random.shuffle(validation_list)
-        train(sample_list, validation_list)
+    train()
 
 
 if __name__ == '__main__':
