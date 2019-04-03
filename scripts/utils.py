@@ -2,6 +2,7 @@ import os
 import subprocess
 import argparse
 import sketchfab
+import shutil
 from shutil import copyfile
 
 
@@ -18,6 +19,11 @@ def fuse(dense_folder, fusibile_path, prob_threshold = '0.1', disp_threshold='0.
      args = ["python", "-m", "mvsnet.depthfusion", "--dense_folder", dense_folder, "--prob_threshold", \
              str(prob_threshold), "--disp_threshold", str(disp_threshold), "--num_consistent", str(num_consistent), '--fusibile_exe_path',fusibile_path]
      run(args)
+
+
+def clear_old_points(dense_folder):
+    points_dir = os.path.join(dense_folder, 'points_mvsnet')
+    shutil.rmtree(points_dir)
 
 
 def get_fusion_plys(dense_folder):
