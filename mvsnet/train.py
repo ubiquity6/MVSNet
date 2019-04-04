@@ -70,14 +70,13 @@ tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
 tf.app.flags.DEFINE_float('val_ratio', 0,
                           """Ratio of validation set when splitting dataset.""")
-                          ## TODO: decrease base_lr back to 0.001
 tf.app.flags.DEFINE_float('base_lr', 0.001,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 5,
                             """Interval of loginfo display.""")
-tf.app.flags.DEFINE_integer('stepvalue', 60000,
+tf.app.flags.DEFINE_integer('stepvalue', 30000,
                             """Step interval to decay learning rate.""")
-tf.app.flags.DEFINE_integer('snapshot', 50000,
+tf.app.flags.DEFINE_integer('snapshot', 20000,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.9,
                           """Learning rate decay rate.""")
