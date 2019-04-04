@@ -1,5 +1,32 @@
 # MVSNet & R-MVSNet
 
+## Training on ml-engine
+
+* Clone the repo
+* Install gcloud command line tools
+
+```export JOB_NAME=your-unique-job-name```
+
+```
+gcloud ml-engine jobs submit training $JOB_NAME \
+   --job-dir gs://mvs-training-mlengine/$JOB_NAME \
+   --module-name mvsnet.train \
+   --package-path <path-to-MVSNet-root>/mvsnet \
+   --region us-central1 \
+   --runtime-version 1.13 \
+   --config <path-to-MVSNet-root>/gpu_config.yaml \
+   -- \
+   --train_data_root gs://mvs-training-mlengine/7scenes+dtu \
+   --log_dir gs://mvs-training-mlengine/$JOB_NAME/logs/ \
+   --model_dir gs://mvs-training-mlengine/$JOB_NAME/models \
+   --epoch 40
+```
+
+This command would train MVSNet for 40 epochs on a dataset consisting of 7 scenes data and DTU data. 
+
+
+## NOTE -- old documentation from original branch included below. Some of this may now be outdated
+
 ## About
 [MVSNet](https://arxiv.org/abs/1804.02505) is a deep learning architecture for depth map inference from unstructured multi-view images, and [R-MVSNet](https://arxiv.org/abs/1902.10556) is its extension for scalable learning-based MVS reconstruction. If you find this project useful for your research, please cite:
 ```
