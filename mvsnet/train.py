@@ -56,13 +56,13 @@ tf.app.flags.DEFINE_float('interval_scale', 1.0,
 tf.app.flags.DEFINE_float('base_image_size', 8,
                           """Base image size""")
 # network architectures
-tf.app.flags.DEFINE_string('regularization', 'GRU',
+tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method.""")
 tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for 3DCNNs""")
 
 # training parameters
-tf.app.flags.DEFINE_integer('num_gpus', 1,
+tf.app.flags.DEFINE_integer('num_gpus', 2,
                             """Number of GPUs.""")
 tf.app.flags.DEFINE_integer('batch_size', 1,
                             """Training batch size.""")
@@ -74,7 +74,7 @@ tf.app.flags.DEFINE_float('base_lr', 0.001,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 5,
                             """Interval of loginfo display.""")
-tf.app.flags.DEFINE_integer('stepvalue', 30000,
+tf.app.flags.DEFINE_integer('stepvalue', 50000,
                             """Step interval to decay learning rate.""")
 tf.app.flags.DEFINE_integer('snapshot', 20000,
                             """Step interval to save the model.""")
@@ -132,13 +132,11 @@ def train(training_list=None, validation_list=None):
     print("Training starting at time:", train_session_start)
     print("Tensorflow version:", tf.__version__)
 
-
     val_sum_file = os.path.join(
         FLAGS.log_dir, 'validation_summary-{}.txt'.format(train_session_start))
     with file_io.FileIO(val_sum_file, 'w+') as f:
         header = 'train_step,val_loss,val_less_one,val_less_three\n'
         f.write(header)
-
 
     flip_cams = False
     if FLAGS.regularization == 'GRU':
@@ -149,11 +147,11 @@ def train(training_list=None, validation_list=None):
         ########## data iterator #########
         # training generators
         train_gen = ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
-                                        FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='training', flip_cams=flip_cams)
+                                     FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='training', flip_cams=flip_cams)
         training_generator = iter(train_gen)
         training_sample_size = len(train_gen.train_clusters)
         validation_generator = iter(ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
-                                                        FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='validation',flip_cams=flip_cams))
+                                                     FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='validation', flip_cams=flip_cams))
 
         if FLAGS.regularization == 'GRU':
             training_sample_size = training_sample_size * 2
@@ -332,7 +330,7 @@ def train(training_list=None, validation_list=None):
 
                     # save the model checkpoint periodically
                     # Commenting out temporarily
-          
+
                     if (total_step % FLAGS.snapshot == 0 or step == (training_sample_size - 1)):
                         model_folder = os.path.join(
                             FLAGS.model_dir, FLAGS.regularization)
@@ -344,7 +342,6 @@ def train(training_list=None, validation_list=None):
                         saver.save(sess, ckpt_path, global_step=total_step)
                     step += FLAGS.batch_size * FLAGS.num_gpus
                     total_step += FLAGS.batch_size * FLAGS.num_gpus
-    
 
                     # Validate model against validation set of data
                     if i % FLAGS.train_steps_per_val == 0:
@@ -376,14 +373,14 @@ def train(training_list=None, validation_list=None):
                         l1 = np.mean(np.asarray(val_less_one))
                         l3 = np.mean(np.asarray(val_less_three))
 
-                        print(Notify.INFO, '\n VAL STEP COMPLETED. Average loss: {}, Average less one: {}, Average less three: {}\n'.format(l, l1, l3))
+                        print(Notify.INFO, '\n VAL STEP COMPLETED. Average loss: {}, Average less one: {}, Average less three: {}\n'.format(
+                            l, l1, l3))
 
                         with file_io.FileIO(val_sum_file, 'a+') as f:
                             f.write('{},{},{},{}\n'.format(
                                 total_step, l, l1, l3))
                         print(
                             Notify.INFO, 'Validation output summary saved to: {}'.format(val_sum_file))
-  
 
 
 def main(argv=None):  # pylint: disable=unused-argument

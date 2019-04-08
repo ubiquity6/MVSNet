@@ -1,4 +1,8 @@
 trainingInput:
   scaleTier: CUSTOM
-  masterType: large_model_v100
+  masterType: n1-highmem-16
+  masterConfig:
+    acceleratorConfig:
+      count: 2
+      type: NVIDIA_TESLA_V100
   parameterServerCount: 0
