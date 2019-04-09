@@ -5,7 +5,8 @@ import os
 
 
 def convert_demon(data_dir):
-    sessions = utils.list_no_hidden(data_dir)
+    sessions = [f for f in os.listdir(data_dir) if not f.startswith(
+        '.') if not f.endswith('.txt')]
     num_sessions = len(sessions)
     for i, s in enumerate(sessions):
         print('Processing session {}/{} at {}'.format(i, num_sessions, s))

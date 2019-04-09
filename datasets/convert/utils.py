@@ -156,7 +156,7 @@ Args:
         data *= 1000.0
         data = np.clip(data, 0, 65535).astype(np.uint16)
         imageio.imsave(dpath, data)
-        dmax = data.max()
+        dmax = data[data != 65535].max()
         # ignore zero values when filtering
         dmin = data[data != 0].min()
         if dmax > max_depth:
