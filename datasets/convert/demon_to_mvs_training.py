@@ -1,6 +1,6 @@
 import argparse
 import json
-import utils
+from datasets.convert import utils
 import os
 
 
