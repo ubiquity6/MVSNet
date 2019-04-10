@@ -18,8 +18,6 @@ def cam_to_json(txt_path, json_path, scale_factor=1.0):
     format prepared by export_densify_frames. scale_factor can be used to
     rescale the cams from the originals
     """
-    # print('Loading camera from',txt_path)
-    # print('Writing camera to', json_path)
     cam = pp.load_cam_from_path(txt_path, interval_scale=1.0, max_d=0.0)
     cam_json = {}
     # Add intrinsics
