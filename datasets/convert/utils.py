@@ -1,4 +1,4 @@
-# from mvsnet import preprocess as pp
+from mvsnet import preprocess as pp
 import numpy as np
 import imageio
 import json
