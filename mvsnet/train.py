@@ -62,7 +62,7 @@ tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for 3DCNNs""")
 
 # training parameters
-tf.app.flags.DEFINE_integer('num_gpus', 2,
+tf.app.flags.DEFINE_integer('num_gpus', None,
                             """Number of GPUs.""")
 tf.app.flags.DEFINE_integer('batch_size', 1,
                             """Training batch size.""")
