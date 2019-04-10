@@ -4,6 +4,17 @@ import utils
 import os
 
 
+"""" 
+Convert DeMoN data to MVS Training
+
+DeMoN data is expected to have been downloaded and prepared using DPSNet's 
+downloader for DeMoN -- see https://github.com/sunghoonim/DPSNet
+After this is downlaoded and prepared, run this script on that directory of data
+to convert to the mvs_training format which is documented in export_densify_frames.cpp
+
+"""
+
+
 def convert_demon(data_dir):
     sessions = [f for f in os.listdir(data_dir) if not f.startswith(
         '.') if not f.endswith('.txt')]
