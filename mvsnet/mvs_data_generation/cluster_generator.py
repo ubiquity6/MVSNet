@@ -18,7 +18,7 @@ Copyright 2019, Chris Heinrich, Ubiquity6.
 
 class ClusterGenerator:
     def __init__(self, sessions_dir, view_num, image_width=1024, image_height=768, depth_num=256,
-                 interval_scale=1, base_image_size=1, include_empty=False, mode='training', val_split=0.1, rescaling=True, output_scale=0.25, flip_cams = True):
+                 interval_scale=1, base_image_size=1, include_empty=False, mode='training', val_split=0.1, rescaling=True, output_scale=0.25, flip_cams=True):
         # Setup logger
 
         self.logger = logging.getLogger('ClusterGenerator')
@@ -61,7 +61,7 @@ class ClusterGenerator:
             self.load_clusters(self.sessions_dir, clusters)
         else:
             sessions = [f for f in tf.gfile.ListDirectory(
-                self.sessions_dir) if not f.startswith('.')]
+                self.sessions_dir) if not f.startswith('.') if not f.endswith('.txt')]
             for session in sessions:
                 session_dir = os.path.join(self.sessions_dir, session)
                 self.load_clusters(session_dir, clusters)
@@ -165,7 +165,7 @@ class ClusterGenerator:
                     self.logger.debug('cams shape: {}'.format(cams.shape))
                     self.logger.debug('depth shape: {}'.format(depth.shape))
                     yield (images, cams, depth)
-                
+
                     if self.flip_cams:
                         cams = ut.flip_cams(cams, self.depth_num)
                         yield (images, cams, depth)

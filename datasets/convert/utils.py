@@ -193,8 +193,8 @@ def covisibility_from_demon(d, min_depth=400.0, max_depth=65535.0):
         views = [x for x in v if x != i]
         cluster = {}
         cluster["views"] = views
-        cluster["min_depth"] = float(min_depth)
-        cluster["max_depth"] = float(max_depth)
+        cluster["min_depth"] = int(min_depth)
+        cluster["max_depth"] = int(max_depth)
         covis[str(i)] = cluster
     with open(covis_path, 'w') as f:
         json.dump(covis, f)

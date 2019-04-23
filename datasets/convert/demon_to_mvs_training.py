@@ -1,6 +1,7 @@
 import argparse
 import json
 from datasets.convert import utils
+import random
 import os
 
 
@@ -19,15 +20,17 @@ def convert_demon(data_dir):
     sessions = [f for f in os.listdir(data_dir) if not f.startswith(
         '.') if not f.endswith('.txt')]
     num_sessions = len(sessions)
+    random.shuffle(sessions)
     for i, s in enumerate(sessions):
-        print('Processing session {}/{} at {}'.format(i, num_sessions, s))
         sdir = os.path.join(data_dir, s)
         num_depths, mind, maxd = utils.depths_from_demon(sdir)
         num_cams = utils.cameras_from_demon(sdir)
         num_images = utils.images_from_demon(sdir)
         if num_depths != num_cams or num_cams != num_images:
             print('WARN not all depths/cams/images present!')
-        utils.covisibility_from_demon(sdir, mind, maxd)
+        else:
+            utils.covisibility_from_demon(sdir, mind, maxd)
+            print('Processed session {}/{} at {}'.format(i, num_sessions, s))
 
 
 if __name__ == '__main__':

@@ -29,7 +29,7 @@ sys.path.append("../")
 tf.app.flags.DEFINE_string('dense_folder', None,
                            """Root path to dense folder.""")
 tf.app.flags.DEFINE_string('model_dir',
-                           './model',
+                           '../model',
                            """Path to restore the model.""")
 tf.app.flags.DEFINE_integer('ckpt_step', 100000,
                             """ckpt step.""")
@@ -78,7 +78,6 @@ def mvsnet_pipeline(mvs_list=None):
                                 FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='test')
     mvs_generator = iter(data_gen)
     sample_size = len(data_gen.train_clusters)
-
 
     generator_data_type = (tf.float32, tf.float32, tf.float32, tf.int32)
     mvs_set = tf.data.Dataset.from_generator(
@@ -211,6 +210,7 @@ def mvsnet_pipeline(mvs_list=None):
 def main(_):  # pylint: disable=unused-argument
     """ program entrance """
     mvsnet_pipeline()
+
 
 if __name__ == '__main__':
     tf.app.run()

@@ -24,6 +24,7 @@ Cluster objects represent the visibility information used for MVS reconstruction
 Copyright 2019, Chris Heinrich, Ubiquity6.
 """
 
+
 class Cluster:
     def __init__(self, session_dir, ref_index, views, min_depth, max_depth, view_num,
                  image_width=1024, image_height=768, depth_num=256, interval_scale=1.0):
@@ -157,8 +158,8 @@ class Cluster:
         except Exception as e:
             self.logger.warn('Failed to resize depth to input image size')
             pass
-        
-        return  mask_depth_image(depth, self.min_depth, self.max_depth)
+
+        return mask_depth_image(depth, self.min_depth, self.max_depth)
 
     def set_rescale(self, images):
         h_scale = 0

@@ -41,7 +41,7 @@ tf.app.flags.DEFINE_integer('ckpt_step', 100000,
                             """ckpt step.""")
 
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 5,
+tf.app.flags.DEFINE_integer('view_num', 4,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 200,
                             """Maximum depth step when training.""")
@@ -74,7 +74,7 @@ tf.app.flags.DEFINE_float('base_lr', 0.001,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 5,
                             """Interval of loginfo display.""")
-tf.app.flags.DEFINE_integer('stepvalue', 50000,
+tf.app.flags.DEFINE_integer('stepvalue', 60000,
                             """Step interval to decay learning rate.""")
 tf.app.flags.DEFINE_integer('snapshot', 20000,
                             """Step interval to save the model.""")
