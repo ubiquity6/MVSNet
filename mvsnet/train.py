@@ -272,10 +272,12 @@ def train(training_list=None, validation_list=None):
                 summaries.append(tf.summary.histogram(
                     var.op.name + '/gradients', grad))
 
+        
+
         # saver
         saver = tf.train.Saver(tf.global_variables(), max_to_keep=None)
         summary_op = tf.summary.merge(summaries)
-
+        
         # initialization option
         init_op = tf.global_variables_initializer()
         config = tf.ConfigProto(allow_soft_placement=True)

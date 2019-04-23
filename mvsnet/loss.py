@@ -17,7 +17,7 @@ def non_zero_mean_absolute_diff(y_true, y_pred, interval):
         shape = tf.shape(y_pred)
         interval = tf.reshape(interval, [shape[0]])
         mask_true = tf.cast(tf.not_equal(y_true, 0.0), dtype='float32')
-        denom = tf.reduce_sum(mask_true, axis=[1, 2, 3]) + 1e-7
+        denom = tf.abs(tf.reduce_sum(mask_true, axis=[1, 2, 3])) + 1e-6
         masked_abs_error = tf.abs(mask_true * (y_true - y_pred))            # 4D
         masked_mae = tf.reduce_sum(masked_abs_error, axis=[1, 2, 3])        # 1D
         masked_mae = tf.reduce_sum((masked_mae / interval) / denom)         # 1
@@ -28,7 +28,7 @@ def less_one_percentage(y_true, y_pred, interval):
     with tf.name_scope('less_one_error'):
         shape = tf.shape(y_pred)
         mask_true = tf.cast(tf.not_equal(y_true, 0.0), dtype='float32')
-        denom = tf.reduce_sum(mask_true) + 1e-7
+        denom = tf.abs(tf.reduce_sum(mask_true)) + 1e-6
         interval_image = tf.tile(tf.reshape(interval, [shape[0], 1, 1, 1]), [1, shape[1], shape[2], 1])
         abs_diff_image = tf.abs(y_true - y_pred) / interval_image
         less_one_image = mask_true * tf.cast(tf.less_equal(abs_diff_image, 1.0), dtype='float32')
@@ -39,7 +39,7 @@ def less_three_percentage(y_true, y_pred, interval):
     with tf.name_scope('less_three_error'):
         shape = tf.shape(y_pred)
         mask_true = tf.cast(tf.not_equal(y_true, 0.0), dtype='float32')
-        denom = tf.reduce_sum(mask_true) + 1e-7
+        denom = tf.abs(tf.reduce_sum(mask_true)) + 1e-6
         interval_image = tf.tile(tf.reshape(interval, [shape[0], 1, 1, 1]), [1, shape[1], shape[2], 1])
         abs_diff_image = tf.abs(y_true - y_pred) / interval_image
         less_three_image = mask_true * tf.cast(tf.less_equal(abs_diff_image, 3.0), dtype='float32')
