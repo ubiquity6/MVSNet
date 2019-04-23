@@ -45,9 +45,9 @@ tf.app.flags.DEFINE_integer('view_num', 4,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 200,
                             """Maximum depth step when training.""")
-tf.app.flags.DEFINE_integer('max_w', 640,
+tf.app.flags.DEFINE_integer('max_w', 128,
                             """Maximum image width when training.""")
-tf.app.flags.DEFINE_integer('max_h', 480,
+tf.app.flags.DEFINE_integer('max_h', 96,
                             """Maximum image height when training.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume.""")
@@ -219,15 +219,16 @@ def train(training_list=None, validation_list=None):
                                 tf.slice(images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
                             refined_depth_map = depth_refine(depth_map, ref_image,
                                                              FLAGS.max_d, depth_start, depth_interval, is_master_gpu)
+                                                    # regression loss
+                            loss0, less_one_temp, less_three_temp = mvsnet_regression_loss(
+                                depth_map, depth_image, depth_interval)
+                            loss1, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
+                                refined_depth_map, depth_image, depth_interval)
+                            loss = (loss0 + loss1) / 2
                         else:
-                            refined_depth_map = depth_map
-
-                        # regression loss
-                        loss0, less_one_temp, less_three_temp = mvsnet_regression_loss(
-                            depth_map, depth_image, depth_interval)
-                        loss1, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
-                            refined_depth_map, depth_image, depth_interval)
-                        loss = (loss0 + loss1) / 2
+                            # regression loss
+                            loss, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
+                                depth_map, depth_image, depth_interval)
 
                     elif FLAGS.regularization == 'GRU':
 
