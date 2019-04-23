@@ -19,7 +19,7 @@ def get_homographies(left_cam, right_cam, depth_num, depth_start, depth_interval
 
         # depth 
         depth_num = tf.reshape(tf.cast(depth_num, 'int32'), [])
-        depth = depth_start + tf.cast(tf.range(depth_num), tf.float32) * depth_interval
+        depth = depth_start[0] + tf.cast(tf.range(depth_num), tf.float32) * depth_interval[0]
         # preparation
         num_depth = tf.shape(depth)[0]
         K_left_inv = tf.matrix_inverse(tf.squeeze(K_left, axis=1))
@@ -34,6 +34,7 @@ def get_homographies(left_cam, right_cam, depth_num, depth_start, depth_interval
 
         # compute
         batch_size = tf.shape(R_left)[0]
+        print("Batch size = ", batch_size)
         temp_vec = tf.matmul(c_relative, fronto_direction)
         depth_mat = tf.tile(tf.reshape(depth, [batch_size, num_depth, 1, 1]), [1, 1, 3, 3])
 

@@ -10,7 +10,10 @@ from tensorflow.python.lib.io import file_io
 import tensorflow as tf
 
 # Flag that determines if we are running on GCP or local
-GCP = False
+if 'CLOUD_ML_JOB_ID' in os.environ:
+    GCP = True
+else:
+    GCP = False
 if GCP:
     tf.enable_eager_execution()
 """

@@ -45,9 +45,9 @@ tf.app.flags.DEFINE_integer('view_num', 4,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 64,
                             """Maximum depth step when training.""")
-tf.app.flags.DEFINE_integer('max_w', 128,
+tf.app.flags.DEFINE_integer('max_w', 640,
                             """Maximum image width when training.""")
-tf.app.flags.DEFINE_integer('max_h', 96,
+tf.app.flags.DEFINE_integer('max_h', 480,
                             """Maximum image height when training.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume.""")
@@ -56,7 +56,7 @@ tf.app.flags.DEFINE_float('interval_scale', 1.0,
 tf.app.flags.DEFINE_float('base_image_size', 8,
                           """Base image size""")
 # network architectures
-tf.app.flags.DEFINE_string('regularization', '3DCNNs',
+tf.app.flags.DEFINE_string('regularization', 'GRU',
                            """Regularization method.""")
 tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for 3DCNNs""")
@@ -64,7 +64,7 @@ tf.app.flags.DEFINE_boolean('refinement', False,
 # training parameters
 tf.app.flags.DEFINE_integer('num_gpus', None,
                             """Number of GPUs.""")
-tf.app.flags.DEFINE_integer('batch_size', 4,
+tf.app.flags.DEFINE_integer('batch_size', 3,
                             """Training batch size.""")
 tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
@@ -131,6 +131,8 @@ def train(training_list=None, validation_list=None):
     train_session_start = time.time()
     print("Training starting at time:", train_session_start)
     print("Tensorflow version:", tf.__version__)
+    print('Training with flags {}'.format(FLAGS))
+    print("Environment variables: {}".format(os.environ))
 
     val_sum_file = os.path.join(
         FLAGS.log_dir, 'validation_summary-{}.txt'.format(train_session_start))
@@ -210,6 +212,12 @@ def train(training_list=None, validation_list=None):
                     if FLAGS.regularization == '3DCNNs':
 
                         # initial depth map
+
+                        print('Cams shape:', cams.shape)
+                        print("First image shape:", images[0].shape)
+                        print("Depth shape:", depth_image.shape)
+                        print("Depth start shape:", depth_start.shape)
+                        print("Depth interval shape:", depth_interval.shape)
                         depth_map, prob_map = inference(
                             images, cams, FLAGS.max_d, depth_start, depth_interval, is_master_gpu)
 
