@@ -284,6 +284,8 @@ def train(training_list=None, validation_list=None):
         init_op = tf.global_variables_initializer()
         config = tf.ConfigProto(allow_soft_placement=True)
         config.gpu_options.allow_growth = True
+        config.inter_op_parallelism_threads = 0;
+        config.intra_op_parallelism_threads = 0
 
         with tf.Session(config=config) as sess:
 
