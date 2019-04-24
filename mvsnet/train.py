@@ -35,19 +35,19 @@ tf.app.flags.DEFINE_string('job-dir', None,
                            """Path to save job artifacts""")
 tf.app.flags.DEFINE_boolean('train_dtu', True,
                             """Whether to train.""")
-tf.app.flags.DEFINE_boolean('use_pretrain', False,
+tf.app.flags.DEFINE_boolean('use_pretrain', True,
                             """Whether to train.""")
-tf.app.flags.DEFINE_integer('ckpt_step', 100000,
+tf.app.flags.DEFINE_integer('ckpt_step', None,
                             """ckpt step.""")
 
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 4,
+tf.app.flags.DEFINE_integer('view_num', 5,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 64,
+tf.app.flags.DEFINE_integer('max_d', 128,
                             """Maximum depth step when training.""")
-tf.app.flags.DEFINE_integer('max_w', 128,
+tf.app.flags.DEFINE_integer('max_w', 640,
                             """Maximum image width when training.""")
-tf.app.flags.DEFINE_integer('max_h', 96,
+tf.app.flags.DEFINE_integer('max_h', 480,
                             """Maximum image height when training.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume.""")
@@ -70,11 +70,11 @@ tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
 tf.app.flags.DEFINE_float('val_ratio', 0,
                           """Ratio of validation set when splitting dataset.""")
-tf.app.flags.DEFINE_float('base_lr', 0.001,
+tf.app.flags.DEFINE_float('base_lr', 0.0005,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
-tf.app.flags.DEFINE_integer('stepvalue', 60000,
+tf.app.flags.DEFINE_integer('stepvalue', 40000,
                             """Step interval to decay learning rate.""")
 tf.app.flags.DEFINE_integer('snapshot', 20000,
                             """Step interval to save the model.""")
