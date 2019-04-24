@@ -161,7 +161,7 @@ def train(training_list=None, validation_list=None):
         training_set = tf.data.Dataset.from_generator(
             lambda: training_generator, generator_data_type)
         training_set = training_set.batch(FLAGS.batch_size)
-        training_set = training_set.prefetch(buffer_size=1)
+        training_set = training_set.prefetch(buffer_size=FLAGS.num_gpus)
         # iterators
         training_iterator = training_set.make_initializable_iterator()
 
@@ -169,7 +169,7 @@ def train(training_list=None, validation_list=None):
         validation_set = tf.data.Dataset.from_generator(
             lambda: validation_generator, generator_data_type)
         validation_set = validation_set.batch(FLAGS.batch_size)
-        validation_set = validation_set.prefetch(buffer_size=1)
+        validation_set = validation_set.prefetch(buffer_size=FLAGS.num_gpus)
         # iterators
         validation_iterator = validation_set.make_initializable_iterator()
 
