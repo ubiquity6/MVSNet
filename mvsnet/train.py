@@ -72,7 +72,7 @@ tf.app.flags.DEFINE_float('val_ratio', 0,
                           """Ratio of validation set when splitting dataset.""")
 tf.app.flags.DEFINE_float('base_lr', 0.0005,
                           """Base learning rate.""")
-tf.app.flags.DEFINE_integer('display', 5,
+tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
 tf.app.flags.DEFINE_integer('stepvalue', 40000,
                             """Step interval to decay learning rate.""")
@@ -161,7 +161,7 @@ def train(training_list=None, validation_list=None):
         training_set = tf.data.Dataset.from_generator(
             lambda: training_generator, generator_data_type)
         training_set = training_set.batch(FLAGS.batch_size)
-        training_set = training_set.prefetch(buffer_size=1)
+        training_set = training_set.prefetch(buffer_size=FLAGS.num_gpus)
         # iterators
         training_iterator = training_set.make_initializable_iterator()
 
@@ -169,7 +169,7 @@ def train(training_list=None, validation_list=None):
         validation_set = tf.data.Dataset.from_generator(
             lambda: validation_generator, generator_data_type)
         validation_set = validation_set.batch(FLAGS.batch_size)
-        validation_set = validation_set.prefetch(buffer_size=1)
+        validation_set = validation_set.prefetch(buffer_size=FLAGS.num_gpus)
         # iterators
         validation_iterator = validation_set.make_initializable_iterator()
 
@@ -258,6 +258,7 @@ def train(training_list=None, validation_list=None):
         train_opt = opt.apply_gradients(grads, global_step=global_step)
 
         # summary
+        """
         summaries.append(tf.summary.scalar('loss', loss))
         summaries.append(tf.summary.scalar(
             'less_one_accuracy', less_one_accuracy))
@@ -271,22 +272,27 @@ def train(training_list=None, validation_list=None):
             if grad is not None:
                 summaries.append(tf.summary.histogram(
                     var.op.name + '/gradients', grad))
+                    """
+
+        
 
         # saver
         saver = tf.train.Saver(tf.global_variables(), max_to_keep=None)
-        summary_op = tf.summary.merge(summaries)
-
+        #summary_op = tf.summary.merge(summaries)
+        
         # initialization option
         init_op = tf.global_variables_initializer()
         config = tf.ConfigProto(allow_soft_placement=True)
         config.gpu_options.allow_growth = True
+        config.inter_op_parallelism_threads = 0;
+        config.intra_op_parallelism_threads = 0
 
         with tf.Session(config=config) as sess:
 
             # initialization
             total_step = 0
             sess.run(init_op)
-            summary_writer = tf.summary.FileWriter(FLAGS.log_dir, sess.graph)
+            #summary_writer = tf.summary.FileWriter(FLAGS.log_dir, sess.graph)
 
             # load pre-trained model
             if FLAGS.use_pretrain:
@@ -312,8 +318,11 @@ def train(training_list=None, validation_list=None):
                     # run one batch
                     start_time = time.time()
                     try:
-                        out_summary_op, out_opt, out_loss, out_less_one, out_less_three = sess.run(
-                            [summary_op, train_opt, loss, less_one_accuracy, less_three_accuracy])
+                        #out_summary_op, out_opt, out_loss, out_less_one, out_less_three = sess.run(
+                        #    [summary_op, train_opt, loss, less_one_accuracy, less_three_accuracy])
+
+                        out_opt, out_loss, out_less_one, out_less_three = sess.run(
+                            [train_opt, loss, less_one_accuracy, less_three_accuracy])
                     except tf.errors.OutOfRangeError:
                         print("End of dataset")  # ==> "End of dataset"
                         break
@@ -326,8 +335,8 @@ def train(training_list=None, validation_list=None):
                               (epoch, step, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
 
                     # write summary
-                    if step % (FLAGS.display * 10) == 0:
-                        summary_writer.add_summary(out_summary_op, total_step)
+                   # if step % (FLAGS.display * 10) == 0:
+                   #     summary_writer.add_summary(out_summary_op, total_step)
 
                     # save the model checkpoint periodically
                     # Commenting out temporarily
