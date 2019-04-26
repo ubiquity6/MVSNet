@@ -146,6 +146,9 @@ class ClusterGenerator:
                     images = c.images()
                     cams = c.cameras()
                     depth = c.masked_reference_depth()
+                    load_time = time.time() - start
+                    self.logger.debug(
+                        'Cluster data load time: {}'.format(load_time))
 
                     # Crop, scale and center images
                     images, cams, depth = ut.scale_mvs_input(
@@ -158,9 +161,11 @@ class ClusterGenerator:
 
                     depth = ut.scale_and_reshape_depth(
                         depth, self.output_scale)
+                    self.logger.debug(
+                        'Cluster transformation time: {}'.format(time.time() - start - load_time))
 
                     self.logger.debug(
-                        'Load time: {}'.format(time.time() - start))
+                        'Total cluster preparation time: {}'.format(time.time() - start))
                     self.logger.debug('images shape: {}'.format(images.shape))
                     self.logger.debug('cams shape: {}'.format(cams.shape))
                     self.logger.debug('depth shape: {}'.format(depth.shape))
