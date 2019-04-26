@@ -186,13 +186,14 @@ def train(training_list=None, validation_list=None):
         # training generators
         train_gen = ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
                                      FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='training', flip_cams=flip_cams)
-        training_generator = iter(train_gen)
+        #training_generator = iter(train_gen)
         training_sample_size = len(train_gen.train_clusters)
-        validation_generator = iter(ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
-                                                     FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='validation', flip_cams=flip_cams))
+        #validation_generator = iter(ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
+        #                                             FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='validation', flip_cams=flip_cams))
 
         if FLAGS.regularization == 'GRU':
             training_sample_size = training_sample_size * 2
+        """    
 
         generator_data_type = (tf.float32, tf.float32, tf.float32)
         # dataset from generator
@@ -210,6 +211,9 @@ def train(training_list=None, validation_list=None):
         validation_set = validation_set.prefetch(buffer_size=FLAGS.num_gpus)
         # iterators
         validation_iterator = validation_set.make_initializable_iterator()
+        """
+        training_iterator = parallel_iterator('training', 4)
+        validation_iterator = parallel_iterator('validation', 4)
 
         training_status = True  # Set to true when training, false when validating
 
