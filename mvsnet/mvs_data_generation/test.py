@@ -22,21 +22,6 @@ def dataset(n):
 
 
 def main(args):
-    """
-    train_gen = ClusterGenerator(args.data_dir, 5, 640, 480,
-                                 128, 1, 8, mode='training', flip_cams=False)
-    training_generator = iter(train_gen)
-    generator_data_type = (tf.float32, tf.float32, tf.float32)
-    # dataset from generator
-    training_set = tf.data.Dataset.from_generator(
-        lambda: training_generator, generator_data_type)
-    training_set = training_set.batch(1)
-    training_set = training_set.prefetch(buffer_size=1)
-    # iterators
-    training_iterator = training_set.make_initializable_iterator()
-    training_sample_size = len(train_gen.train_clusters)
-    """
-
     training_sample_size = 1000
     training_set = tf.data.Dataset.range(args.num_generators).apply(tf.data.experimental.parallel_interleave(
         dataset, cycle_length=args.num_generators, prefetch_input_elements=args.num_generators))
