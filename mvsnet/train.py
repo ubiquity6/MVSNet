@@ -143,7 +143,6 @@ def training_dataset(n):
     training_set = training_set.prefetch(buffer_size=1)
     return training_set
 
-
 def validation_dataset(n):
     generator_data_type = (tf.float32, tf.float32, tf.float32)
     validation_set = tf.data.Dataset.from_generator(
@@ -160,8 +159,6 @@ def parallel_iterator(mode, num_generators = FLAGS.num_gpus):
         dataset = tf.data.Dataset.range(num_generators).apply(tf.data.experimental.parallel_interleave(
             validation_dataset, cycle_length=num_generators, prefetch_input_elements=num_generators))
     return dataset.make_initializable_iterator()
-
-
 
 def train(training_list=None, validation_list=None):
     """ training mvsnet """
@@ -212,8 +209,8 @@ def train(training_list=None, validation_list=None):
         # iterators
         validation_iterator = validation_set.make_initializable_iterator()
         """
-        training_iterator = parallel_iterator('training', 4)
-        validation_iterator = parallel_iterator('validation', 4)
+        training_iterator = parallel_iterator('training')
+        validation_iterator = parallel_iterator('validation')
 
         training_status = True  # Set to true when training, false when validating
 
@@ -355,7 +352,8 @@ def train(training_list=None, validation_list=None):
                 sess.run(training_iterator.initializer)
                 sess.run(validation_iterator.initializer)
 
-                for i in range(int(training_sample_size / FLAGS.num_gpus)):
+                #for i in range(int(training_sample_size / FLAGS.num_gpus)):
+                for i in range(training_sample_size):
                     training_status = True
                     # run one batch
                     start_time = time.time()
