@@ -124,6 +124,44 @@ def average_gradients(tower_grads):
         average_grads.append(grad_and_var)
     return average_grads
 
+def generator(n,mode):
+    flip_cams = False
+    if FLAGS.regularization == 'GRU':
+        flip_cams = True
+    gen = ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
+                                FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode=mode, flip_cams=flip_cams)
+    if mode == 'training':
+        training_sample_size = len(gen.train_clusters)
+    return iter(gen)
+
+
+def training_dataset(n):
+    generator_data_type = (tf.float32, tf.float32, tf.float32)
+    training_set = tf.data.Dataset.from_generator(
+        lambda: generator(n, mode='training'), generator_data_type)
+    training_set = training_set.batch(FLAGS.batch_size)
+    training_set = training_set.prefetch(buffer_size=1)
+    return training_set
+
+
+def validation_dataset(n):
+    generator_data_type = (tf.float32, tf.float32, tf.float32)
+    validation_set = tf.data.Dataset.from_generator(
+        lambda: generator(n, mode='validation'), generator_data_type)
+    validation_set = validation_set.batch(FLAGS.batch_size)
+    validation_set = validation_set.prefetch(buffer_size=1)
+    return validation_set
+
+def parallel_iterator(mode, num_generators = FLAGS.num_gpus):
+    if mode == 'training':
+        dataset = tf.data.Dataset.range(num_generators).apply(tf.data.experimental.parallel_interleave(
+            training_dataset, cycle_length=num_generators, prefetch_input_elements=num_generators))
+    elif mode == 'validation':
+        dataset = tf.data.Dataset.range(num_generators).apply(tf.data.experimental.parallel_interleave(
+            validation_dataset, cycle_length=num_generators, prefetch_input_elements=num_generators))
+    return dataset.make_initializable_iterator()
+
+
 
 def train(training_list=None, validation_list=None):
     """ training mvsnet """

@@ -1,7 +1,7 @@
 import os
 from mvs_cluster import Cluster
 import utils as ut
-from random import Random
+import random
 import numpy as np
 import imageio
 import time
@@ -96,12 +96,15 @@ class ClusterGenerator:
         """
         seed = 5  # We shuffle with the same random seed so that training stays in training
         # and validation stays in validation
-        Random(seed).shuffle(self.clusters)
+        random.Random(seed).shuffle(self.clusters)
         num = len(self.clusters)
         val_end = int(num*self.val_split)
         # Partition all clusters into a training and validation set
         train_clusters = self.clusters[val_end:]
         val_clusters = self.clusters[:val_end]
+        # We shuffle the train and val clusters separately, so they don't mix
+        random.shuffle(train_clusters)
+        random.shuffle(val_clusters)
         if self.mode == 'test':
             self.logger.info(" {} clusters will be used for testing".format(
                 len(train_clusters)))
