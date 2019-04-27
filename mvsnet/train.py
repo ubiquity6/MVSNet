@@ -191,7 +191,6 @@ def train(training_list=None, validation_list=None):
         if FLAGS.regularization == 'GRU':
             training_sample_size = training_sample_size * 2
         """    
-
         generator_data_type = (tf.float32, tf.float32, tf.float32)
         # dataset from generator
         training_set = tf.data.Dataset.from_generator(
