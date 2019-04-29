@@ -70,11 +70,11 @@ tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
 tf.app.flags.DEFINE_float('val_ratio', 0,
                           """Ratio of validation set when splitting dataset.""")
-tf.app.flags.DEFINE_float('base_lr', 0.0005,
+tf.app.flags.DEFINE_float('base_lr', 0.0015,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
-tf.app.flags.DEFINE_integer('stepvalue', 40000,
+tf.app.flags.DEFINE_integer('stepvalue', 60000,
                             """Step interval to decay learning rate.""")
 tf.app.flags.DEFINE_integer('snapshot', 20000,
                             """Step interval to save the model.""")
@@ -134,7 +134,6 @@ def generator(n,mode):
         training_sample_size = len(gen.train_clusters)
     return iter(gen)
 
-
 def training_dataset(n):
     generator_data_type = (tf.float32, tf.float32, tf.float32)
     training_set = tf.data.Dataset.from_generator(
@@ -166,16 +165,14 @@ def train(training_list=None, validation_list=None):
     train_session_start = time.time()
     print("Training starting at time:", train_session_start)
     print("Tensorflow version:", tf.__version__)
+    print("Flags:", FLAGS)
 
+    # Prepare validation summary file
     val_sum_file = os.path.join(
         FLAGS.log_dir, 'validation_summary-{}.txt'.format(train_session_start))
     with file_io.FileIO(val_sum_file, 'w+') as f:
         header = 'train_step,val_loss,val_less_one,val_less_three\n'
         f.write(header)
-
-    flip_cams = False
-    if FLAGS.regularization == 'GRU':
-        flip_cams = True
 
     with tf.Graph().as_default(), tf.device('/cpu:0'):
 
@@ -183,31 +180,11 @@ def train(training_list=None, validation_list=None):
         # training generators
         train_gen = ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
                                      FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='training', flip_cams=flip_cams)
-        #training_generator = iter(train_gen)
         training_sample_size = len(train_gen.train_clusters)
-        #validation_generator = iter(ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
-        #                                             FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='validation', flip_cams=flip_cams))
 
         if FLAGS.regularization == 'GRU':
             training_sample_size = training_sample_size * 2
-        """    
-        generator_data_type = (tf.float32, tf.float32, tf.float32)
-        # dataset from generator
-        training_set = tf.data.Dataset.from_generator(
-            lambda: training_generator, generator_data_type)
-        training_set = training_set.batch(FLAGS.batch_size)
-        training_set = training_set.prefetch(buffer_size=FLAGS.num_gpus)
-        # iterators
-        training_iterator = training_set.make_initializable_iterator()
 
-        # dataset from generator
-        validation_set = tf.data.Dataset.from_generator(
-            lambda: validation_generator, generator_data_type)
-        validation_set = validation_set.batch(FLAGS.batch_size)
-        validation_set = validation_set.prefetch(buffer_size=FLAGS.num_gpus)
-        # iterators
-        validation_iterator = validation_set.make_initializable_iterator()
-        """
         training_iterator = parallel_iterator('training')
         validation_iterator = parallel_iterator('validation')
 
@@ -310,9 +287,7 @@ def train(training_list=None, validation_list=None):
             if grad is not None:
                 summaries.append(tf.summary.histogram(
                     var.op.name + '/gradients', grad))
-                    """
-
-        
+                    """      
 
         # saver
         saver = tf.train.Saver(tf.global_variables(), max_to_keep=None)
@@ -378,8 +353,6 @@ def train(training_list=None, validation_list=None):
                    #     summary_writer.add_summary(out_summary_op, total_step)
 
                     # save the model checkpoint periodically
-                    # Commenting out temporarily
-
                     if (total_step % FLAGS.snapshot == 0 or step == (training_sample_size - 1)):
                         model_folder = os.path.join(
                             FLAGS.model_dir, FLAGS.regularization)
