@@ -328,7 +328,7 @@ def train(training_list=None, validation_list=None):
             # summary_writer = tf.summary.FileWriter(FLAGS.log_dir, sess.graph)
 
             # load pre-trained model
-            if FLAGS.use_pretrain:
+            if FLAGS.ckpt_step:
                 pretrained_model_path = os.path.join(
                     FLAGS.model_dir, FLAGS.regularization, 'model.ckpt')
                 restorer = tf.train.Saver(tf.global_variables())
