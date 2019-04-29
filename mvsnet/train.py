@@ -58,6 +58,8 @@ tf.app.flags.DEFINE_float('base_image_size', 8,
 # network architectures
 tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method.""")
+tf.app.flags.DEFINE_string('optimizer', 'momentum',
+                           """Optimizer to use. One of 'momentum' or 'rmsprop' """)
 tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for 3DCNNs""")
 
@@ -199,7 +201,7 @@ def train(training_list=None, validation_list=None):
         ########## data iterator #########
         # training generators
         train_gen = ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
-                                     FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='training', flip_cams=flip_cams)
+                                     FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='training')
         training_sample_size = len(train_gen.train_clusters)
 
         if FLAGS.regularization == 'GRU':
@@ -214,7 +216,14 @@ def train(training_list=None, validation_list=None):
         global_step = tf.Variable(0, trainable=False, name='global_step')
         lr_op = tf.train.exponential_decay(FLAGS.base_lr, global_step=global_step,
                                            decay_steps=FLAGS.stepvalue, decay_rate=FLAGS.gamma, name='lr')
-        opt = tf.train.RMSPropOptimizer(learning_rate=lr_op)
+        if FLAGS.optimizer == 'rmsprop':
+            opt = tf.train.RMSPropOptimizer(learning_rate=lr_op)
+        elif FLAGS.optimizer == 'momentum':
+            opt = tf.train.MomentumOptimizer(learning_rate=lr_op, momentum=0.9, use_nesterov=False)
+        else:
+            print("Optimizer {} is not implemented. Please use 'rmsprop' or 'momentum".format(FLAGS.optimizer))
+            sys.exit(1)
+
 
         tower_grads = []
         for i in xrange(FLAGS.num_gpus):
