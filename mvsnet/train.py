@@ -124,7 +124,12 @@ def average_gradients(tower_grads):
         average_grads.append(grad_and_var)
     return average_grads
 
-def generator(n,mode):
+
+def generator(n, mode):
+    """ Returns a data generator object.
+    Args:
+        mode: One of 'training' or 'validation'
+        """
     flip_cams = False
     if FLAGS.regularization == 'GRU':
         flip_cams = True
@@ -134,7 +139,10 @@ def generator(n,mode):
         training_sample_size = len(gen.train_clusters)
     return iter(gen)
 
+
 def training_dataset(n):
+    """ Returns a dataset over the Training data, initialized from a data generator
+    """
     generator_data_type = (tf.float32, tf.float32, tf.float32)
     training_set = tf.data.Dataset.from_generator(
         lambda: generator(n, mode='training'), generator_data_type)
@@ -142,7 +150,10 @@ def training_dataset(n):
     training_set = training_set.prefetch(buffer_size=1)
     return training_set
 
+
 def validation_dataset(n):
+    """ Returns a dataset over the Validation data, initialized from a data generator
+    """
     generator_data_type = (tf.float32, tf.float32, tf.float32)
     validation_set = tf.data.Dataset.from_generator(
         lambda: generator(n, mode='validation'), generator_data_type)
@@ -151,6 +162,15 @@ def validation_dataset(n):
     return validation_set
 
 def parallel_iterator(mode, num_generators = FLAGS.num_gpus):
+    """ The parallel iterator returns a datagenerator that is parallelized by
+    interleaving multiple data generators. This uses the Tensorflow parallel_interleave
+    feature: https: // www.tensorflow.org/api_docs/python/tf/data/experimental/parallel_interleave
+    Args:
+        mode: Whether this is for 'training' or 'testing'
+        num_generators: How many parallel generators to use(equivalent to num parallel threads)
+    Returns:
+        Tensorflow Dataset object
+    """
     if mode == 'training':
         dataset = tf.data.Dataset.range(num_generators).apply(tf.data.experimental.parallel_interleave(
             training_dataset, cycle_length=num_generators, prefetch_input_elements=num_generators))
@@ -287,12 +307,12 @@ def train(training_list=None, validation_list=None):
             if grad is not None:
                 summaries.append(tf.summary.histogram(
                     var.op.name + '/gradients', grad))
-                    """      
+                    """
 
         # saver
         saver = tf.train.Saver(tf.global_variables(), max_to_keep=None)
-        #summary_op = tf.summary.merge(summaries)
-        
+        # summary_op = tf.summary.merge(summaries)
+
         # initialization option
         init_op = tf.global_variables_initializer()
         config = tf.ConfigProto(allow_soft_placement=True)
@@ -305,7 +325,7 @@ def train(training_list=None, validation_list=None):
             # initialization
             total_step = 0
             sess.run(init_op)
-            #summary_writer = tf.summary.FileWriter(FLAGS.log_dir, sess.graph)
+            # summary_writer = tf.summary.FileWriter(FLAGS.log_dir, sess.graph)
 
             # load pre-trained model
             if FLAGS.use_pretrain:
@@ -326,13 +346,13 @@ def train(training_list=None, validation_list=None):
                 sess.run(training_iterator.initializer)
                 sess.run(validation_iterator.initializer)
 
-                #for i in range(int(training_sample_size / FLAGS.num_gpus)):
+                # for i in range(int(training_sample_size / FLAGS.num_gpus)):
                 for i in range(training_sample_size):
                     training_status = True
                     # run one batch
                     start_time = time.time()
                     try:
-                        #out_summary_op, out_opt, out_loss, out_less_one, out_less_three = sess.run(
+                        # out_summary_op, out_opt, out_loss, out_less_one, out_less_three = sess.run(
                         #    [summary_op, train_opt, loss, less_one_accuracy, less_three_accuracy])
 
                         out_opt, out_loss, out_less_one, out_less_three = sess.run(
