@@ -32,8 +32,7 @@ tf.app.flags.DEFINE_string('model_dir',
                            None,
                            """Path to restore the model.""")
 tf.app.flags.DEFINE_integer('ckpt_step', None,
-                            """ckpt step.""")
-
+                            """ckpt  step.""")
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 8,
                             """Number of images (1 ref image and view_num - 1 view images).""")
