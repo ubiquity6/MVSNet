@@ -14,7 +14,7 @@ on the file system.
 def main(args):
     all_urls = []
     start_time = time.time()
-    dir_name = 'prob_{}_disp_{}_consis_{}_{}'.format(
+    dir_name = 'prob_{}_disp_{}_consis_{}_time_{}'.format(
         args.prob_threshold, args.disp_threshold, args.num_consistent, start_time)
     ply_folder = os.path.join(args.ply_folder, dir_name)
     os.mkdir(ply_folder)
@@ -33,15 +33,17 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--ckpt_step', type=str,
+                        help="The ckpt_step of saved model -- see test.py")
+    parser.add_argument('--model_dir', type=str,
+                        help="The directory of saved model -- see test.py")
     parser.add_argument('--test_folder_root', type=str,
                         default='../data/7scenes/test/', help="The directory where the sessions to be tested are located")
-    parser.add_argument('--ckpt_step', type=str, "The ckpt_step of saved model -- see test.py")
-    parser.add_argument('--model_dir', type=str, "The directory of saved model -- see test.py")
     parser.add_argument('--fusibile_path', type=str,
-                        default='/home/chrisheinrich/fusibile/fusibile', "The path to the compiled fusibile executable")
+                        default='/home/chrisheinrich/fusibile/fusibile', help="The path to the compiled fusibile executable")
     parser.add_argument('--prob_threshold', type=float, default='0.8')
     parser.add_argument('--ply_folder', type=str,
-                        default='/home/chrisheinrich/fused-point-clouds', "The root directory for storing the saved point cloud output")
+                        default='/home/chrisheinrich/fused-point-clouds', help="The root directory for storing the saved point cloud output")
     parser.add_argument('--disp_threshold', type=float, default='0.25')
     parser.add_argument('--num_consistent', type=float, default='3')
     parser.add_argument('--no_test', action='store_true',
