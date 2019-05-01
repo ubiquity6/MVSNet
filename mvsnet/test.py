@@ -29,15 +29,15 @@ sys.path.append("../")
 tf.app.flags.DEFINE_string('dense_folder', None,
                            """Root path to dense folder.""")
 tf.app.flags.DEFINE_string('model_dir',
-                           './model',
+                           None,
                            """Path to restore the model.""")
-tf.app.flags.DEFINE_integer('ckpt_step', 100000,
+tf.app.flags.DEFINE_integer('ckpt_step', None,
                             """ckpt step.""")
 
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 5,
+tf.app.flags.DEFINE_integer('view_num', 8,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 64,
+tf.app.flags.DEFINE_integer('max_d', 128,
                             """Maximum depth step when testing.""")
 tf.app.flags.DEFINE_integer('max_w', 640,
                             """Maximum image width when testing.""")
@@ -55,7 +55,7 @@ tf.app.flags.DEFINE_bool('adaptive_scaling', True,
                          """Let image size to fit the network, including 'scaling', 'cropping'""")
 
 # network architecture
-tf.app.flags.DEFINE_string('regularization', 'GRU',
+tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method, including '3DCNNs' and 'GRU'""")
 tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for MVSNet""")
