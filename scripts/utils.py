@@ -39,7 +39,7 @@ def get_fusion_plys(dense_folder):
     return ply_paths
 
 
-def handle_plys(ply_paths, dense_folder, ply_folder):
+def handle_plys(ply_paths, dense_folder, ply_folder, args):
     try:
         name = dense_folder.split('/')[-1]
         if name == '':
@@ -48,8 +48,10 @@ def handle_plys(ply_paths, dense_folder, ply_folder):
         print('Failed to get name from dense folder')
         name = 'model'
     urls = []
+    desc = 'Prob threshold: {}, Disp threshold: {}, Num consistent: {}'.format(
+        args.prob_threshold, args.disp_threshold, args.num_consistent)
     for p in ply_paths:
-        url = sketchfab.upload(p, name=name)
+        url = sketchfab.upload(p, name=name, description=desc)
         urls.append(url)
         file_name = name + '.ply'
         dst = os.path.join(ply_folder, file_name)
