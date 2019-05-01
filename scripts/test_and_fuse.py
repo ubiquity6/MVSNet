@@ -11,7 +11,7 @@ on the file system.
 """
 
 
-def test_and_fuse(args, dense_folder):
+def test_and_fuse(args, dense_folder, ply_folder):
     if args.no_test is not True:
         ut.test(dense_folder, args.ckpt_step, args.model_dir)
     ut.clear_old_points(dense_folder)
@@ -53,12 +53,12 @@ def main(args):
     os.mkdir(ply_folder)
     # If test_data_root is a session dir we test on that, otherwise we test on subdirs
     if os.path.isfile(os.path.join(args.test_folder_root, 'covisibility.json')):
-        urls = test_and_fuse(args, args.test_folder_root)
+        urls = test_and_fuse(args, args.test_folder_root, ply_folder)
         all_urls.append(urls)
     else:
         for d in os.listdir(args.test_folder_root):
             dense_folder = os.path.join(args.test_folder_root, d)
-            urls = test_and_fuse(args, dense_folder)
+            urls = test_and_fuse(args, dense_folder, ply_folder)
             all_urls.append(urls)
     print('Models uploaded to:', all_urls)
 
