@@ -43,7 +43,7 @@ tf.app.flags.DEFINE_integer('ckpt_step', None,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 5,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 128,
+tf.app.flags.DEFINE_integer('max_d', 200,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('max_w', 640,
                             """Maximum image width when training.""")
@@ -56,7 +56,7 @@ tf.app.flags.DEFINE_float('interval_scale', 1.0,
 tf.app.flags.DEFINE_float('base_image_size', 8,
                           """Base image size""")
 # network architectures
-tf.app.flags.DEFINE_string('regularization', '3DCNNs',
+tf.app.flags.DEFINE_string('regularization', 'GRU',
                            """Regularization method.""")
 tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for 3DCNNs""")
@@ -70,11 +70,11 @@ tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
 tf.app.flags.DEFINE_float('val_ratio', 0,
                           """Ratio of validation set when splitting dataset.""")
-tf.app.flags.DEFINE_float('base_lr', 0.0015,
+tf.app.flags.DEFINE_float('base_lr', 0.002,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
-tf.app.flags.DEFINE_integer('stepvalue', 60000,
+tf.app.flags.DEFINE_integer('stepvalue', 5000,
                             """Step interval to decay learning rate.""")
 tf.app.flags.DEFINE_integer('snapshot', 20000,
                             """Step interval to save the model.""")
@@ -85,9 +85,7 @@ tf.app.flags.DEFINE_float('val_batch_size', 20,
 tf.app.flags.DEFINE_float('train_steps_per_val', 200,
                           """Number of samples to train on before running a round of validation.""")
 
-
 FLAGS = tf.app.flags.FLAGS
-
 
 def average_gradients(tower_grads):
     """Calculate the average gradient for each shared variable across all towers.
