@@ -58,6 +58,8 @@ tf.app.flags.DEFINE_float('base_image_size', 8,
 # network architectures
 tf.app.flags.DEFINE_string('regularization', 'GRU',
                            """Regularization method.""")
+tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
+                           """Optimizer to use. One of 'momentum' or 'rmsprop' """)
 tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for 3DCNNs""")
 
@@ -76,11 +78,11 @@ tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
 tf.app.flags.DEFINE_integer('stepvalue', 5000,
                             """Step interval to decay learning rate.""")
-tf.app.flags.DEFINE_integer('snapshot', 20000,
+tf.app.flags.DEFINE_integer('snapshot', 10000,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.9,
                           """Learning rate decay rate.""")
-tf.app.flags.DEFINE_float('val_batch_size', 20,
+tf.app.flags.DEFINE_float('val_batch_size', 15,
                           """Number of images to run validation on when validation.""")
 tf.app.flags.DEFINE_float('train_steps_per_val', 200,
                           """Number of samples to train on before running a round of validation.""")
@@ -171,10 +173,10 @@ def parallel_iterator(mode, num_generators = FLAGS.num_gpus):
     """
     if mode == 'training':
         dataset = tf.data.Dataset.range(num_generators).apply(tf.data.experimental.parallel_interleave(
-            training_dataset, cycle_length=num_generators, prefetch_input_elements=num_generators))
+            training_dataset, cycle_length=num_generators, prefetch_input_elements=2*num_generators, sloppy=True))
     elif mode == 'validation':
         dataset = tf.data.Dataset.range(num_generators).apply(tf.data.experimental.parallel_interleave(
-            validation_dataset, cycle_length=num_generators, prefetch_input_elements=num_generators))
+            validation_dataset, cycle_length=num_generators, prefetch_input_elements=2*num_generators, sloppy=True))
     return dataset.make_initializable_iterator()
 
 def train(training_list=None, validation_list=None):
@@ -197,7 +199,7 @@ def train(training_list=None, validation_list=None):
         ########## data iterator #########
         # training generators
         train_gen = ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
-                                     FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='training', flip_cams=flip_cams)
+                                     FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='training')
         training_sample_size = len(train_gen.train_clusters)
 
         if FLAGS.regularization == 'GRU':
@@ -212,7 +214,14 @@ def train(training_list=None, validation_list=None):
         global_step = tf.Variable(0, trainable=False, name='global_step')
         lr_op = tf.train.exponential_decay(FLAGS.base_lr, global_step=global_step,
                                            decay_steps=FLAGS.stepvalue, decay_rate=FLAGS.gamma, name='lr')
-        opt = tf.train.RMSPropOptimizer(learning_rate=lr_op)
+        if FLAGS.optimizer == 'rmsprop':
+            opt = tf.train.RMSPropOptimizer(learning_rate=lr_op)
+        elif FLAGS.optimizer == 'momentum':
+            opt = tf.train.MomentumOptimizer(learning_rate=lr_op, momentum=0.9, use_nesterov=False)
+        else:
+            print("Optimizer {} is not implemented. Please use 'rmsprop' or 'momentum".format(FLAGS.optimizer))
+            sys.exit(1)
+
 
         tower_grads = []
         for i in xrange(FLAGS.num_gpus):
