@@ -76,7 +76,7 @@ tf.app.flags.DEFINE_float('base_lr', 0.002,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
-tf.app.flags.DEFINE_integer('stepvalue', 5000,
+tf.app.flags.DEFINE_integer('stepvalue', None,
                             """Step interval to decay learning rate.""")
 tf.app.flags.DEFINE_integer('snapshot', 10000,
                             """Step interval to save the model.""")
@@ -211,6 +211,10 @@ def train(training_list=None, validation_list=None):
         training_status = True  # Set to true when training, false when validating
 
         ########## optimization options ##########
+        if FLAGS.stepvalue is None:
+            # With this stepvalue, the lr will decay by 0.5 every 10 epochs
+            decay_per_10_epoch = 0.5
+            FLAGS.stepvalue = int(10 * np.log(FLAGS.gamma) * training_sample_size / np.log(decay_per_10_epoch)  )
         global_step = tf.Variable(0, trainable=False, name='global_step')
         lr_op = tf.train.exponential_decay(FLAGS.base_lr, global_step=global_step,
                                            decay_steps=FLAGS.stepvalue, decay_rate=FLAGS.gamma, name='lr')
