@@ -43,7 +43,7 @@ tf.app.flags.DEFINE_integer('ckpt_step', None,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 5,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 128,
+tf.app.flags.DEFINE_integer('max_d', 200,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('max_w', 640,
                             """Maximum image width when training.""")
@@ -58,7 +58,7 @@ tf.app.flags.DEFINE_float('base_image_size', 8,
 # network architectures
 tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method.""")
-tf.app.flags.DEFINE_string('optimizer', 'momentum',
+tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
                            """Optimizer to use. One of 'momentum' or 'rmsprop' """)
 tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for 3DCNNs""")
@@ -72,17 +72,17 @@ tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
 tf.app.flags.DEFINE_float('val_ratio', 0,
                           """Ratio of validation set when splitting dataset.""")
-tf.app.flags.DEFINE_float('base_lr', 0.0015,
+tf.app.flags.DEFINE_float('base_lr', 0.001,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
-tf.app.flags.DEFINE_integer('stepvalue', 60000,
+tf.app.flags.DEFINE_integer('stepvalue', 5000,
                             """Step interval to decay learning rate.""")
-tf.app.flags.DEFINE_integer('snapshot', 20000,
+tf.app.flags.DEFINE_integer('snapshot', 10000,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.9,
                           """Learning rate decay rate.""")
-tf.app.flags.DEFINE_float('val_batch_size', 20,
+tf.app.flags.DEFINE_float('val_batch_size', 15,
                           """Number of images to run validation on when validation.""")
 tf.app.flags.DEFINE_float('train_steps_per_val', 200,
                           """Number of samples to train on before running a round of validation.""")
@@ -175,10 +175,10 @@ def parallel_iterator(mode, num_generators = FLAGS.num_gpus):
     """
     if mode == 'training':
         dataset = tf.data.Dataset.range(num_generators).apply(tf.data.experimental.parallel_interleave(
-            training_dataset, cycle_length=num_generators, prefetch_input_elements=num_generators))
+            training_dataset, cycle_length=num_generators, prefetch_input_elements=2*num_generators, sloppy=True))
     elif mode == 'validation':
         dataset = tf.data.Dataset.range(num_generators).apply(tf.data.experimental.parallel_interleave(
-            validation_dataset, cycle_length=num_generators, prefetch_input_elements=num_generators))
+            validation_dataset, cycle_length=num_generators, prefetch_input_elements=2*num_generators, sloppy=True))
     return dataset.make_initializable_iterator()
 
 def train(training_list=None, validation_list=None):
