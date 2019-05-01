@@ -11,6 +11,18 @@ on the file system.
 """
 
 
+def test_and_fuse(args, dense_folder):
+    if args.no_test is not True:
+        ut.test(dense_folder, args.ckpt_step, args.model_dir)
+    ut.clear_old_points(dense_folder)
+    ut.fuse(dense_folder, args.fusibile_path, args.prob_threshold,
+            args.disp_threshold, args.num_consistent)
+    ply_paths = ut.get_fusion_plys(dense_folder)
+    urls = ut.handle_plys(ply_paths, dense_folder, ply_folder)
+    return urls
+
+
+"""
 def main(args):
     all_urls = []
     start_time = time.time()
@@ -28,6 +40,26 @@ def main(args):
         ply_paths = ut.get_fusion_plys(dense_folder)
         urls = ut.handle_plys(ply_paths, dense_folder, ply_folder)
         all_urls.append(urls)
+    print('Models uploaded to:', all_urls)
+    """
+
+
+def main(args):
+    all_urls = []
+    start_time = time.time()
+    dir_name = 'prob_{}_disp_{}_consis_{}_time_{}'.format(
+        args.prob_threshold, args.disp_threshold, args.num_consistent, start_time)
+    ply_folder = os.path.join(args.ply_folder, dir_name)
+    os.mkdir(ply_folder)
+    # If test_data_root is a session dir we test on that, otherwise we test on subdirs
+    if os.path.isfile(os.path.join(args.test_folder_root, 'covisibility.json')):
+        urls = test_and_fuse(args, args.test_folder_root)
+        all_urls.append(urls)
+    else:
+        for d in os.listdir(args.test_folder_root):
+            dense_folder = os.path.join(args.test_folder_root, d)
+            urls = test_and_fuse(args, dense_folder)
+            all_urls.append(urls)
     print('Models uploaded to:', all_urls)
 
 
