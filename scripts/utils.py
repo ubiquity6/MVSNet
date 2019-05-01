@@ -10,8 +10,9 @@ def run(args):
     subprocess.call(args)
 
 
-def test(dense_folder):
-    args = ["python", "-m", "mvsnet.test", "--dense_folder", dense_folder]
+def test(dense_folder, ckpt_step, model_dir):
+    args = ["python", "-m", "mvsnet.test", "--dense_folder",
+            dense_folder, "--ckpt_step", ckpt_step, "--model_dir", model_dir]
     run(args)
 
 
