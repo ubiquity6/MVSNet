@@ -65,16 +65,16 @@ tf.app.flags.DEFINE_bool('inverse_depth', True,
 FLAGS = tf.app.flags.FLAGS
 
 
-def mvsnet_pipeline(mvs_list=None):
+def mvsnet_pipeline(test_folder, mvs_list=None):
     """ mvsnet in altizure pipeline """
 
     # create output folder
-    output_folder = os.path.join(FLAGS.dense_folder, 'depths_mvsnet')
+    output_folder = os.path.join(test_folder, 'depths_mvsnet')
     if not os.path.isdir(output_folder):
         os.mkdir(output_folder)
 
     # testing set
-    data_gen = ClusterGenerator(FLAGS.dense_folder, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
+    data_gen = ClusterGenerator(test_folder, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
                                 FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='test')
     mvs_generator = iter(data_gen)
     sample_size = len(data_gen.train_clusters)
@@ -209,7 +209,14 @@ def mvsnet_pipeline(mvs_list=None):
 
 def main(_):  # pylint: disable=unused-argument
     """ program entrance """
-    mvsnet_pipeline()
+    # Acceptable input for the dense_folder is a single test folder, or a folder containing multiple
+    # test folders. We check to see which one it is
+    if os.path.isfile(os.path.join(FLAGS.dense_folder, 'covisibility.json')):
+        mvsnet_pipeline(FLAGS.dense_folder)
+    else:
+        folders = os.listdir(FLAGS.dense_folder)
+        for f in folders:
+            mvsnet_pipeline(os.path.join(FLAGS.dense_folder, f))
 
 
 if __name__ == '__main__':
