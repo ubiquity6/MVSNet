@@ -41,9 +41,9 @@ tf.app.flags.DEFINE_integer('ckpt_step', None,
                             """ckpt step.""")
 
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 5,
+tf.app.flags.DEFINE_integer('view_num', 4,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 200,
+tf.app.flags.DEFINE_integer('max_d', 192,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('max_w', 640,
                             """Maximum image width when training.""")
@@ -56,7 +56,7 @@ tf.app.flags.DEFINE_float('interval_scale', 1.0,
 tf.app.flags.DEFINE_float('base_image_size', 8,
                           """Base image size""")
 # network architectures
-tf.app.flags.DEFINE_string('regularization', 'GRU',
+tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method.""")
 tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
                            """Optimizer to use. One of 'momentum' or 'rmsprop' """)
@@ -72,13 +72,13 @@ tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
 tf.app.flags.DEFINE_float('val_ratio', 0,
                           """Ratio of validation set when splitting dataset.""")
-tf.app.flags.DEFINE_float('base_lr', 0.002,
+tf.app.flags.DEFINE_float('base_lr', 0.0025,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
 tf.app.flags.DEFINE_integer('stepvalue', None,
                             """Step interval to decay learning rate.""")
-tf.app.flags.DEFINE_integer('snapshot', 10000,
+tf.app.flags.DEFINE_integer('snapshot', 5000,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.9,
                           """Learning rate decay rate.""")
@@ -147,7 +147,7 @@ def training_dataset(n):
     training_set = tf.data.Dataset.from_generator(
         lambda: generator(n, mode='training'), generator_data_type)
     training_set = training_set.batch(FLAGS.batch_size)
-    training_set = training_set.prefetch(buffer_size=1)
+    training_set = training_set.prefetch(buffer_size=2)
     return training_set
 
 
@@ -158,7 +158,7 @@ def validation_dataset(n):
     validation_set = tf.data.Dataset.from_generator(
         lambda: generator(n, mode='validation'), generator_data_type)
     validation_set = validation_set.batch(FLAGS.batch_size)
-    validation_set = validation_set.prefetch(buffer_size=1)
+    validation_set = validation_set.prefetch(buffer_size=2)
     return validation_set
 
 def parallel_iterator(mode, num_generators = FLAGS.num_gpus):
@@ -350,7 +350,11 @@ def train(training_list=None, validation_list=None):
                 total_step = FLAGS.ckpt_step
 
             # training several epochs
-            for epoch in range(FLAGS.epoch):
+            # Because we have num_gpus parallelized generators, we actually go through 
+            # the dataset num_gpus times in each loop below
+            num_iterations = int(np.ceil(float(FLAGS.epoch) / float(FLAGS.num_gpus)))
+
+            for epoch in range(num_iterations):
 
                 # training of one epoch
                 step = 0

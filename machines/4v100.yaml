@@ -1,0 +1,4 @@
+trainingInput:
+  scaleTier: CUSTOM
+  # Configure a master worker with 8 v100
+  masterType: complex_model_m_v100
