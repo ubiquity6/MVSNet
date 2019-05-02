@@ -147,7 +147,7 @@ def training_dataset(n):
     training_set = tf.data.Dataset.from_generator(
         lambda: generator(n, mode='training'), generator_data_type)
     training_set = training_set.batch(FLAGS.batch_size)
-    training_set = training_set.prefetch(buffer_size=2)
+    training_set = training_set.prefetch(buffer_size=1)
     return training_set
 
 
@@ -158,7 +158,7 @@ def validation_dataset(n):
     validation_set = tf.data.Dataset.from_generator(
         lambda: generator(n, mode='validation'), generator_data_type)
     validation_set = validation_set.batch(FLAGS.batch_size)
-    validation_set = validation_set.prefetch(buffer_size=2)
+    validation_set = validation_set.prefetch(buffer_size=1)
     return validation_set
 
 def parallel_iterator(mode, num_generators = FLAGS.num_gpus):
