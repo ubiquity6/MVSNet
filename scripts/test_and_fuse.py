@@ -25,8 +25,8 @@ def test_and_fuse(args, dense_folder, ply_folder):
 def main(args):
     all_urls = []
     start_time = time.time()
-    dir_name = 'prob_{}_disp_{}_consis_{}_time_{}'.format(
-        args.prob_threshold, args.disp_threshold, args.num_consistent, start_time)
+    dir_name = '{}_prob_{}_disp_{}_consis_{}'.format(start_time,
+                                                     args.prob_threshold, args.disp_threshold, args.num_consistent)
     ply_folder = os.path.join(args.ply_folder, dir_name)
     os.mkdir(ply_folder)
     # If test_data_root is a session dir we test on that, otherwise we test on subdirs
