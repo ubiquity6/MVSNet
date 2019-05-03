@@ -72,7 +72,7 @@ tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
 tf.app.flags.DEFINE_float('val_ratio', 0,
                           """Ratio of validation set when splitting dataset.""")
-tf.app.flags.DEFINE_float('base_lr', 0.0025,
+tf.app.flags.DEFINE_float('base_lr', 0.00015,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
@@ -213,7 +213,7 @@ def train(training_list=None, validation_list=None):
         ########## optimization options ##########
         if FLAGS.stepvalue is None:
             # With this stepvalue, the lr will decay by a factor of decay_per_10_epoch every 10 epochs
-            decay_per_10_epoch = 0.2
+            decay_per_10_epoch = 0.5
             FLAGS.stepvalue = int(10 * np.log(FLAGS.gamma) * training_sample_size / np.log(decay_per_10_epoch)  )
         global_step = tf.Variable(0, trainable=False, name='global_step')
         lr_op = tf.train.exponential_decay(FLAGS.base_lr, global_step=global_step,
