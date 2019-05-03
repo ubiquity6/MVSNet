@@ -160,6 +160,11 @@ class ClusterGenerator:
                         images, cams, self.image_width, self.image_height, self.base_image_size, depth)
                     images = ut.center_images(images)
                     images = np.stack(images, axis=0)
+
+                    # Cams are rescaled further to match the output dimensions of the network
+                    # this is because the cams are used for homographies after feature extraction
+                    # which is the step that downsamples the images
+                    cams = ut.scale_mvs_camera(cams, scale=self.output_scale)
                     cams = np.stack(cams, axis=0)
 
                     depth = ut.scale_and_reshape_depth(
@@ -172,6 +177,7 @@ class ClusterGenerator:
                     self.logger.debug('images shape: {}'.format(images.shape))
                     self.logger.debug('cams shape: {}'.format(cams.shape))
                     self.logger.debug('depth shape: {}'.format(depth.shape))
+                    self.logger.debug('First cam: {}'.format(cams[0]))
                     yield (images, cams, depth)
 
                     if self.flip_cams:
@@ -202,6 +208,7 @@ class ClusterGenerator:
                     input_images = ut.copy_and_center_images(cropped_images)
 
                     # Scaled to the output size of network
+                    # Scaled cams are used for the differential homography step
                     output_images, output_cams = ut.scale_mvs_input(
                         cropped_images, cropped_cams, scale=self.output_scale)
 

@@ -72,13 +72,13 @@ tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
 tf.app.flags.DEFINE_float('val_ratio', 0,
                           """Ratio of validation set when splitting dataset.""")
-tf.app.flags.DEFINE_float('base_lr', 0.0025,
+tf.app.flags.DEFINE_float('base_lr', 0.002,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
 tf.app.flags.DEFINE_integer('stepvalue', None,
                             """Step interval to decay learning rate.""")
-tf.app.flags.DEFINE_integer('snapshot', 5000,
+tf.app.flags.DEFINE_integer('snapshot', 2500,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.9,
                           """Learning rate decay rate.""")
@@ -173,10 +173,10 @@ def parallel_iterator(mode, num_generators = FLAGS.num_gpus):
     """
     if mode == 'training':
         dataset = tf.data.Dataset.range(num_generators).apply(tf.data.experimental.parallel_interleave(
-            training_dataset, cycle_length=num_generators, prefetch_input_elements=2*num_generators, sloppy=True))
+            training_dataset, cycle_length=num_generators, prefetch_input_elements=num_generators, sloppy=True))
     elif mode == 'validation':
         dataset = tf.data.Dataset.range(num_generators).apply(tf.data.experimental.parallel_interleave(
-            validation_dataset, cycle_length=num_generators, prefetch_input_elements=2*num_generators, sloppy=True))
+            validation_dataset, cycle_length=num_generators, prefetch_input_elements=num_generators, sloppy=True))
     return dataset.make_initializable_iterator()
 
 def train(training_list=None, validation_list=None):

@@ -24,7 +24,9 @@ def cam_to_json(txt_path, json_path, scale_factor=1.0):
     intrin = {}
     intrin["fx"] = cam[1, 0, 0] * scale_factor
     intrin["fy"] = cam[1, 1, 1] * scale_factor
-    intrin["px"] = cam[1, 0, 2] * scale_factor
+    # px has to be rescaled by an additional factor to account for the fact
+    # that the image was cropped from aspect ratio 1600x1200 to 640x512
+    intrin["px"] = cam[1, 0, 2] * scale_factor * 0.94
     intrin["py"] = cam[1, 1, 2] * scale_factor
     cam_json["intrinsics"] = intrin
     # Add extrinsics
@@ -51,9 +53,9 @@ def pair_to_covisibility(pair_path, output_path, min_depth=400.0, max_depth=1000
     for i in range(2, len(lines), 2):
         cluster = {}
         data = lines[i].split()
-        key = str(data[1])
+        key = lines[i-1]
         views = []
-        for j in range(3, len(data), 2):
+        for j in range(1, len(data), 2):
             views.append(int(data[j]))
         cluster["views"] = views
         cluster["min_depth"] = min_depth
@@ -61,6 +63,7 @@ def pair_to_covisibility(pair_path, output_path, min_depth=400.0, max_depth=1000
         covis[key] = cluster
     with open(output_path, 'w') as f:
         json.dump(covis, f)
+    return covis, lines
 
 
 def image_name(image_index, lighting_index):
