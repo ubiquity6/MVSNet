@@ -178,6 +178,9 @@ class ClusterGenerator:
                     self.logger.debug('cams shape: {}'.format(cams.shape))
                     self.logger.debug('depth shape: {}'.format(depth.shape))
                     self.logger.debug('First cam: {}'.format(cams[0]))
+                    self.logger.debug(
+                        'Reference index: {}'.format(c.ref_index))
+                    self.logger.debug('Cluster indices: {}'.format(c.indices))
                     yield (images, cams, depth)
 
                     if self.flip_cams:

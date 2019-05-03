@@ -19,7 +19,7 @@ def convert_dtu(dtu_dir, output_dir):
     pair_path = os.path.join(camera_base, 'pair.txt')
     num_scans = len((utils.list_no_hidden(images_base)))
     print("Number of scans = ", num_scans)
-    for index, scan in enumerate(utils.list_no_hidden(images_base)):
+    for index, scan in enumerate(sorted(utils.list_no_hidden(images_base))):
         if index > 43:
             print("Processing scan", index)
             # For each dtu scan session there are 7 different lighting settings
