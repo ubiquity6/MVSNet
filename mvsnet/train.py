@@ -45,11 +45,11 @@ tf.app.flags.DEFINE_integer('ckpt_step', None,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 4,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 32,
+tf.app.flags.DEFINE_integer('max_d', 192,
                             """Maximum depth step when training.""")
-tf.app.flags.DEFINE_integer('max_w', 128,
+tf.app.flags.DEFINE_integer('max_w', 640,
                             """Maximum image width when training.""")
-tf.app.flags.DEFINE_integer('max_h', 96,
+tf.app.flags.DEFINE_integer('max_h', 480,
                             """Maximum image height when training.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume.""")
@@ -74,7 +74,7 @@ tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
 tf.app.flags.DEFINE_float('val_ratio', 0,
                           """Ratio of validation set when splitting dataset.""")
-tf.app.flags.DEFINE_float('base_lr', 0.001,
+tf.app.flags.DEFINE_float('base_lr', 0.0015,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
@@ -215,7 +215,7 @@ def train(training_list=None, validation_list=None):
         ########## optimization options ##########
         if FLAGS.stepvalue is None:
             # With this stepvalue, the lr will decay by a factor of decay_per_10_epoch every 10 epochs
-            decay_per_10_epoch = 0.25
+            decay_per_10_epoch = 0.15
             FLAGS.stepvalue = int(10 * np.log(FLAGS.gamma) * training_sample_size / np.log(decay_per_10_epoch)  )
         global_step = tf.Variable(0, trainable=False, name='global_step')
         lr_op = tf.train.exponential_decay(FLAGS.base_lr, global_step=global_step,
