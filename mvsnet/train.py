@@ -31,6 +31,8 @@ tf.app.flags.DEFINE_string('log_dir', None,
                            """Path to store the log.""")
 tf.app.flags.DEFINE_string('model_dir', None,
                            """Path to save the model.""")
+tf.app.flags.DEFINE_string('model_load_dir', None,
+                           """Path to load the saved model. Required if ckpt_step is not none""")
 tf.app.flags.DEFINE_string('job-dir', None,
                            """Path to save job artifacts""")
 tf.app.flags.DEFINE_boolean('train_dtu', True,
@@ -41,13 +43,13 @@ tf.app.flags.DEFINE_integer('ckpt_step', None,
                             """ckpt step.""")
 
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 2,
+tf.app.flags.DEFINE_integer('view_num', 4,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 32,
+tf.app.flags.DEFINE_integer('max_d', 192,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('max_w', 640,
                             """Maximum image width when training.""")
-tf.app.flags.DEFINE_integer('max_h', 512,
+tf.app.flags.DEFINE_integer('max_h', 480,
                             """Maximum image height when training.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume.""")
@@ -76,15 +78,15 @@ tf.app.flags.DEFINE_float('base_lr', 0.001,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
-tf.app.flags.DEFINE_integer('stepvalue', 10000,
+tf.app.flags.DEFINE_integer('stepvalue', None,
                             """Step interval to decay learning rate.""")
 tf.app.flags.DEFINE_integer('snapshot', 2500,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.9,
                           """Learning rate decay rate.""")
-tf.app.flags.DEFINE_float('val_batch_size', 15,
+tf.app.flags.DEFINE_float('val_batch_size', 20,
                           """Number of images to run validation on when validation.""")
-tf.app.flags.DEFINE_float('train_steps_per_val', 200,
+tf.app.flags.DEFINE_float('train_steps_per_val', 250,
                           """Number of samples to train on before running a round of validation.""")
 
 FLAGS = tf.app.flags.FLAGS
@@ -213,7 +215,7 @@ def train(training_list=None, validation_list=None):
         ########## optimization options ##########
         if FLAGS.stepvalue is None:
             # With this stepvalue, the lr will decay by a factor of decay_per_10_epoch every 10 epochs
-            decay_per_10_epoch = 0.5
+            decay_per_10_epoch = 0.25
             FLAGS.stepvalue = int(10 * np.log(FLAGS.gamma) * training_sample_size / np.log(decay_per_10_epoch)  )
         global_step = tf.Variable(0, trainable=False, name='global_step')
         lr_op = tf.train.exponential_decay(FLAGS.base_lr, global_step=global_step,
@@ -288,8 +290,8 @@ def train(training_list=None, validation_list=None):
                                 prob_volume, depth_image, FLAGS.max_d, depth_start, depth_interval)
 
                     # retain the summaries from the final tower.
-                    summaries = tf.get_collection(
-                        tf.GraphKeys.SUMMARIES, scope)
+                    #summaries = tf.get_collection(
+                #   tf.GraphKeys.SUMMARIES, scope)
 
                     # calculate the gradients for the batch of data on this CIFAR tower.
                     grads = opt.compute_gradients(loss)
@@ -341,7 +343,7 @@ def train(training_list=None, validation_list=None):
             # load pre-trained model
             if FLAGS.ckpt_step:
                 pretrained_model_path = os.path.join(
-                    FLAGS.model_dir, FLAGS.regularization, 'model.ckpt')
+                    FLAGS.model_load_dir, FLAGS.regularization, 'model.ckpt')
                 restorer = tf.train.Saver(tf.global_variables())
                 restorer.restore(
                     sess, '-'.join([pretrained_model_path, str(FLAGS.ckpt_step)]))
@@ -369,9 +371,24 @@ def train(training_list=None, validation_list=None):
                     try:
                         # out_summary_op, out_opt, out_loss, out_less_one, out_less_three = sess.run(
                         #    [summary_op, train_opt, loss, less_one_accuracy, less_three_accuracy])
-
-                        out_opt, out_loss, out_less_one, out_less_three = sess.run(
-                            [train_opt, loss, less_one_accuracy, less_three_accuracy])
+                        skip_broken = True
+                        # Check that data was not corrupted before applying the gradient update
+                        if skip_broken:
+                            out_loss, out_less_one, out_less_three = sess.run(
+                                [loss, less_one_accuracy, less_three_accuracy])
+                            fail = False
+                            if out_less_one == 0.0 and out_less_three == 0.0:
+                                fail = True
+                            if out_loss == np.nan or fail:
+                                #This should only happen if the input data was corrupted, in which case we don't want to compute gradients and 
+                                #update network on this batch
+                                print('[ERROR] Failed on item. loss: {}, less_one: {}, less_three: {}'.format(
+                                    loss, less_one_accuracy, less_three_accuracy))
+                            else:
+                                out_opt = sess.run([train_opt])
+                        else:
+                            out_opt, out_loss, out_less_one, out_less_three = sess.run(
+                                [train_opt, loss, less_one_accuracy, less_three_accuracy])
                     except tf.errors.OutOfRangeError:
                         print("End of dataset")  # ==> "End of dataset"
                         break

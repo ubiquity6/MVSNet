@@ -196,7 +196,7 @@ def mvsnet_pipeline(test_folder, mvs_list=None):
             write_pfm(prob_map_path, out_prob_map)
 
             # for png outputs
-            write_depth_map(depth_png, out_init_depth_image)
+            write_depth_map(depth_png, out_init_depth_image, visualization=True)
             write_confidence_map(prob_png, out_prob_map)
 
             out_ref_image = cv2.cvtColor(out_ref_image, cv2.COLOR_RGB2BGR)

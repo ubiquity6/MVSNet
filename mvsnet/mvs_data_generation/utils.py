@@ -14,6 +14,7 @@ import cv2
 import numpy as np
 import json
 from random import Random
+from tensorflow.python.lib.io import file_io
 import logging
 
 
@@ -194,7 +195,8 @@ def write_cam(file, cam):
             f.write(str(cam[1][i][j]) + ' ')
         f.write('\n')
 
-    f.write('\n' + str(cam[1][3][0]) + ' ' + str(cam[1][3][1]) + '\n')
+    f.write('\n' + str(cam[1][3][0]) + ' ' + str(cam[1][3][1]) +
+            ' ' + str(cam[1][3][2]) + ' ' + str(cam[1][3][3]) + '\n')
 
     f.close()
 
