@@ -45,11 +45,11 @@ tf.app.flags.DEFINE_integer('ckpt_step', None,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 4,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 192,
+tf.app.flags.DEFINE_integer('max_d', 32,
                             """Maximum depth step when training.""")
-tf.app.flags.DEFINE_integer('max_w', 640,
+tf.app.flags.DEFINE_integer('max_w', 128,
                             """Maximum image width when training.""")
-tf.app.flags.DEFINE_integer('max_h', 480,
+tf.app.flags.DEFINE_integer('max_h', 96,
                             """Maximum image height when training.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume.""")
