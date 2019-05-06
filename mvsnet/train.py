@@ -289,9 +289,6 @@ def train(training_list=None, validation_list=None):
                             mvsnet_classification_loss(
                                 prob_volume, depth_image, FLAGS.max_d, depth_start, depth_interval)
 
-                    # retain the summaries from the final tower.
-                    #summaries = tf.get_collection(
-                #   tf.GraphKeys.SUMMARIES, scope)
 
                     # calculate the gradients for the batch of data on this CIFAR tower.
                     grads = opt.compute_gradients(loss)
@@ -304,23 +301,6 @@ def train(training_list=None, validation_list=None):
 
         # training opt
         train_opt = opt.apply_gradients(grads, global_step=global_step)
-
-        # summary
-        """
-        summaries.append(tf.summary.scalar('loss', loss))
-        summaries.append(tf.summary.scalar(
-            'less_one_accuracy', less_one_accuracy))
-        summaries.append(tf.summary.scalar(
-            'less_three_accuracy', less_three_accuracy))
-        summaries.append(tf.summary.scalar('lr', lr_op))
-        weights_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
-        for var in weights_list:
-            summaries.append(tf.summary.histogram(var.op.name, var))
-        for grad, var in grads:
-            if grad is not None:
-                summaries.append(tf.summary.histogram(
-                    var.op.name + '/gradients', grad))
-                    """
 
         # saver
         saver = tf.train.Saver(tf.global_variables(), max_to_keep=None)
@@ -369,8 +349,6 @@ def train(training_list=None, validation_list=None):
                     # run one batch
                     start_time = time.time()
                     try:
-                        # out_summary_op, out_opt, out_loss, out_less_one, out_less_three = sess.run(
-                        #    [summary_op, train_opt, loss, less_one_accuracy, less_three_accuracy])
                         skip_broken = True
                         # Check that data was not corrupted before applying the gradient update
                         if skip_broken:
@@ -380,9 +358,9 @@ def train(training_list=None, validation_list=None):
                             if out_less_one == 0.0 and out_less_three == 0.0:
                                 fail = True
                             if out_loss == np.nan or fail:
-                                #This should only happen if the input data was corrupted, in which case we don't want to compute gradients and 
-                                #update network on this batch
-                                print('[ERROR] Failed on item. loss: {}, less_one: {}, less_three: {}'.format(
+                                # This should only happen if the input data was corrupted or there is something seriously wrong with it, in which case we don't want to compute gradients and 
+                                # update network on this batch. This is a kind of inline data cleansing step.
+                                print('[ERROR] Train step failed. Will not update gradients. loss: {}, less_one: {}, less_three: {}'.format(
                                     loss, less_one_accuracy, less_three_accuracy))
                             else:
                                 out_opt = sess.run([train_opt])
@@ -399,10 +377,6 @@ def train(training_list=None, validation_list=None):
                         print(Notify.INFO,
                               'epoch, %d, step %d, total_step %d, loss = %.4f, (< 1px) = %.4f, (< 3px) = %.4f (%.3f sec/step)' %
                               (epoch, step, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
-
-                    # write summary
-                   # if step % (FLAGS.display * 10) == 0:
-                   #     summary_writer.add_summary(out_summary_op, total_step)
 
                     # save the model checkpoint periodically
                     if (total_step % FLAGS.snapshot == 0 or step == (training_sample_size - 1)):

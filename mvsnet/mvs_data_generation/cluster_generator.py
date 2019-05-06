@@ -209,7 +209,7 @@ class ClusterGenerator:
                             cams = ut.flip_cams(cams, self.depth_num)
                             yield (images, cams, depth)
                     except Exception as e:
-                        self.logger.warn('Cluster with indices: {} at dir: {} failed to load with error {}! Skipping!'.format(
+                        self.logger.warn('Cluster with indices: {} at dir: {} failed to load with error: "{}". Skipping!'.format(
                             c.indices, c.session_dir, e))
                         continue
 
