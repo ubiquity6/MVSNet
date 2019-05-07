@@ -70,7 +70,7 @@ class Cluster:
                 depth = tf.image.decode_png(depth_raw, dtype=tf.uint16).numpy()
                 return depth
             else:
-                return imageio.imread(self.depth_path(index))
+                return imageio.imread(self.depth_path(index)).astype(np.uint16)
         except Exception as e:
             self.logger.warn('Depth map at path {} does not exist'.format(
                 self.depth_path(index)))

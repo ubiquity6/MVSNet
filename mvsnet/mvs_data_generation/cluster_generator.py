@@ -145,6 +145,8 @@ class ClusterGenerator:
         if self.mode == 'training' or self.mode == 'validation':
             while True:
                 for c in self.iter_clusters:
+                    # We wrap this in a try/except block because we don't want to end execution of the program
+                    # just because a cluster or two may have bad data
                     try:
                         start = time.time()
                         images = c.images()
@@ -160,12 +162,6 @@ class ClusterGenerator:
                         images, cams, depth = ut.crop_mvs_input(
                             images, cams, self.image_width, self.image_height, self.base_image_size, depth)
                         images = ut.center_images(images)
-                        """
-                        for index, image in enumerate(images):
-                            image_save_path = os.path.join(
-                                '/Users/chrisheinrich/data/scan_9_train_chris_gen', '{}.png'.format(c.indices[index]+1))
-                            imageio.imsave(image_save_path, image.astype(np.uint8))
-                        """
                         images = np.stack(images, axis=0)
 
                         # Cams are rescaled further to match the output dimensions of the network
@@ -173,22 +169,10 @@ class ClusterGenerator:
                         # which is the step that downsamples the images
                         cams = ut.scale_mvs_camera(
                             cams, scale=self.output_scale)
-                        """
-                        for index, cam in enumerate(cams):
-                            cam_save_path = os.path.join(
-                                '/Users/chrisheinrich/data/scan_9_train_chris_gen', '{}_cam.txt'.format(c.indices[index]+1))
-                            ut.write_cam(cam_save_path, cam)
-                            """
-
                         cams = np.stack(cams, axis=0)
 
                         depth = ut.scale_and_reshape_depth(
                             depth, self.output_scale)
-                        """
-                        depth_save_path = os.path.join(
-                            '/Users/chrisheinrich/data/scan_9_train_chris_gen', 'depth_{}.png'.format(c.ref_index+1))
-                        imageio.imsave(depth_save_path, depth.astype(np.uint16))
-                        """
                         self.logger.debug(
                             'Cluster transformation time: {}'.format(time.time() - start - load_time))
 
@@ -208,6 +192,7 @@ class ClusterGenerator:
                         if self.flip_cams:
                             cams = ut.flip_cams(cams, self.depth_num)
                             yield (images, cams, depth)
+
                     except Exception as e:
                         self.logger.warn('Cluster with indices: {} at dir: {} failed to load with error: "{}". Skipping!'.format(
                             c.indices, c.session_dir, e))

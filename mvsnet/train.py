@@ -43,7 +43,7 @@ tf.app.flags.DEFINE_integer('ckpt_step', None,
                             """ckpt step.""")
 
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 4,
+tf.app.flags.DEFINE_integer('view_num', 8,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 192,
                             """Maximum depth step when training.""")
@@ -84,9 +84,9 @@ tf.app.flags.DEFINE_integer('snapshot', 2500,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.9,
                           """Learning rate decay rate.""")
-tf.app.flags.DEFINE_float('val_batch_size', 20,
+tf.app.flags.DEFINE_float('val_batch_size', 30,
                           """Number of images to run validation on when validation.""")
-tf.app.flags.DEFINE_float('train_steps_per_val', 250,
+tf.app.flags.DEFINE_float('train_steps_per_val', 360,
                           """Number of samples to train on before running a round of validation.""")
 
 FLAGS = tf.app.flags.FLAGS
@@ -215,7 +215,7 @@ def train(training_list=None, validation_list=None):
         ########## optimization options ##########
         if FLAGS.stepvalue is None:
             # With this stepvalue, the lr will decay by a factor of decay_per_10_epoch every 10 epochs
-            decay_per_10_epoch = 0.15
+            decay_per_10_epoch = 0.25
             FLAGS.stepvalue = int(10 * np.log(FLAGS.gamma) * training_sample_size / np.log(decay_per_10_epoch)  )
         global_step = tf.Variable(0, trainable=False, name='global_step')
         lr_op = tf.train.exponential_decay(FLAGS.base_lr, global_step=global_step,
