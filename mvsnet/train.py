@@ -43,7 +43,7 @@ tf.app.flags.DEFINE_integer('ckpt_step', None,
                             """ckpt step.""")
 
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 8,
+tf.app.flags.DEFINE_integer('view_num', 4,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 192,
                             """Maximum depth step when training.""")
@@ -175,10 +175,10 @@ def parallel_iterator(mode, num_generators = FLAGS.num_gpus):
     """
     if mode == 'training':
         dataset = tf.data.Dataset.range(num_generators).apply(tf.data.experimental.parallel_interleave(
-            training_dataset, cycle_length=num_generators, prefetch_input_elements=num_generators, sloppy=True))
+            training_dataset, cycle_length=num_generators, prefetch_input_elements=2*num_generators, sloppy=True))
     elif mode == 'validation':
         dataset = tf.data.Dataset.range(num_generators).apply(tf.data.experimental.parallel_interleave(
-            validation_dataset, cycle_length=num_generators, prefetch_input_elements=num_generators, sloppy=True))
+            validation_dataset, cycle_length=num_generators, prefetch_input_elements=2*num_generators, sloppy=True))
     return dataset.make_initializable_iterator()
 
 def train(training_list=None, validation_list=None):
@@ -349,7 +349,7 @@ def train(training_list=None, validation_list=None):
                     # run one batch
                     start_time = time.time()
                     try:
-                        skip_broken = True
+                        skip_broken = False
                         # Check that data was not corrupted before applying the gradient update
                         if skip_broken:
                             out_loss, out_less_one, out_less_three = sess.run(

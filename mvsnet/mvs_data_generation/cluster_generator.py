@@ -185,7 +185,7 @@ class ClusterGenerator:
                             'depth shape: {}'.format(depth.shape))
                         self.logger.debug(
                             'Reference index: {}'.format(c.ref_index))
-                        self.logger.info('Cluster indices: {}. Session dir: {}'.format(
+                        self.logger.debug('Cluster indices: {}. Session dir: {}'.format(
                             c.indices, c.session_dir))
                         yield (images, cams, depth)
 
