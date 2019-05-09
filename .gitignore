@@ -12,6 +12,5 @@ fused-point-clouds/*
 dist/*
 MANIFEST
 MVSNet.egg-info/*
-datasets/convert/demon_fixer.py
 
 nohup.out

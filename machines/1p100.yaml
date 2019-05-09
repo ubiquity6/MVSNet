@@ -1,0 +1,4 @@
+trainingInput:
+  scaleTier: CUSTOM
+  # Configure a master worker with 1 p100
+  masterType: standard_p100

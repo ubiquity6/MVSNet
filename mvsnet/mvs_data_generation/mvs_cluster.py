@@ -70,7 +70,7 @@ class Cluster:
                 depth = tf.image.decode_png(depth_raw, dtype=tf.uint16).numpy()
                 return depth
             else:
-                return imageio.imread(self.depth_path(index))
+                return imageio.imread(self.depth_path(index)).astype(np.uint16)
         except Exception as e:
             self.logger.warn('Depth map at path {} does not exist'.format(
                 self.depth_path(index)))
@@ -98,10 +98,14 @@ class Cluster:
         cam[1, 3, 2], cam[1, 3, 3] = self.depth_num, self.max_depth
         return cam
 
-    def intrinsics_matrix(self, camera_data):
+    def intrinsics_matrix(self, camera_data, focal_rescale=1.0):
+        # dtu magic focal_rescale = 1.171875
+        if 'dtu_scan_' in self.session_dir:
+            focal_rescale = 1.171875
         mat = np.zeros((3, 3))
         intrin = camera_data["intrinsics"]
-        mat[0, 0], mat[1, 1] = intrin["fx"], intrin["fy"]
+        mat[0, 0], mat[1, 1] = intrin["fx"] * \
+            focal_rescale, intrin["fy"]*focal_rescale
         mat[0, 2], mat[1, 2], mat[2, 2] = intrin["px"], intrin["py"], 1.0
         return mat
 
@@ -111,7 +115,6 @@ class Cluster:
         for i in range(4):
             for j in range(4):
                 mat[i, j] = data["{},{}".format(i, j)]
-        # return np.linalg.inv(mat)
         return mat
 
     def set_indices(self):

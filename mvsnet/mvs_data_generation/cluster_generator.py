@@ -145,38 +145,58 @@ class ClusterGenerator:
         if self.mode == 'training' or self.mode == 'validation':
             while True:
                 for c in self.iter_clusters:
-                    start = time.time()
-                    images = c.images()
-                    cams = c.cameras()
-                    depth = c.masked_reference_depth()
-                    load_time = time.time() - start
-                    self.logger.debug(
-                        'Cluster data load time: {}'.format(load_time))
+                    # We wrap this in a try/except block because we don't want to end execution of the program
+                    # just because a cluster or two may have bad data
+                    try:
+                        start = time.time()
+                        images = c.images()
+                        cams = c.cameras()
+                        depth = c.masked_reference_depth()
+                        load_time = time.time() - start
+                        self.logger.debug(
+                            'Cluster data load time: {}'.format(load_time))
 
-                    # Crop, scale and center images
-                    images, cams, depth = ut.scale_mvs_input(
-                        images, cams, depth, c.rescale)
-                    images, cams, depth = ut.crop_mvs_input(
-                        images, cams, self.image_width, self.image_height, self.base_image_size, depth)
-                    images = ut.center_images(images)
-                    images = np.stack(images, axis=0)
-                    cams = np.stack(cams, axis=0)
+                        # Crop, scale and center images
+                        images, cams, depth = ut.scale_mvs_input(
+                            images, cams, depth, c.rescale)
+                        images, cams, depth = ut.crop_mvs_input(
+                            images, cams, self.image_width, self.image_height, self.base_image_size, depth)
+                        images = ut.center_images(images)
+                        images = np.stack(images, axis=0)
 
-                    depth = ut.scale_and_reshape_depth(
-                        depth, self.output_scale)
-                    self.logger.debug(
-                        'Cluster transformation time: {}'.format(time.time() - start - load_time))
+                        # Cams are rescaled further to match the output dimensions of the network
+                        # this is because the cams are used for homographies after feature extraction
+                        # which is the step that downsamples the images
+                        cams = ut.scale_mvs_camera(
+                            cams, scale=self.output_scale)
+                        cams = np.stack(cams, axis=0)
 
-                    self.logger.debug(
-                        'Total cluster preparation time: {}'.format(time.time() - start))
-                    self.logger.debug('images shape: {}'.format(images.shape))
-                    self.logger.debug('cams shape: {}'.format(cams.shape))
-                    self.logger.debug('depth shape: {}'.format(depth.shape))
-                    yield (images, cams, depth)
+                        depth = ut.scale_and_reshape_depth(
+                            depth, self.output_scale)
+                        self.logger.debug(
+                            'Cluster transformation time: {}'.format(time.time() - start - load_time))
 
-                    if self.flip_cams:
-                        cams = ut.flip_cams(cams, self.depth_num)
+                        self.logger.debug(
+                            'Total cluster preparation time: {}'.format(time.time() - start))
+                        self.logger.debug(
+                            'images shape: {}'.format(images.shape))
+                        self.logger.debug('cams shape: {}'.format(cams.shape))
+                        self.logger.debug(
+                            'depth shape: {}'.format(depth.shape))
+                        self.logger.debug(
+                            'Reference index: {}'.format(c.ref_index))
+                        self.logger.debug('Cluster indices: {}. Session dir: {}'.format(
+                            c.indices, c.session_dir))
                         yield (images, cams, depth)
+
+                        if self.flip_cams:
+                            cams = ut.flip_cams(cams, self.depth_num)
+                            yield (images, cams, depth)
+
+                    except Exception as e:
+                        self.logger.warn('Cluster with indices: {} at dir: {} failed to load with error: "{}". Skipping!'.format(
+                            c.indices, c.session_dir, e))
+                        continue
 
         """ Iterator for returning batches of data in the form that MVSNet expects when testing
         Yields:
@@ -202,6 +222,7 @@ class ClusterGenerator:
                     input_images = ut.copy_and_center_images(cropped_images)
 
                     # Scaled to the output size of network
+                    # Scaled cams are used for the differential homography step
                     output_images, output_cams = ut.scale_mvs_input(
                         cropped_images, cropped_cams, scale=self.output_scale)
 
