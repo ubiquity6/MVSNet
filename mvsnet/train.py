@@ -62,7 +62,7 @@ tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method.""")
 tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
                            """Optimizer to use. One of 'momentum' or 'rmsprop' """)
-tf.app.flags.DEFINE_boolean('refinement', True,
+tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for 3DCNNs""")
 
 # training parameters
@@ -74,19 +74,19 @@ tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
 tf.app.flags.DEFINE_float('val_ratio', 0,
                           """Ratio of validation set when splitting dataset.""")
-tf.app.flags.DEFINE_float('base_lr', 0.001,
+tf.app.flags.DEFINE_float('base_lr', 0.000025,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
 tf.app.flags.DEFINE_integer('stepvalue', None,
                             """Step interval to decay learning rate.""")
-tf.app.flags.DEFINE_integer('snapshot', 2500,
+tf.app.flags.DEFINE_integer('snapshot', 10000,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.9,
                           """Learning rate decay rate.""")
-tf.app.flags.DEFINE_float('val_batch_size', 30,
+tf.app.flags.DEFINE_float('val_batch_size', 5,
                           """Number of images to run validation on when validation.""")
-tf.app.flags.DEFINE_float('train_steps_per_val', 360,
+tf.app.flags.DEFINE_float('train_steps_per_val', 50,
                           """Number of samples to train on before running a round of validation.""")
 
 FLAGS = tf.app.flags.FLAGS
@@ -215,7 +215,7 @@ def train(training_list=None, validation_list=None):
         ########## optimization options ##########
         if FLAGS.stepvalue is None:
             # With this stepvalue, the lr will decay by a factor of decay_per_10_epoch every 10 epochs
-            decay_per_10_epoch = 0.25
+            decay_per_10_epoch = 0.025
             FLAGS.stepvalue = int(10 * np.log(FLAGS.gamma) * training_sample_size / np.log(decay_per_10_epoch)  )
         global_step = tf.Variable(0, trainable=False, name='global_step')
         lr_op = tf.train.exponential_decay(FLAGS.base_lr, global_step=global_step,
