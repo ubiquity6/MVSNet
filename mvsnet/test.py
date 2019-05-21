@@ -38,9 +38,9 @@ tf.app.flags.DEFINE_integer('view_num', 6,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 128,
                             """Maximum depth step when testing.""")
-tf.app.flags.DEFINE_integer('max_w', 640,
+tf.app.flags.DEFINE_integer('max_w', 1024,
                             """Maximum image width when testing.""")
-tf.app.flags.DEFINE_integer('max_h', 480,
+tf.app.flags.DEFINE_integer('max_h', 768,
                             """Maximum image height when testing.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume (W and H).""")
@@ -196,7 +196,8 @@ def mvsnet_pipeline(test_folder, mvs_list=None):
             write_pfm(prob_map_path, out_prob_map)
 
             # for png outputs
-            write_depth_map(depth_png, out_init_depth_image)
+            write_depth_map(depth_png, out_init_depth_image,
+                            visualization=False)
             write_confidence_map(prob_png, out_prob_map)
 
             out_ref_image = cv2.cvtColor(out_ref_image, cv2.COLOR_RGB2BGR)
