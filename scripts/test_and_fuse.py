@@ -28,6 +28,7 @@ def main(args):
     dir_name = '{}_prob_{}_disp_{}_consis_{}'.format(start_time,
                                                      args.prob_threshold, args.disp_threshold, args.num_consistent)
     ply_folder = os.path.join(args.ply_folder, dir_name)
+    print('Final PLY files will be written to {}'.format(ply_folder))
     os.mkdir(ply_folder)
     # If test_data_root is a session dir we test on that, otherwise we test on subdirs
     if os.path.isfile(os.path.join(args.test_folder_root, 'covisibility.json')):
