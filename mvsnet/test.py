@@ -34,15 +34,9 @@ tf.app.flags.DEFINE_string('model_dir',
 tf.app.flags.DEFINE_integer('ckpt_step', None,
                             """ckpt  step.""")
 # input parameters
-<<<<<<< HEAD
-tf.app.flags.DEFINE_integer('view_num', 6,
-                            """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 128,
-=======
 tf.app.flags.DEFINE_integer('view_num', 8,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 256,
->>>>>>> 2c575f59420f87f1555f216318921d2946c73ad7
                             """Maximum depth step when testing.""")
 tf.app.flags.DEFINE_integer('max_w', 1024,
                             """Maximum image width when testing.""")
