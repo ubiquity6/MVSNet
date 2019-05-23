@@ -51,9 +51,12 @@ def handle_plys(ply_paths, dense_folder, ply_folder, args):
     desc = 'Prob threshold: {}, Disp threshold: {}, Num consistent: {}'.format(
         args.prob_threshold, args.disp_threshold, args.num_consistent)
     for p in ply_paths:
-        url = sketchfab.upload(p, name=name, description=desc)
-        urls.append(url)
-        file_name = name + '.ply'
-        dst = os.path.join(ply_folder, file_name)
-        copyfile(p, dst)
+        try:
+            url = sketchfab.upload(p, name=name, description=desc)
+            urls.append(url)
+            file_name = name + '.ply'
+            dst = os.path.join(ply_folder, file_name)
+            copyfile(p, dst)
+        except Exception as e:
+            print('Failed to upload and copy final ply file with exception {}'.format(e))
     return urls
