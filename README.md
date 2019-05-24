@@ -9,21 +9,44 @@
 
 ```
 gcloud ml-engine jobs submit training $JOB_NAME \
-   --job-dir gs://mvs-training-mlengine/$JOB_NAME \
-   --module-name mvsnet.train \
-   --package-path <path-to-MVSNet-root>/mvsnet \
-   --region us-central1 \
-   --runtime-version 1.13 \
-   --config <path-to-MVSNet-root>/gpu_config.yaml \
-   -- \
-   --train_data_root gs://mvs-training-mlengine/7scenes+dtu \
-   --log_dir gs://mvs-training-mlengine/$JOB_NAME/logs/ \
-   --model_dir gs://mvs-training-mlengine/$JOB_NAME/models \
-   --epoch 40
+    --job-dir gs://mvs-training-mlengine/$JOB_NAME \
+    --module-name mvsnet.train \
+    --package-path /Users/chrisheinrich/ml/MVSNet/mvsnet \
+    --region us-central1 \
+    --runtime-version 1.13 \
+    --config /Users/chrisheinrich/ml/MVSNet/machines/1p100.yaml \
+    -- \
+    --train_data_root gs://mvs-training-mlengine/dtu_7scenes_rgbd_scenes11_fixed/ \
+    --log_dir gs://mvs-training-mlengine/$JOB_NAME/logs/ \
+    --model_dir gs://mvs-training-mlengine/$JOB_NAME/models \
+    --epoch 1 \
+    --num_gpus 1 
 ```
 
-This command would train MVSNet for 40 epochs on a dataset consisting of 7 scenes data and DTU data. 
+This command would train MVSNet for 1 epochs on a dataset of consisting of DTU, scenes11, RGBD and 7 Scenes on a p100 GPU.
 
+
+## Inference on Atlas data
+
+You can convert Atlas data into the format read by MVSNet for inference using the following command:
+
+```
+bzr ubq/ai/tools:map-to-mvs-training -- --map-id <atlas-map-id> --stack <stack> --data-dir <dir-to-deposit-data>
+```
+
+Which would download a map from Atlas and then conver to the right format. Then you can do inference on that data by running this command from the root of the mvsnet repo
+
+```
+python -m mvsnet.test --dense_folder <atlas-data-in-densify-train-format> --ckpt_step <ckpt-of-saved-model> --model_dir <dir-where-saved-model-is>
+```
+
+Note that `--model_dir` can be a google storage bucket where models were saved during training with ml-engine, so you could run:
+
+```
+python -m mvsnet.test --dense_folder <atlas-data-in-densify-train-format> --ckpt_step 35000 --model_dir gs://mvs-training-mlengine/dtu_scan_104_epochs_200_lr_0025_viewnum_4/models/ 
+```
+
+To use one of our trained models trained for 35000 steps
 
 ## NOTE -- old documentation from original branch included below. Some of this may now be outdated
 
