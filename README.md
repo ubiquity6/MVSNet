@@ -48,6 +48,30 @@ python -m mvsnet.test --dense_folder <atlas-data-in-densify-train-format> --ckpt
 
 To use one of our trained models trained for 35000 steps
 
+
+## Inference plus point cloud fusion
+
+The library we use to fuse MVSNet depth maps (fusibile - https://github.com/kysucix/fusibile ), requires a GPU to run, so if you want to use it you will need to connect to a GPU box. One that you can use, which already has fusibile installed, is a google cloud box named deepmvs-vm. To connect to this you will need the gcloud command line tools. Next, you can run:
+
+```
+gcloud compute instances start deepmvs-vm  # starts the instance
+gcloud compute ssh deepmvs-vm --zone us-west1-b # connects to the instance
+cd MVSNet
+nohup python -m scripts.test_and_fuse --ckpt_step 1350000 --model_dir ./model --prob_threshold 0.05 --disp_threshold 0.2 --num_consistent 3 --test_folder_root /home/chrisheinrich/data/atlas2/ --no_test &
+```
+
+This woud run the test_and_fuse script which performs inference on all of the Atlas test data we have on that machine (you could add more), fuses the depth maps, and then uploads the results to sketchfab. At the end of all this you can run:
+
+```
+cat nohup.out
+```
+
+to view the output, the last few lines of which will contain the URLs of the uploaded PLYs on sketchfab
+
+
+
+
+
 ## NOTE -- old documentation from original branch included below. Some of this may now be outdated
 
 ## About
