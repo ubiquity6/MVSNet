@@ -45,7 +45,7 @@ tf.app.flags.DEFINE_integer('ckpt_step', None,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 3,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 192,
+tf.app.flags.DEFINE_integer('max_d', 64,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('max_w', 640,
                             """Maximum image width when training.""")
@@ -60,9 +60,9 @@ tf.app.flags.DEFINE_float('base_image_size', 8,
 # network architectures
 tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method.""")
-tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
+tf.app.flags.DEFINE_string('optimizer', 'momentum',
                            """Optimizer to use. One of 'momentum' or 'rmsprop' """)
-tf.app.flags.DEFINE_boolean('refinement', False,
+tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for 3DCNNs""")
 
 # training parameters
@@ -82,7 +82,7 @@ tf.app.flags.DEFINE_integer('stepvalue', None,
                             """Step interval to decay learning rate.""")
 tf.app.flags.DEFINE_integer('snapshot', 10000,
                             """Step interval to save the model.""")
-tf.app.flags.DEFINE_float('gamma', 0.9,
+tf.app.flags.DEFINE_float('gamma', 0.5,
                           """Learning rate decay rate.""")
 tf.app.flags.DEFINE_float('val_batch_size', 5,
                           """Number of images to run validation on when validation.""")

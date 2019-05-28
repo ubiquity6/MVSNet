@@ -488,6 +488,12 @@ def depth_refine(init_depth_map, image, depth_num, depth_start, depth_interval, 
     norm_depth_map = norm_depth_tower.get_output()
 
     # denormalize depth map
-    refined_depth_map = tf.multiply(norm_depth_map, depth_scale_mat) + depth_start_mat
+    # (CH) I am experimenting with adding the residual to the 
+    # original depth estimate, rather than adding to normalized depth estimate
+    # followed by the denormalizing scaling. I think this is a good idea because the previous
+    # way of doing things constrained the output of refine_conv3 to only take on very small values
+    # which would lead to small gradients
+    #refined_depth_map = tf.multiply(norm_depth_map, depth_scale_mat) + depth_start_mat
+    refined_depth_map = tf.add_n((norm_depth_map, init_depth_map),name='add_residual')
 
     return refined_depth_map

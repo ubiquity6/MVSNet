@@ -8,7 +8,7 @@ from network import Network
 
 
 ########################################################################################
-############################# 2D feature extraction nework #############################
+############################# 2D feature extraction network #############################
 ########################################################################################
 
 class UniNetDS2(Network):
@@ -164,5 +164,10 @@ class RefineNet(Network):
          .conv_bn(3, 32, 1, name='refine_conv2')
          .conv(3, 1, 1, relu=False, name='refine_conv3'))
 
-        (self.feed('refine_conv3', 'depth_image')
-         .add(name='refined_depth_image'))
+        # (CH) I am experimenting with adding the residual to the 
+        # original depth estimate, rather than adding to normalized depth estimate
+        # followed by the denormalizing scaling. I think this is a good idea because the previous
+        # way of doing things constrained the output of refine_conv3 to only take on very small values
+        # which would lead to small gradients
+        #(self.feed('refine_conv3', 'depth_image')
+        # .add(name='refined_depth_image'))
