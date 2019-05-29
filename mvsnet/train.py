@@ -67,7 +67,7 @@ tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
                            """Optimizer to use. One of 'momentum' or 'rmsprop' """)
 tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for 3DCNNs""")
-tf.app.flags.DEFINE_string('network_mode', 'normal',
+tf.app.flags.DEFINE_string('network_mode', 'lite',
                             """One of 'normal' or 'lite'. If 'lite' then networks have fewer params""")
 # training parameters
 tf.app.flags.DEFINE_integer('num_gpus', None,
@@ -161,7 +161,7 @@ def generator(n, mode):
         flip_cams = True
     gen = ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
                                 FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode=mode, flip_cams=flip_cams)
-    print('Initializing generator with mode {}'.format(mode))
+    logger.info('Initializing generator with mode {}'.format(mode))
     if mode == 'training':
         global training_sample_size
         training_sample_size = len(gen.train_clusters)
@@ -237,16 +237,16 @@ def setup_optimizer():
             learning_rate=lr_op, momentum=0.9, use_nesterov=False)
         return opt, global_step
     else:
-        print("Optimizer {} is not implemented. Please use 'rmsprop' or 'momentum".format(
+        logger.error("Optimizer {} is not implemented. Please use 'rmsprop' or 'momentum".format(
             FLAGS.optimizer))
         raise NotImplementedError
 
 def initialize_trainer():
     """ Prints out some info and returns a validation summary file """
     train_session_start = time.time()
-    print("Training starting at time:", train_session_start)
-    print("Tensorflow version:", tf.__version__)
-    print("Flags:", FLAGS)
+    logger.info("Training starting at time: {}".format(train_session_start))
+    logger.info("Tensorflow version: {}".format(tf.__version__))
+    logger.info("Flags: {}".format(FLAGS))
 
     # Prepare validation summary 
     val_sum_file = os.path.join(
@@ -335,7 +335,7 @@ def validate(sess, val_sum_file, loss, less_one_accuracy, less_three_accuracy, e
                 [loss, less_one_accuracy, less_three_accuracy])
         except tf.errors.OutOfRangeError:
             # ==> "End of dataset"
-            print("End of validation dataset")
+            logger.warn("End of validation dataset")
             break
         duration = time.time() - start_time
 
@@ -414,7 +414,7 @@ def train():
                         out_opt, out_loss, out_less_one, out_less_three = sess.run(
                             [train_opt, loss, less_one_accuracy, less_three_accuracy])
                     except tf.errors.OutOfRangeError:
-                        print("End of dataset")
+                        logger.warn("End of dataset")
                         break
                     duration = time.time() - start_time
 
@@ -439,5 +439,5 @@ def main(argv=None):  # pylint: disable=unused-argument
 
 
 if __name__ == '__main__':
-    print('Training MVSNet with %d views' % FLAGS.view_num)
+    logger.info('Training MVSNet with %d views' % FLAGS.view_num)
     tf.app.run()

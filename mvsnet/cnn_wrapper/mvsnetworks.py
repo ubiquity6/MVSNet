@@ -7,7 +7,6 @@ MVSNet sub-models.
 from network import Network
 import sys
 sys.path.append('../')
-sys.path.append('../../')
 from MVSNet.mvsnet.utils import setup_logger
 
 logger = setup_logger('mvsnet-networks')
