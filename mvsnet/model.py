@@ -10,7 +10,7 @@ import tensorflow as tf
 import numpy as np
 
 #sys.path.append("../")
-from cnn_wrapper.mvsnet import *
+from cnn_wrapper.mvsnetworks import *
 from convgru import ConvGRUCell
 from homography_warping import *
 
@@ -69,7 +69,7 @@ def get_propability_map(cv, depth_map, depth_start, depth_interval):
 
     return prob_map
 
-def inference(images, cams, depth_num, depth_start, depth_interval, is_master_gpu=True):
+def inference(images, cams, depth_num, depth_start, depth_interval, network_mode, is_master_gpu=True):
     """ infer depth image from multi-view images and cameras """
 
     # dynamic gpu params
@@ -81,13 +81,13 @@ def inference(images, cams, depth_num, depth_start, depth_interval, is_master_gp
 
     # image feature extraction    
     if is_master_gpu:
-        ref_tower = UNetDS2GN({'data': ref_image}, is_training=True, reuse=False)
+        ref_tower = UNetDS2GN({'data': ref_image}, is_training=True, mode=network_mode, reuse=False)
     else:
-        ref_tower = UNetDS2GN({'data': ref_image}, is_training=True, reuse=True)
+        ref_tower = UNetDS2GN({'data': ref_image}, is_training=True, mode=network_mode, reuse=True)
     view_towers = []
     for view in range(1, FLAGS.view_num):
         view_image = tf.squeeze(tf.slice(images, [0, view, 0, 0, 0], [-1, 1, -1, -1, -1]), axis=1)
-        view_tower = UNetDS2GN({'data': view_image}, is_training=True, reuse=True)
+        view_tower = UNetDS2GN({'data': view_image}, is_training=True, mode=network_mode, reuse=True)
         view_towers.append(view_tower)
 
     # get all homographies
@@ -120,9 +120,9 @@ def inference(images, cams, depth_num, depth_start, depth_interval, is_master_gp
 
     # filtered cost volume, size of (B, D, H, W, 1)
     if is_master_gpu:
-        filtered_cost_volume_tower = RegNetUS0({'data': cost_volume}, is_training=True, reuse=False)
+        filtered_cost_volume_tower = RegNetUS0({'data': cost_volume}, is_training=True, mode=network_mode, reuse=False)
     else:
-        filtered_cost_volume_tower = RegNetUS0({'data': cost_volume}, is_training=True, reuse=True)
+        filtered_cost_volume_tower = RegNetUS0({'data': cost_volume}, is_training=True, mode=network_mode, reuse=True)
     filtered_cost_volume = tf.squeeze(filtered_cost_volume_tower.get_output(), axis=-1)
 
     # depth map by softArgmin
@@ -250,7 +250,7 @@ def inference_mem(images, cams, depth_num, depth_start, depth_interval, is_maste
     return estimated_depth_map, prob_map
 
 
-def inference_prob_recurrent(images, cams, depth_num, depth_start, depth_interval, is_master_gpu=True):
+def inference_prob_recurrent(images, cams, depth_num, depth_start, depth_interval, network_mode,  is_master_gpu=True):
     """ infer disparity image from stereo images and cameras """
 
     # dynamic gpu params
@@ -262,9 +262,9 @@ def inference_prob_recurrent(images, cams, depth_num, depth_start, depth_interva
 
     # image feature extraction    
     if is_master_gpu:
-        ref_tower = UNetDS2GN({'data': ref_image}, is_training=True, reuse=False)
+        ref_tower = UNetDS2GN({'data': ref_image}, is_training=True, mode=network_mode, reuse=False)
     else:
-        ref_tower = UNetDS2GN({'data': ref_image}, is_training=True, reuse=True)
+        ref_tower = UNetDS2GN({'data': ref_image}, is_training=True, mode=network_mode, reuse=True)
     view_towers = []
     for view in range(1, FLAGS.view_num):
         view_image = tf.squeeze(tf.slice(images, [0, view, 0, 0, 0], [-1, 1, -1, -1, -1]), axis=1)
@@ -279,9 +279,13 @@ def inference_prob_recurrent(images, cams, depth_num, depth_start, depth_interva
                                         depth_start=depth_start, depth_interval=depth_interval)
         view_homographies.append(homographies)
 
-    gru1_filters = 16
-    gru2_filters = 4
-    gru3_filters = 2
+    base_divisor = 1
+    if network_mode == 'lite':
+        base_divisor = 2
+
+    gru1_filters = int(16 / base_divisor)
+    gru2_filters = int(4 / base_divisor)
+    gru3_filters = int(2 / base_divisor)
     feature_shape = [FLAGS.batch_size, FLAGS.max_h/4, FLAGS.max_w/4, 32]
     gru_input_shape = [feature_shape[1], feature_shape[2]]
     state1 = tf.zeros([FLAGS.batch_size, feature_shape[1], feature_shape[2], gru1_filters])
@@ -460,7 +464,7 @@ def inference_winner_take_all(images, cams, depth_num, depth_start, depth_end,
     forward_depth_map = depth_image
     return forward_depth_map, max_prob_image / forward_exp_sum
 
-def depth_refine(init_depth_map, image, depth_num, depth_start, depth_interval, is_master_gpu=True):
+def depth_refine(init_depth_map, image, depth_num, depth_start, depth_interval, network_mode, is_master_gpu=True):
     """ refine depth image with the image """
 
     # normalization parameters
@@ -481,10 +485,10 @@ def depth_refine(init_depth_map, image, depth_num, depth_start, depth_interval, 
     # refinement network
     if is_master_gpu:
         norm_depth_tower = RefineNet({'color_image': resized_image, 'depth_image': init_norm_depth_map},
-                                        is_training=True, reuse=False)
+                                        is_training=True, mode=network_mode, reuse=False)
     else:
         norm_depth_tower = RefineNet({'color_image': resized_image, 'depth_image': init_norm_depth_map},
-                                        is_training=True, reuse=True)
+                                        is_training=True, mode=network_mode, reuse=True)
     norm_depth_map = norm_depth_tower.get_output()
 
     # denormalize depth map

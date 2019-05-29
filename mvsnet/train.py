@@ -22,6 +22,9 @@ import cv2
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.lib.io import file_io
+from utils import setup_logger
+
+logger = setup_logger('train')
 
 
 # params for datasets
@@ -64,6 +67,8 @@ tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
                            """Optimizer to use. One of 'momentum' or 'rmsprop' """)
 tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for 3DCNNs""")
+tf.app.flags.DEFINE_string('network_mode', 'normal',
+                            """One of 'normal' or 'lite'. If 'lite' then networks have fewer params""")
 # training parameters
 tf.app.flags.DEFINE_integer('num_gpus', None,
                             """Number of GPUs.""")
@@ -277,13 +282,13 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, i):
     if FLAGS.regularization == '3DCNNs':
         # initial depth map
         depth_map, prob_map = inference(
-            images, cams, FLAGS.max_d, depth_start, depth_interval, is_master_gpu)
+            images, cams, FLAGS.max_d, depth_start, depth_interval,FLAGS.network_mode, is_master_gpu)
         # refinement
         if FLAGS.refinement:
             ref_image = tf.squeeze(
                 tf.slice(images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
             refined_depth_map = depth_refine(depth_map, ref_image,
-                                                FLAGS.max_d, depth_start, depth_interval, is_master_gpu)
+                                                FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode,  is_master_gpu)
                                     # regression loss
             loss0, less_one_temp, less_three_temp = mvsnet_regression_loss(
                 depth_map, depth_image, depth_interval)
@@ -299,7 +304,7 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, i):
     elif FLAGS.regularization == 'GRU':
         # probability volume
         prob_volume = inference_prob_recurrent(
-            images, cams, FLAGS.max_d, depth_start, depth_interval, is_master_gpu)
+            images, cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, is_master_gpu)
 
         # classification loss
         loss, mae, less_one_accuracy, less_three_accuracy, depth_map = \

@@ -51,7 +51,7 @@ def layer(op):
 class Network(object):
     """Class NetWork."""
 
-    def __init__(self, inputs, is_training,
+    def __init__(self, inputs, is_training, mode='normal',
                  dropout_rate=0.5, seed=None, epsilon=1e-5, reuse=False, fcn=True, regularize=True,
                  **kwargs):
         # The input nodes for this network
@@ -71,6 +71,7 @@ class Network(object):
         # The epsilon paramater in BN layer.
         self.bn_epsilon = epsilon
         self.extra_args = kwargs
+        self.base_divisor = 1 if mode == 'normal' else 2 # for dividing the base_filter size of the network
         if inputs is not None:
             # The current list of terminal nodes
             self.terminals = []

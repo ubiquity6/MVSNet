@@ -5,6 +5,12 @@ MVSNet sub-models.
 """
 
 from network import Network
+import sys
+sys.path.append('../')
+sys.path.append('../../')
+from MVSNet.mvsnet.utils import setup_logger
+
+logger = setup_logger('mvsnet-networks')
 
 
 ########################################################################################
@@ -15,8 +21,9 @@ class UniNetDS2(Network):
     """Simple UniNet, as described in the paper."""
 
     def setup(self):
-        print('2D with 32 filters')
+        logger.info('2D with 32 filters')
         base_filter = 8
+        base_filter = max(1, int(base_filter / self.base_divisor))
         (self.feed('data')
          .conv_bn(3, base_filter, 1, center=True, scale=True, name='conv0_0')
          .conv_bn(3, base_filter, 1, center=True, scale=True, name='conv0_1')
@@ -32,8 +39,9 @@ class UniNetDS2GN(Network):
     """Simple UniNet with group normalization."""
 
     def setup(self):
-        print('2D with 32 filters')
+        logger.info('2D with 32 filters')
         base_filter = 8
+        base_filter = max(1, int(base_filter / self.base_divisor))
         (self.feed('data')
          .conv_gn(3, base_filter, 1, center=True, scale=True, name='conv0_0')
          .conv_gn(3, base_filter, 1, center=True, scale=True, name='conv0_1')
@@ -49,8 +57,9 @@ class UNetDS2GN(Network):
     """2D U-Net with group normalization."""
 
     def setup(self):
-        print('2D UNet with 32 channel output')
         base_filter = 8
+        base_filter = max(1, int(base_filter / self.base_divisor))
+        logger.info('2D Unet with base filter {}'.format(base_filter))
         (self.feed('data')
          .conv_gn(3, base_filter * 2, 2, center=True, scale=True, name='2dconv1_0')
          .conv_gn(3, base_filter * 4, 2, center=True, scale=True, name='2dconv2_0')
@@ -117,8 +126,10 @@ class RegNetUS0(Network):
     """network for regularizing 3D cost volume in a encoder-decoder style. Keeping original size."""
 
     def setup(self):
-        print('3D with 8 filters')
         base_filter = 8
+        base_filter = max(1, int(base_filter / self.base_divisor))
+        logger.info('3D RegNet with base filter {}'.format(base_filter))
+
         (self.feed('data')
          .conv_bn(3, base_filter * 2, 2, center=True, scale=True, name='3dconv1_0')
          .conv_bn(3, base_filter * 4, 2, center=True, scale=True, name='3dconv2_0')
@@ -154,14 +165,16 @@ class RefineNet(Network):
     """network for depth map refinement using original image."""
 
     def setup(self):
+        base_filter = 32
+        base_filter = max(1, int(base_filter / self.base_divisor))
 
         (self.feed('color_image', 'depth_image')
          .concat(axis=3, name='concat_image'))
 
         (self.feed('concat_image')
-         .conv_bn(3, 32, 1, name='refine_conv0')
-         .conv_bn(3, 32, 1, name='refine_conv1')
-         .conv_bn(3, 32, 1, name='refine_conv2')
+         .conv_bn(3, base_filter, 1, name='refine_conv0')
+         .conv_bn(3, base_filter, 1, name='refine_conv1')
+         .conv_bn(3, base_filter, 1, name='refine_conv2')
          .conv(3, 1, 1, relu=False, name='refine_conv3'))
 
         (self.feed('refine_conv3', 'depth_image')
