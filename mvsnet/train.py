@@ -426,42 +426,6 @@ def train():
                     # Validate model against validation set of data
                     if i % FLAGS.train_steps_per_val == 0:
                         validate(sess, val_sum_file, loss, less_one_accuracy, less_three_accuracy, epoch, total_step)
-                        """
-                        training_status = False
-                        val_loss = []
-                        val_less_one = []
-                        val_less_three = []
-                        for i in range(int(FLAGS.val_batch_size / FLAGS.num_gpus)):
-                            # run one batch
-                            start_time = time.time()
-                            try:
-                                out_loss, out_less_one, out_less_three = sess.run(
-                                    [loss, less_one_accuracy, less_three_accuracy])
-                            except tf.errors.OutOfRangeError:
-                                # ==> "End of dataset"
-                                print("End of validation dataset")
-                                break
-                            duration = time.time() - start_time
-
-                            print(Notify.INFO, '_validating_',
-                                    'epoch, %d, train step %d, val loss = %.4f, val (< 1px) = %.4f, val (< 3px) = %.4f (%.3f sec/step)' %
-                                    (epoch, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
-                            val_loss.append(out_loss)
-                            val_less_one.append(out_less_one)
-                            val_less_three.append(out_less_three)
-                        l = np.mean(np.asarray(val_loss))
-                        l1 = np.mean(np.asarray(val_less_one))
-                        l3 = np.mean(np.asarray(val_less_three))
-
-                        print(Notify.INFO, '\n VAL STEP COMPLETED. Average loss: {}, Average less one: {}, Average less three: {}\n'.format(
-                            l, l1, l3))
-
-                        with file_io.FileIO(val_sum_file, 'a+') as f:
-                            f.write('{},{},{},{}\n'.format(
-                                total_step, l, l1, l3))
-                        print(
-                            Notify.INFO, 'Validation output summary saved to: {}'.format(val_sum_file))
-                            """
 
 
 def main(argv=None):  # pylint: disable=unused-argument
