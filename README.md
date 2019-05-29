@@ -1,4 +1,4 @@
-# MVSNet & R-MVSNet
+# MVSNet
 
 ## Training on ml-engine
 
