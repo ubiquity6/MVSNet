@@ -181,6 +181,29 @@ def parallel_iterator(mode, num_generators = FLAGS.num_gpus):
             validation_dataset, cycle_length=num_generators, prefetch_input_elements=2*num_generators, sloppy=True))
     return dataset.make_initializable_iterator()
 
+def setup_optimizer(training_sample_size):
+    if FLAGS.stepvalue is None:
+        # With this stepvalue, the lr will decay by a factor of decay_per_10_epoch every 10 epochs
+        decay_per_10_epoch = 0.025
+        FLAGS.stepvalue = int(
+            10 * np.log(FLAGS.gamma) * training_sample_size / np.log(decay_per_10_epoch))
+    global_step = tf.Variable(0, trainable=False, name='global_step')
+    lr_op = tf.train.exponential_decay(FLAGS.base_lr, global_step=global_step,
+                                        decay_steps=FLAGS.stepvalue, decay_rate=FLAGS.gamma, name='lr')
+    if FLAGS.optimizer == 'rmsprop':
+        opt = tf.train.RMSPropOptimizer(learning_rate=lr_op)
+        return opt, global_step
+    elif FLAGS.optimizer == 'momentum':
+        opt = tf.train.MomentumOptimizer(
+            learning_rate=lr_op, momentum=0.9, use_nesterov=False)
+        return opt, global_step
+    else:
+        print("Optimizer {} is not implemented. Please use 'rmsprop' or 'momentum".format(
+            FLAGS.optimizer))
+        raise NotImplementedError
+
+
+
 def train(training_list=None, validation_list=None):
     """ training mvsnet """
 
@@ -200,12 +223,14 @@ def train(training_list=None, validation_list=None):
 
         ########## data iterator #########
         # training generators
+        """
         train_gen = ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
                                      FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='training')
         training_sample_size = len(train_gen.train_clusters)
 
         if FLAGS.regularization == 'GRU':
             training_sample_size = training_sample_size * 2
+            """
 
         training_iterator = parallel_iterator('training')
         validation_iterator = parallel_iterator('validation')
@@ -213,20 +238,7 @@ def train(training_list=None, validation_list=None):
         training_status = True  # Set to true when training, false when validating
 
         ########## optimization options ##########
-        if FLAGS.stepvalue is None:
-            # With this stepvalue, the lr will decay by a factor of decay_per_10_epoch every 10 epochs
-            decay_per_10_epoch = 0.025
-            FLAGS.stepvalue = int(10 * np.log(FLAGS.gamma) * training_sample_size / np.log(decay_per_10_epoch)  )
-        global_step = tf.Variable(0, trainable=False, name='global_step')
-        lr_op = tf.train.exponential_decay(FLAGS.base_lr, global_step=global_step,
-                                           decay_steps=FLAGS.stepvalue, decay_rate=FLAGS.gamma, name='lr')
-        if FLAGS.optimizer == 'rmsprop':
-            opt = tf.train.RMSPropOptimizer(learning_rate=lr_op)
-        elif FLAGS.optimizer == 'momentum':
-            opt = tf.train.MomentumOptimizer(learning_rate=lr_op, momentum=0.9, use_nesterov=False)
-        else:
-            print("Optimizer {} is not implemented. Please use 'rmsprop' or 'momentum".format(FLAGS.optimizer))
-            sys.exit(1)
+        opt, global_step = setup_optimizer(training_sample_size)
 
 
         tower_grads = []
