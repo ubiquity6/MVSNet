@@ -34,9 +34,9 @@ tf.app.flags.DEFINE_string('model_dir',
 tf.app.flags.DEFINE_integer('ckpt_step', None,
                             """ckpt  step.""")
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 8,
+tf.app.flags.DEFINE_integer('view_num', 4,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 256,
+tf.app.flags.DEFINE_integer('max_d', 128,
                             """Maximum depth step when testing.""")
 tf.app.flags.DEFINE_integer('max_w', 1024,
                             """Maximum image width when testing.""")
@@ -60,6 +60,8 @@ tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for MVSNet""")
 tf.app.flags.DEFINE_bool('inverse_depth', True,
                          """Whether to apply inverse depth for R-MVSNet""")
+tf.app.flags.DEFINE_string('network_mode', 'normal',
+                            """One of 'normal' or 'lite'. If 'lite' then networks have fewer params""")
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -112,18 +114,18 @@ def mvsnet_pipeline(test_folder, mvs_list=None):
     # depth map inference using 3DCNNs
     if FLAGS.regularization == '3DCNNs':
         init_depth_map, prob_map = inference_mem(
-            centered_images, scaled_cams, FLAGS.max_d, depth_start, depth_interval)
+            centered_images, scaled_cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode)
 
         if FLAGS.refinement:
             ref_image = tf.squeeze(
                 tf.slice(centered_images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
             refined_depth_map = depth_refine(
-                init_depth_map, ref_image, FLAGS.max_d, depth_start, depth_interval, True)
+                init_depth_map, ref_image, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, True)
 
     # depth map inference using GRU
     elif FLAGS.regularization == 'GRU':
         init_depth_map, prob_map = inference_winner_take_all(centered_images, scaled_cams,
-                                                             depth_num, depth_start, depth_end, reg_type='GRU', inverse_depth=FLAGS.inverse_depth)
+                                                             depth_num, depth_start, depth_end, network_mode=FLAGS.network_mode, reg_type='GRU', inverse_depth=FLAGS.inverse_depth)
 
     # init option
     init_op = tf.global_variables_initializer()

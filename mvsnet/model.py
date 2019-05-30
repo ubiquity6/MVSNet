@@ -9,7 +9,6 @@ import math
 import tensorflow as tf
 import numpy as np
 
-#sys.path.append("../")
 from cnn_wrapper.mvsnetworks import *
 from convgru import ConvGRUCell
 from homography_warping import *
@@ -146,7 +145,7 @@ def inference(images, cams, depth_num, depth_start, depth_interval, network_mode
 
     return estimated_depth_map, prob_map#, filtered_depth_map, probability_volume
 
-def inference_mem(images, cams, depth_num, depth_start, depth_interval, is_master_gpu=True):
+def inference_mem(images, cams, depth_num, depth_start, depth_interval,network_mode, is_master_gpu=True):
     """ infer depth image from multi-view images and cameras """
 
     # dynamic gpu params
@@ -161,16 +160,16 @@ def inference_mem(images, cams, depth_num, depth_start, depth_interval, is_maste
 
     # image feature extraction    
     if is_master_gpu:
-        ref_tower = UNetDS2GN({'data': ref_image}, is_training=True, reuse=False)
+        ref_tower = UNetDS2GN({'data': ref_image}, is_training=True, mode=network_mode, reuse=False)
     else:
-        ref_tower = UNetDS2GN({'data': ref_image}, is_training=True, reuse=True)
+        ref_tower = UNetDS2GN({'data': ref_image}, is_training=True, mode=network_mode, reuse=True)
     ref_feature = ref_tower.get_output()
     ref_feature2 = tf.square(ref_feature)
 
     view_features = []
     for view in range(1, FLAGS.view_num):
         view_image = tf.squeeze(tf.slice(images, [0, view, 0, 0, 0], [-1, 1, -1, -1, -1]), axis=1)
-        view_tower = UNetDS2GN({'data': view_image}, is_training=True, reuse=True)
+        view_tower = UNetDS2GN({'data': view_image}, is_training=True, mode=network_mode, reuse=True)
         view_features.append(view_tower.get_output())
     view_features = tf.stack(view_features, axis=0)
 
@@ -221,9 +220,9 @@ def inference_mem(images, cams, depth_num, depth_start, depth_interval, is_maste
 
     # filtered cost volume, size of (B, D, H, W, 1)
     if is_master_gpu:
-        filtered_cost_volume_tower = RegNetUS0({'data': cost_volume}, is_training=True, reuse=False)
+        filtered_cost_volume_tower = RegNetUS0({'data': cost_volume}, is_training=True, mode=network_mode, reuse=False)
     else:
-        filtered_cost_volume_tower = RegNetUS0({'data': cost_volume}, is_training=True, reuse=True)
+        filtered_cost_volume_tower = RegNetUS0({'data': cost_volume}, is_training=True, mode=network_mode,  reuse=True)
     filtered_cost_volume = tf.squeeze(filtered_cost_volume_tower.get_output(), axis=-1)
 
     # depth map by softArgmin
@@ -333,7 +332,7 @@ def inference_prob_recurrent(images, cams, depth_num, depth_start, depth_interva
 
     return prob_volume
 
-def inference_winner_take_all(images, cams, depth_num, depth_start, depth_end, 
+def inference_winner_take_all(images, cams, depth_num, depth_start, depth_end, network_mode,
                               is_master_gpu=True, reg_type='GRU', inverse_depth=False):
     """ infer disparity image from stereo images and cameras """
 
@@ -346,13 +345,13 @@ def inference_winner_take_all(images, cams, depth_num, depth_start, depth_end,
 
     # image feature extraction    
     if is_master_gpu:
-        ref_tower = UNetDS2GN({'data': ref_image}, is_training=True, reuse=False)
+        ref_tower = UNetDS2GN({'data': ref_image}, is_training=True, mode=network_mode, reuse=False)
     else:
-        ref_tower = UNetDS2GN({'data': ref_image}, is_training=True, reuse=True)
+        ref_tower = UNetDS2GN({'data': ref_image}, is_training=True, mode=network_mode,  reuse=True)
     view_towers = []
     for view in range(1, FLAGS.view_num):
         view_image = tf.squeeze(tf.slice(images, [0, view, 0, 0, 0], [-1, 1, -1, -1, -1]), axis=1)
-        view_tower = UNetDS2GN({'data': view_image}, is_training=True, reuse=True)
+        view_tower = UNetDS2GN({'data': view_image}, is_training=True, mode=network_mode, reuse=True)
         view_towers.append(view_tower)
 
     # get all homographies
@@ -368,9 +367,14 @@ def inference_winner_take_all(images, cams, depth_num, depth_start, depth_end,
         view_homographies.append(homographies)
 
     # gru unit
-    gru1_filters = 16
-    gru2_filters = 4
-    gru3_filters = 2
+    base_divisor = 1
+    if network_mode == 'lite':
+        base_divisor = 2
+
+    gru1_filters = int(16 / base_divisor)
+    gru2_filters = int(4 / base_divisor)
+    gru3_filters = int(2 / base_divisor)
+    
     feature_shape = [FLAGS.batch_size, FLAGS.max_h/4, FLAGS.max_w/4, 32]
     gru_input_shape = [feature_shape[1], feature_shape[2]]
     state1 = tf.zeros([FLAGS.batch_size, feature_shape[1], feature_shape[2], gru1_filters])
