@@ -8,6 +8,7 @@ notebooks/*
 *.DS_Store
 old-models/*
 commands.md
+results.md
 fused-point-clouds/*
 dist/*
 MANIFEST
