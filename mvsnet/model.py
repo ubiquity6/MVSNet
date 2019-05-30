@@ -278,9 +278,7 @@ def inference_prob_recurrent(images, cams, depth_num, depth_start, depth_interva
                                         depth_start=depth_start, depth_interval=depth_interval)
         view_homographies.append(homographies)
 
-    base_divisor = 1
-    if network_mode == 'lite':
-        base_divisor = 2
+    base_divisor = 1 if network_mode == 'normal' else 2
 
     gru1_filters = int(16 / base_divisor)
     gru2_filters = int(4 / base_divisor)
@@ -367,14 +365,12 @@ def inference_winner_take_all(images, cams, depth_num, depth_start, depth_end, n
         view_homographies.append(homographies)
 
     # gru unit
-    base_divisor = 1
-    if network_mode == 'lite':
-        base_divisor = 2
+    base_divisor = 1 if network_mode == 'normal' else 2
 
     gru1_filters = int(16 / base_divisor)
     gru2_filters = int(4 / base_divisor)
     gru3_filters = int(2 / base_divisor)
-    
+
     feature_shape = [FLAGS.batch_size, FLAGS.max_h/4, FLAGS.max_w/4, 32]
     gru_input_shape = [feature_shape[1], feature_shape[2]]
     state1 = tf.zeros([FLAGS.batch_size, feature_shape[1], feature_shape[2], gru1_filters])
