@@ -361,7 +361,7 @@ def validate(sess, val_sum_file, loss, less_one_accuracy, less_three_accuracy, e
 
 
 def train():
-    """ training mvsnet """
+    """ Executes the main training loop for multiple epochs """
     val_sum_file = initialize_trainer()
 
     with tf.Graph().as_default(), tf.device('/cpu:0'):
@@ -390,7 +390,6 @@ def train():
         init_op, config = init_session()
 
         with tf.Session(config=config) as sess:
-
             # initialization
             total_step = 0
             sess.run(init_op)
@@ -398,7 +397,6 @@ def train():
 
             # training several epochs
             num_iterations = int(np.ceil(float(FLAGS.epoch) / float(FLAGS.num_gpus)))
-
             for epoch in range(num_iterations):
 
                 # training of one epoch
