@@ -13,5 +13,6 @@ fused-point-clouds/*
 dist/*
 MANIFEST
 MVSNet.egg-info/*
+.vscode/*
 
 nohup.out
