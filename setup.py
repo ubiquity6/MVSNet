@@ -3,7 +3,7 @@ from setuptools import find_packages
 
 # Package Metadata
 
-NAME='MVSNet'
+NAME='MVSNet-test1'
 VERSION='0.4.0'
 
 
