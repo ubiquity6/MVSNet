@@ -21,7 +21,8 @@ def required_packages():
         'Pillow>=3.1.2',
         'imageio',
         'wandb',
-        'tensorflow>=1.13.0'
+        'tensorflow==1.13.0',
+        'tensorflow-estimator==1.13.0',
     ]
     return PACKAGES
 
