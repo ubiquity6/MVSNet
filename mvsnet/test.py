@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-from loss import *
-from model import *
-from preprocess import *
-from cnn_wrapper.common import Notify
-from mvs_data_generation.cluster_generator import ClusterGenerator
+from mvsnet.loss import *
+from mvsnet.model import *
+from mvsnet.preprocess import *
+from mvsnet.cnn_wrapper.common import Notify
+from mvsnet.mvs_data_generation.cluster_generator import ClusterGenerator
+from mvsnet.utils import setup_logger
 """
 Copyright 2019, Yao Yao, HKUST.
 Test script.
@@ -21,7 +22,7 @@ import numpy as np
 import imageio
 import cv2
 import tensorflow as tf
-from utils import setup_logger
+
 
 logger = setup_logger('mvsnet-test')
 
