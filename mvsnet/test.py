@@ -69,7 +69,7 @@ tf.app.flags.DEFINE_string('network_mode', 'normal',
 FLAGS = tf.app.flags.FLAGS
 
 
-def compute_depth_maps(test_folder, mvs_list=None):
+def compute_depth_maps(test_folder):
     """ Performs inference using trained MVSNet model on data located in test_folder0 """
 
     # create output folder
