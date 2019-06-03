@@ -1,5 +1,5 @@
 import os
-from mvs_cluster import Cluster
+from mvsnet.mvs_data_generation.mvs_cluster import Cluster
 import utils as ut
 import random
 import numpy as np

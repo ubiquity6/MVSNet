@@ -1,5 +1,5 @@
 import numpy as np
-from utils import mask_depth_image, scale_camera, scale_image, center_image, set_log_level
+from mvsnet.mvs_data_generation.utils import mask_depth_image, scale_camera, scale_image, center_image, set_log_level
 import imageio
 import logging
 import json
