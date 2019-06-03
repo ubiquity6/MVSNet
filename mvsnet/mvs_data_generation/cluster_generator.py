@@ -1,6 +1,6 @@
 import os
 from mvsnet.mvs_data_generation.mvs_cluster import Cluster
-import utils as ut
+import mvsnet.mvs_data_generation.utils as ut
 import random
 import numpy as np
 import imageio
