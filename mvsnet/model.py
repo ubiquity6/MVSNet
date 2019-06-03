@@ -10,7 +10,7 @@ import tensorflow as tf
 import numpy as np
 
 from mvsnet.cnn_wrapper.mvsnetworks import *
-from mvsnet.convgru import ConvGRUCell
+#from mvsnet.convgru import ConvGRUCell
 from mvsnet.homography_warping import *
 
 FLAGS = tf.app.flags.FLAGS
