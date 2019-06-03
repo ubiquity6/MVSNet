@@ -32,9 +32,9 @@ sys.path.append("../")
 tf.app.flags.DEFINE_string('dense_folder', None,
                            """Root path to dense folder.""")
 tf.app.flags.DEFINE_string('model_dir',
-                           None,
+                           'gs://mvs-training-mlengine/all_data_fixed_fromscratch_15epochs/models/',
                            """Path to restore the model.""")
-tf.app.flags.DEFINE_integer('ckpt_step', None,
+tf.app.flags.DEFINE_integer('ckpt_step', 20000,
                             """ckpt  step.""")
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 4,
