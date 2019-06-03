@@ -1,6 +1,13 @@
 from distutils.core import setup
 from setuptools import find_packages
 
+# Package Metadata
+
+NAME='MVSNet'
+VERSION='0.4.0'
+
+
+
 
 def required_packages():
     # place dependencies here
@@ -18,9 +25,10 @@ def required_packages():
     return PACKAGES
 
 setup(
-    name='MVSNet',
-    version='0.3dev',
-    packages=['mvsnet', 'mvsnet/cnn_wrapper','mvsnet/mvs_data_generation'],
+    name=NAME,
+    version=VERSION,
+    #packages=['mvsnet', 'mvsnet/cnn_wrapper','mvsnet/mvs_data_generation'],
+    packages=find_packages(),
     install_requires=required_packages(),
     license='Creative Commons Attribution-Noncommercial-Share Alike license',
     long_description=open('README.md').read(),
