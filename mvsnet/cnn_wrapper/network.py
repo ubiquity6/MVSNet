@@ -13,7 +13,7 @@ import sys
 import numpy as np
 import tensorflow as tf
 
-from common import Notify
+from mvsnet.cnn_wrapper.common import Notify
 
 DEFAULT_PADDING = 'SAME'
 
