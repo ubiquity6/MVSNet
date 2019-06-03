@@ -248,6 +248,7 @@ def initialize_trainer():
     logger.info("Tensorflow version: {}".format(tf.__version__))
     logger.info("Flags: {}".format(FLAGS))
     os.system('wandb login 08b2fe7c6c5d56f49b9c2dee8f24ca14c0679509') # Login to wandb
+    wandb.init()
 
     # Prepare validation summary 
     val_sum_file = os.path.join(

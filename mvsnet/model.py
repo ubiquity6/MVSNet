@@ -9,9 +9,9 @@ import math
 import tensorflow as tf
 import numpy as np
 
-from cnn_wrapper.mvsnetworks import *
-from convgru import ConvGRUCell
-from homography_warping import *
+from mvsnet.cnn_wrapper.mvsnetworks import *
+from mvsnet.convgru import ConvGRUCell
+from mvsnet.homography_warping import *
 
 FLAGS = tf.app.flags.FLAGS
 
