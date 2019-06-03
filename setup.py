@@ -3,7 +3,7 @@ from setuptools import find_packages
 
 
 def required_packages():
-    # place dependencies that don't care about GPU vs CPU here
+    # place dependencies here
     PACKAGES = [
         'progressbar2>=3.0',
         'numpy>=1.13',
@@ -12,7 +12,8 @@ def required_packages():
         'scipy>=0.18',
         'matplotlib>=1.5',
         'Pillow>=3.1.2',
-        'imageio'
+        'imageio',
+        'wandb',
     ]
     return PACKAGES
 

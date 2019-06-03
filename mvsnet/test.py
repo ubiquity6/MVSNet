@@ -19,9 +19,11 @@ import math
 import argparse
 import numpy as np
 import imageio
-
 import cv2
 import tensorflow as tf
+from utils import setup_logger
+
+logger = setup_logger('mvsnet-test')
 
 sys.path.append("../")
 
@@ -66,8 +68,8 @@ tf.app.flags.DEFINE_string('network_mode', 'normal',
 FLAGS = tf.app.flags.FLAGS
 
 
-def mvsnet_pipeline(test_folder, mvs_list=None):
-    """ mvsnet in altizure pipeline """
+def mvsnet_test(test_folder, mvs_list=None):
+    """ Performs inference using trained MVSNet model on data located in test_folder0 """
 
     # create output folder
     output_folder = os.path.join(test_folder, 'depths_mvsnet')
@@ -214,11 +216,11 @@ def main(_):  # pylint: disable=unused-argument
     # Acceptable input for the dense_folder is a single test folder, or a folder containing multiple
     # test folders. We check to see which one it is
     if os.path.isfile(os.path.join(FLAGS.dense_folder, 'covisibility.json')):
-        mvsnet_pipeline(FLAGS.dense_folder)
+        mvsnet_test(FLAGS.dense_folder)
     else:
         folders = os.listdir(FLAGS.dense_folder)
         for f in folders:
-            mvsnet_pipeline(os.path.join(FLAGS.dense_folder, f))
+            mvsnet_test(os.path.join(FLAGS.dense_folder, f))
 
 
 if __name__ == '__main__':

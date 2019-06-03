@@ -24,7 +24,7 @@ import tensorflow as tf
 from tensorflow.python.lib.io import file_io
 from utils import setup_logger
 
-logger = setup_logger('train')
+logger = setup_logger('mvsnet-train')
 
 
 # params for datasets
@@ -247,6 +247,7 @@ def initialize_trainer():
     logger.info("Training starting at time: {}".format(train_session_start))
     logger.info("Tensorflow version: {}".format(tf.__version__))
     logger.info("Flags: {}".format(FLAGS))
+    os.system('wandb login 08b2fe7c6c5d56f49b9c2dee8f24ca14c0679509') # Login to wandb
 
     # Prepare validation summary 
     val_sum_file = os.path.join(
