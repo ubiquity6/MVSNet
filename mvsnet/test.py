@@ -69,7 +69,7 @@ tf.app.flags.DEFINE_string('network_mode', 'normal',
 FLAGS = tf.app.flags.FLAGS
 
 
-def mvsnet_test(test_folder, mvs_list=None):
+def compute_depth_maps(test_folder, mvs_list=None):
     """ Performs inference using trained MVSNet model on data located in test_folder0 """
 
     # create output folder
@@ -217,11 +217,11 @@ def main(_):  # pylint: disable=unused-argument
     # Acceptable input for the dense_folder is a single test folder, or a folder containing multiple
     # test folders. We check to see which one it is
     if os.path.isfile(os.path.join(FLAGS.dense_folder, 'covisibility.json')):
-        mvsnet_test(FLAGS.dense_folder)
+        compute_depth_maps(FLAGS.dense_folder)
     else:
         folders = os.listdir(FLAGS.dense_folder)
         for f in folders:
-            mvsnet_test(os.path.join(FLAGS.dense_folder, f))
+            compute_depth_maps(os.path.join(FLAGS.dense_folder, f))
 
 
 if __name__ == '__main__':
