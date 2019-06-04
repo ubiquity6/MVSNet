@@ -22,7 +22,7 @@ def required_packages():
         'imageio',
         'wandb',
         'tensorflow==1.13.1',
-        'tensorflow-estimator==1.13.0',
+        'tensorflow-estimator==1.10.12',
     ]
     return PACKAGES
 
