@@ -14,7 +14,7 @@ import imageio
 import cv2
 import tensorflow as tf
 from mvsnet.loss import *
-from mvsnet.model import *
+from mvsnet.model import inference_mem, depth_refine, inference_winner_take_all
 from mvsnet.preprocess import *
 from mvsnet.cnn_wrapper.common import Notify
 from mvsnet.mvs_data_generation.cluster_generator import ClusterGenerator
@@ -70,6 +70,7 @@ def compute_depth_maps(input_dir, output_dir = None, width = None, height = None
     """ Performs inference using trained MVSNet model on data located in input_dir """
     if width and height:
         FLAGS.width, FLAGS.height = width, height
+    logger.info('Computing depth maps with MVSNet. Using input width x height = {} x {}'.format(FLAGS.width,FLAGS.height))
 
     # create output folder
     if output_dir is None:

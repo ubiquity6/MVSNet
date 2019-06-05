@@ -65,6 +65,7 @@ class ClusterGenerator:
                 self.load_clusters(session_dir, clusters)
 
         self.logger.info(" There are {} clusters".format(len(clusters)))
+        self.logger.debug('Generating MVS clusters with width x height = {} x {}'.format(self.image_width,self.image_height))
         self.clusters = clusters
         return clusters
 

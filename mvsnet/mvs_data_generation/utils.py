@@ -113,7 +113,7 @@ def scale_mvs_input(images, cams, depth_image=None, scale=1):
         return images, cams, depth_image
 
 
-def crop_mvs_input(images, cams, max_w, max_h, base_image_size, depth_image=None):
+def crop_mvs_input(images, cams, width, height, base_image_size, depth_image=None):
     """ resize images and cameras to fit the network (so both dimensions are divisible by base_image_size ) """
 
     # crop images and cameras
@@ -121,13 +121,13 @@ def crop_mvs_input(images, cams, max_w, max_h, base_image_size, depth_image=None
         h, w = images[view].shape[0:2]
         new_h = h
         new_w = w
-        if new_h > max_h:
-            new_h = max_h
+        if new_h > height:
+            new_h = height
         else:
             new_h = int(math.ceil(h / base_image_size)
                         * base_image_size)
-        if new_w > max_w:
-            new_w = max_w
+        if new_w > width:
+            new_w = width
         else:
             new_w = int(math.ceil(w / base_image_size)
                         * base_image_size)

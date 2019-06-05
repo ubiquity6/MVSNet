@@ -74,12 +74,12 @@ def crop_mvs_input(images, cams, depth_image=None):
         h, w = images[view].shape[0:2]
         new_h = h
         new_w = w
-        if new_h > FLAGS.max_h:
-            new_h = FLAGS.max_h
+        if new_h > FLAGS.height:
+            new_h = FLAGS.height
         else:
             new_h = int(math.ceil(h / FLAGS.base_image_size) * FLAGS.base_image_size)
-        if new_w > FLAGS.max_w:
-            new_w = FLAGS.max_w
+        if new_w > FLAGS.width:
+            new_w = FLAGS.width
         else:
             new_w = int(math.ceil(w / FLAGS.base_image_size) * FLAGS.base_image_size)
         start_h = int(math.ceil((h - new_h) / 2))

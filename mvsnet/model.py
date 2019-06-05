@@ -8,7 +8,6 @@ import sys
 import math
 import tensorflow as tf
 import numpy as np
-
 from mvsnet.cnn_wrapper.mvsnetworks import *
 from mvsnet.convgru import ConvGRUCell
 from mvsnet.homography_warping import *
@@ -151,8 +150,8 @@ def inference_mem(images, cams, depth_num, depth_start, depth_interval,network_m
     # dynamic gpu params
     depth_end = depth_start + (tf.cast(depth_num, tf.float32) - 1) * depth_interval
     feature_c = 32
-    feature_h = FLAGS.max_h / 4
-    feature_w = FLAGS.max_w / 4
+    feature_h = FLAGS.height / 4
+    feature_w = FLAGS.width / 4
 
     # reference image
     ref_image = tf.squeeze(tf.slice(images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
@@ -283,7 +282,7 @@ def inference_prob_recurrent(images, cams, depth_num, depth_start, depth_interva
     gru1_filters = int(16 / base_divisor)
     gru2_filters = int(4 / base_divisor)
     gru3_filters = int(2 / base_divisor)
-    feature_shape = [FLAGS.batch_size, FLAGS.max_h/4, FLAGS.max_w/4, 32]
+    feature_shape = [FLAGS.batch_size, FLAGS.height/4, FLAGS.width/4, 32]
     gru_input_shape = [feature_shape[1], feature_shape[2]]
     state1 = tf.zeros([FLAGS.batch_size, feature_shape[1], feature_shape[2], gru1_filters])
     state2 = tf.zeros([FLAGS.batch_size, feature_shape[1], feature_shape[2], gru2_filters])
@@ -371,7 +370,7 @@ def inference_winner_take_all(images, cams, depth_num, depth_start, depth_end, n
     gru2_filters = int(4 / base_divisor)
     gru3_filters = int(2 / base_divisor)
 
-    feature_shape = [FLAGS.batch_size, FLAGS.max_h/4, FLAGS.max_w/4, 32]
+    feature_shape = [FLAGS.batch_size, FLAGS.height/4, FLAGS.width/4, 32]
     gru_input_shape = [feature_shape[1], feature_shape[2]]
     state1 = tf.zeros([FLAGS.batch_size, feature_shape[1], feature_shape[2], gru1_filters])
     state2 = tf.zeros([FLAGS.batch_size, feature_shape[1], feature_shape[2], gru2_filters])
