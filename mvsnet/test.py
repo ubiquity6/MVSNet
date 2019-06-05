@@ -1,18 +1,9 @@
 #!/usr/bin/env python
-
-from __future__ import print_function
-from mvsnet.loss import *
-from mvsnet.model import *
-from mvsnet.preprocess import *
-from mvsnet.cnn_wrapper.common import Notify
-from mvsnet.mvs_data_generation.cluster_generator import ClusterGenerator
-from mvsnet.utils import setup_logger
 """
 Copyright 2019, Yao Yao, HKUST.
 Test script.
 """
-
-
+from __future__ import print_function
 import os
 import time
 import sys
@@ -22,28 +13,32 @@ import numpy as np
 import imageio
 import cv2
 import tensorflow as tf
+from mvsnet.loss import *
+from mvsnet.model import *
+from mvsnet.preprocess import *
+from mvsnet.cnn_wrapper.common import Notify
+from mvsnet.mvs_data_generation.cluster_generator import ClusterGenerator
+import mvsnet.utils as mu
 
-
-logger = setup_logger('mvsnet-test')
-
+logger = mu.setup_logger('mvsnet-inference')
 sys.path.append("../")
 
 # dataset parameters
 tf.app.flags.DEFINE_string('dense_folder', None,
                            """Root path to dense folder.""")
 tf.app.flags.DEFINE_string('model_dir',
-                           'gs://mvs-training-mlengine/all_data_fixed_fromscratch_15epochs/models/',
+                           'gs://mvs-training-mlengine/trained-models/06-04-2019/',
                            """Path to restore the model.""")
-tf.app.flags.DEFINE_integer('ckpt_step', 20000,
+tf.app.flags.DEFINE_integer('ckpt_step', 1350000,
                             """ckpt  step.""")
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 4,
+tf.app.flags.DEFINE_integer('view_num', 3,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 128,
+tf.app.flags.DEFINE_integer('max_d', 256,
                             """Maximum depth step when testing.""")
-tf.app.flags.DEFINE_integer('max_w', 1024,
+tf.app.flags.DEFINE_integer('max_w', 640,
                             """Maximum image width when testing.""")
-tf.app.flags.DEFINE_integer('max_h', 768,
+tf.app.flags.DEFINE_integer('max_h', 480,
                             """Maximum image height when testing.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume (W and H).""")
@@ -69,16 +64,18 @@ tf.app.flags.DEFINE_string('network_mode', 'normal',
 FLAGS = tf.app.flags.FLAGS
 
 
-def compute_depth_maps(test_folder):
-    """ Performs inference using trained MVSNet model on data located in test_folder0 """
+def compute_depth_maps(input_dir, output_dir = None, width = None, height = None):
+    """ Performs inference using trained MVSNet model on data located in input_dir """
+    if width and height:
+        FLAGS.max_w, FLAGS.max_h = width, height
 
     # create output folder
-    output_folder = os.path.join(test_folder, 'depths_mvsnet')
-    if not os.path.isdir(output_folder):
-        os.mkdir(output_folder)
+    if output_dir is None:
+        output_dir = os.path.join(input_dir, 'depths_mvsnet')
+    mu.mkdir_p(output_dir)
 
     # testing set
-    data_gen = ClusterGenerator(test_folder, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
+    data_gen = ClusterGenerator(input_dir, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
                                 FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='test')
     mvs_generator = iter(data_gen)
     sample_size = len(data_gen.train_clusters)
@@ -131,13 +128,8 @@ def compute_depth_maps(test_folder):
                                                              depth_num, depth_start, depth_end, network_mode=FLAGS.network_mode, reg_type='GRU', inverse_depth=FLAGS.inverse_depth)
 
     # init option
-    init_op = tf.global_variables_initializer()
     var_init_op = tf.local_variables_initializer()
-
-    # GPU grows incrementally
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    config.intra_op_parallelism_threads = 1
+    init_op, config = mu.init_session()
 
     with tf.Session(config=config) as sess:
 
@@ -183,18 +175,18 @@ def compute_depth_maps(test_folder):
 
             # paths
             init_depth_map_path = os.path.join(
-                output_folder, '{}_init.pfm'.format(out_index))
+                output_dir, '{}_init.pfm'.format(out_index))
             prob_map_path = os.path.join(
-                output_folder, '{}_prob.pfm'.format(out_index))
+                output_dir, '{}_prob.pfm'.format(out_index))
             out_ref_image_path = os.path.join(
-                output_folder, '{}.jpg'.format(out_index))
+                output_dir, '{}.jpg'.format(out_index))
             out_ref_cam_path = os.path.join(
-                output_folder, '{}.txt'.format(out_index))
+                output_dir, '{}.txt'.format(out_index))
             # png outputs
             prob_png = os.path.join(
-                output_folder, '{}_prob.png'.format(out_index))
+                output_dir, '{}_prob.png'.format(out_index))
             depth_png = os.path.join(
-                output_folder, '{}_depth.png'.format(out_index))
+                output_dir, '{}_depth.png'.format(out_index))
 
             # save output
             write_pfm(init_depth_map_path, out_init_depth_image)
@@ -213,9 +205,11 @@ def compute_depth_maps(test_folder):
 
 
 def main(_):  # pylint: disable=unused-argument
-    """ program entrance """
-    # Acceptable input for the dense_folder is a single test folder, or a folder containing multiple
-    # test folders. We check to see which one it is
+    """
+    Program entrance for running inference with MVSNet
+    Acceptable input for the dense_folder are (1) a single test folder, or (2) a folder containing multiple
+    test folders. We check to see which one it is
+    """
     if os.path.isfile(os.path.join(FLAGS.dense_folder, 'covisibility.json')):
         compute_depth_maps(FLAGS.dense_folder)
     else:

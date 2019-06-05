@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 from __future__ import print_function
 
-from homography_warping import get_homographies, homography_warping
-from model import *
-from preprocess import *
-from loss import *
-from cnn_wrapper.common import Notify
-from mvs_data_generation.cluster_generator import ClusterGenerator
+from mvsnet.homography_warping import get_homographies, homography_warping
+from mvsnet.model import *
+from mvsnet.preprocess import *
+from mvsnet.loss import *
+from mvsnet.cnn_wrapper.common import Notify
+from mvsnet.mvs_data_generation.cluster_generator import ClusterGenerator
+import mvsnet.utils as mu
 """
 Copyright 2019, Yao Yao, HKUST.
 Training script.
@@ -20,12 +21,12 @@ import argparse
 from random import randint
 import cv2
 import numpy as np
+import wandb
 import tensorflow as tf
 from tensorflow.python.lib.io import file_io
-from utils import setup_logger
 
-logger = setup_logger('mvsnet-train')
 
+logger = mu.setup_logger('mvsnet-train')
 
 # params for datasets
 tf.app.flags.DEFINE_string('train_data_root', None,
@@ -48,7 +49,7 @@ tf.app.flags.DEFINE_integer('ckpt_step', None,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 3,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 64,
+tf.app.flags.DEFINE_integer('max_d', 192,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('max_w', 640,
                             """Maximum image width when training.""")
@@ -78,7 +79,7 @@ tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
 tf.app.flags.DEFINE_float('val_ratio', 0,
                           """Ratio of validation set when splitting dataset.""")
-tf.app.flags.DEFINE_float('base_lr', 0.000025,
+tf.app.flags.DEFINE_float('base_lr', 0.001,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
@@ -106,16 +107,6 @@ def load_model(total_step):
         print(Notify.INFO, 'Pre-trained model restored from %s' %
                 ('-'.join([pretrained_model_path, str(FLAGS.ckpt_step)])), Notify.ENDC)
         total_step = FLAGS.ckpt_step
-
-def init_session():
-    """ Returns tf global vars initializer and sets the config """
-    init_op = tf.global_variables_initializer()
-    config = tf.ConfigProto(allow_soft_placement=True)
-    config.gpu_options.allow_growth = True
-    config.inter_op_parallelism_threads = 0
-    config.intra_op_parallelism_threads = 0
-    return init_op, config
-
 
 def average_gradients(tower_grads):
     """Calculate the average gradient for each shared variable across all towers.
@@ -389,7 +380,7 @@ def train():
         grads = average_gradients(tower_grads)
         train_opt = opt.apply_gradients(grads, global_step=global_step)
         saver = tf.train.Saver(tf.global_variables(), max_to_keep=None)
-        init_op, config = init_session()
+        init_op, config = mu.init_session()
 
         with tf.Session(config=config) as sess:
             # initialization
