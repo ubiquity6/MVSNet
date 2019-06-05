@@ -24,21 +24,23 @@ logger = mu.setup_logger('mvsnet-inference')
 sys.path.append("../")
 
 # dataset parameters
-tf.app.flags.DEFINE_string('dense_folder', None,
-                           """Root path to dense folder.""")
+tf.app.flags.DEFINE_string('input_dir', None,
+                           """Path to data to run inference on""")
+tf.app.flags.DEFINE_string('output_dir', None,
+                           """Path to data to dir to output results""")
 tf.app.flags.DEFINE_string('model_dir',
                            'gs://mvs-training-mlengine/trained-models/06-04-2019/',
                            """Path to restore the model.""")
 tf.app.flags.DEFINE_integer('ckpt_step', 1350000,
                             """ckpt  step.""")
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 3,
+tf.app.flags.DEFINE_integer('view_num', 6,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 256,
                             """Maximum depth step when testing.""")
-tf.app.flags.DEFINE_integer('max_w', 640,
+tf.app.flags.DEFINE_integer('width', 640,
                             """Maximum image width when testing.""")
-tf.app.flags.DEFINE_integer('max_h', 480,
+tf.app.flags.DEFINE_integer('height', 480,
                             """Maximum image height when testing.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume (W and H).""")
@@ -67,7 +69,7 @@ FLAGS = tf.app.flags.FLAGS
 def compute_depth_maps(input_dir, output_dir = None, width = None, height = None):
     """ Performs inference using trained MVSNet model on data located in input_dir """
     if width and height:
-        FLAGS.max_w, FLAGS.max_h = width, height
+        FLAGS.width, FLAGS.height = width, height
 
     # create output folder
     if output_dir is None:
@@ -75,7 +77,7 @@ def compute_depth_maps(input_dir, output_dir = None, width = None, height = None
     mu.mkdir_p(output_dir)
 
     # testing set
-    data_gen = ClusterGenerator(input_dir, FLAGS.view_num, FLAGS.max_w, FLAGS.max_h,
+    data_gen = ClusterGenerator(input_dir, FLAGS.view_num, FLAGS.width, FLAGS.height,
                                 FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='test')
     mvs_generator = iter(data_gen)
     sample_size = len(data_gen.train_clusters)
@@ -207,15 +209,15 @@ def compute_depth_maps(input_dir, output_dir = None, width = None, height = None
 def main(_):  # pylint: disable=unused-argument
     """
     Program entrance for running inference with MVSNet
-    Acceptable input for the dense_folder are (1) a single test folder, or (2) a folder containing multiple
+    Acceptable input for the input_dir are (1) a single test folder, or (2) a folder containing multiple
     test folders. We check to see which one it is
     """
-    if os.path.isfile(os.path.join(FLAGS.dense_folder, 'covisibility.json')):
-        compute_depth_maps(FLAGS.dense_folder)
+    if os.path.isfile(os.path.join(FLAGS.input_dir, 'covisibility.json')):
+        compute_depth_maps(FLAGS.input_dir)
     else:
-        folders = os.listdir(FLAGS.dense_folder)
+        folders = os.listdir(FLAGS.input_dir)
         for f in folders:
-            compute_depth_maps(os.path.join(FLAGS.dense_folder, f))
+            compute_depth_maps(os.path.join(FLAGS.input_dir, f))
 
 
 if __name__ == '__main__':
