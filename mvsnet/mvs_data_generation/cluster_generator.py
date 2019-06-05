@@ -20,10 +20,6 @@ Copyright 2019, Chris Heinrich, Ubiquity6.
 class ClusterGenerator:
     def __init__(self, sessions_dir, view_num = 3, image_width=1024, image_height=768, depth_num=256,
                  interval_scale=1, base_image_size=1, include_empty=False, mode='training', val_split=0.1, rescaling=True, output_scale=0.25, flip_cams=True):
-        # Setup logger
-
-        #self.logger = logging.getLogger('ClusterGenerator')
-       # ut.set_log_level(self.logger)
         self.logger = setup_logger('ClusterGenerator')
         self.sessions_dir = sessions_dir
         self.view_num = view_num
