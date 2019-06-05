@@ -18,7 +18,11 @@ def setup_logger(name):
     """ Sets up a logger, grabbing log_level from command line """
     logging.basicConfig()
     logger = logging.getLogger(name)
-    set_log_level(logger)
+    try:
+        set_log_level(logger)
+    except Exception as e:
+        logger.setLevel(logging.INFO)
+        logger.warn('Failed to set log level with exception {}'.format(e))
     return logger
 
     
