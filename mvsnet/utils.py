@@ -8,10 +8,10 @@ A small library of helper functions sued through the mvsnet package
 
 def set_log_level(logger):
     """ Grabs log level from command line """
-    if 'LOG_LEVEL' in os.environ:
+    try:
         level = os.environ['LOG_LEVEL'].upper()
         exec('logger.setLevel(logging.{})'.format(level))
-    else:
+    except Exception as e:
         logger.setLevel(logging.INFO)
 
 def setup_logger(name):
