@@ -16,6 +16,7 @@ import json
 from random import Random
 from tensorflow.python.lib.io import file_io
 import logging
+from mvsnet.utils import setup_logger
 
 
 """
@@ -45,10 +46,11 @@ def setup_logger(name):
     set_log_level(logger)
     return logger
 
-
+"""
 # Set up logger
 logger = logging.getLogger('data-generator-utils')
 set_log_level(logger)
+"""
 
 
 def center_image(img):

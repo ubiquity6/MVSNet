@@ -1,6 +1,7 @@
 import os
 from mvsnet.mvs_data_generation.mvs_cluster import Cluster
 import mvsnet.mvs_data_generation.utils as ut
+from mvsnet.utils import setup_logger
 import random
 import numpy as np
 import imageio
@@ -21,8 +22,9 @@ class ClusterGenerator:
                  interval_scale=1, base_image_size=1, include_empty=False, mode='training', val_split=0.1, rescaling=True, output_scale=0.25, flip_cams=True):
         # Setup logger
 
-        self.logger = logging.getLogger('ClusterGenerator')
-        ut.set_log_level(self.logger)
+        #self.logger = logging.getLogger('ClusterGenerator')
+       # ut.set_log_level(self.logger)
+        self.logger = setup_logger('ClusterGenerator')
         self.sessions_dir = sessions_dir
         self.view_num = view_num
         self.image_width = image_width
