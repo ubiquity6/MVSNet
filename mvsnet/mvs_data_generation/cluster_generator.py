@@ -239,11 +239,4 @@ class ClusterGenerator:
                         'output cams shape: {}'.format(output_cams.shape))
                     self.logger.debug('image index: {}'.format(image_index))
 
-                    c_dir = os.path.join(
-                        self.sessions_dir, 'centered_images')
-                    ut.mkdir_p(c_dir)
-                    image_path = os.path.join(
-                        c_dir, '{}.jpg'.format(image_index))
-                    imageio.imsave(
-                        image_path, input_images[0].astype(np.uint8))
                     yield (output_images, input_images, output_cams, image_index)
