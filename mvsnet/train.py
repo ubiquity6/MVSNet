@@ -49,11 +49,11 @@ tf.app.flags.DEFINE_integer('ckpt_step', None,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 3,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 192,
+tf.app.flags.DEFINE_integer('max_d', 64,
                             """Maximum depth step when training.""")
-tf.app.flags.DEFINE_integer('width', 640,
+tf.app.flags.DEFINE_integer('width', 128,
                             """Maximum image width when training.""")
-tf.app.flags.DEFINE_integer('height', 480,
+tf.app.flags.DEFINE_integer('height', 96,
                             """Maximum image height when training.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume.""")
@@ -68,7 +68,7 @@ tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
                            """Optimizer to use. One of 'momentum' or 'rmsprop' """)
 tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for 3DCNNs""")
-tf.app.flags.DEFINE_string('network_mode', 'normal',
+tf.app.flags.DEFINE_string('network_mode', 'lite',
                             """One of 'normal' or 'lite'. If 'lite' then networks have fewer params""")
 # training parameters
 tf.app.flags.DEFINE_integer('num_gpus', None,
@@ -137,6 +137,7 @@ def average_gradients(tower_grads):
         # across towers. So .. we will just return the first tower's pointer to
         # the Variable.
         v = grad_and_vars[0][1]
+        logger.info('Variables:'.format(v))
         grad_and_var = (grad, v)
         average_grads.append(grad_and_var)
     return average_grads
@@ -239,7 +240,7 @@ def initialize_trainer():
     logger.info("Tensorflow version: {}".format(tf.__version__))
     logger.info("Flags: {}".format(FLAGS))
     os.system('wandb login 08b2fe7c6c5d56f49b9c2dee8f24ca14c0679509') # Login to wandb
-    wandb.init()
+    wandb.init(project='mvsnet')
 
     # Prepare validation summary 
     val_sum_file = os.path.join(
@@ -366,7 +367,7 @@ def train():
         opt, global_step = setup_optimizer()    
 
         global training_status
-        training_status = True  # Set to true when training, false when validating
+        training_status = True  # This is set to true when training, false when validating
         tower_grads = [] # to keep track of the gradients across all towers.
         for i in xrange(FLAGS.num_gpus):
             with tf.device('/gpu:%d' % i):
@@ -374,7 +375,6 @@ def train():
                     images, cams, depth_image, depth_start, depth_interval = get_batch(training_iterator, validation_iterator)
                     loss, less_one_accuracy, less_three_accuracy = get_loss(images, cams, depth_image, depth_start, depth_interval,i)
                     grads = opt.compute_gradients(loss)
-                    
                     tower_grads.append(grads)
 
         grads = average_gradients(tower_grads)
