@@ -240,7 +240,8 @@ def initialize_trainer():
     logger.info("Tensorflow version: {}".format(tf.__version__))
     logger.info("Flags: {}".format(FLAGS))
     os.system('wandb login 08b2fe7c6c5d56f49b9c2dee8f24ca14c0679509') # Login to wandb
-    wandb.init(project='mvsnet')
+    wandb.init(project='mvsnet', tensorboard=True)
+    wandb.config.update(FLAGS)
 
     # Prepare validation summary 
     val_sum_file = os.path.join(
@@ -336,6 +337,7 @@ def validate(sess, val_sum_file, loss, less_one_accuracy, less_three_accuracy, e
         print(Notify.INFO, '_validating_',
                 'epoch, %d, train step %d, val loss = %.4f, val (< 1px) = %.4f, val (< 3px) = %.4f (%.3f sec/step)' %
                 (epoch, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
+
         val_loss.append(out_loss)
         val_less_one.append(out_less_one)
         val_less_three.append(out_less_three)
@@ -345,6 +347,7 @@ def validate(sess, val_sum_file, loss, less_one_accuracy, less_three_accuracy, e
 
     print(Notify.INFO, '\n VAL STEP COMPLETED. Average loss: {}, Average less one: {}, Average less three: {}\n'.format(
         l, l1, l3))
+    wandb.log({'loss':out_loss,'less_one':out_less_one,'less_three':out_less_three},step=total_step)
 
     with file_io.FileIO(val_sum_file, 'a+') as f:
         f.write('{},{},{},{}\n'.format(
@@ -414,6 +417,7 @@ def train():
                         print(Notify.INFO,
                               'epoch, %d, step %d, total_step %d, loss = %.4f, (< 1px) = %.4f, (< 3px) = %.4f (%.3f sec/step)' %
                               (epoch, step, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
+                        wandb.log({'loss':out_loss,'less_one':out_less_one,'less_three':out_less_three},step=total_step)
 
                     save_model(sess, saver, total_step, step)
                     step += FLAGS.batch_size * FLAGS.num_gpus
