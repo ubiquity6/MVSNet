@@ -60,7 +60,8 @@ class ConvGRUCell(tf.contrib.rnn.RNNCell):
                  kernel,
                  initializer=None,
                  activation=tf.tanh,
-                 normalize=True):
+                 normalize=True,
+                 trainable=True):
         self._filters = filters
         self._kernel = kernel
         self._initializer = initializer
@@ -68,6 +69,7 @@ class ConvGRUCell(tf.contrib.rnn.RNNCell):
         self._size = tf.TensorShape(shape + [self._filters])
         self._normalize = normalize
         self._feature_axis = self._size.ndims
+        self.trainable=trainable
 
     @property
     def state_size(self):
