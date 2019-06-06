@@ -30,7 +30,7 @@ setup(
     name=NAME,
     version=VERSION,
     #packages=['mvsnet', 'mvsnet/cnn_wrapper','mvsnet/mvs_data_generation'],
-    packages=find_packages(),
+    packages=find_packages(exclude=['datasets*','scripts*']),
     install_requires=required_packages(),
     license='Creative Commons Attribution-Noncommercial-Share Alike license',
     long_description=open('README.md').read(),
