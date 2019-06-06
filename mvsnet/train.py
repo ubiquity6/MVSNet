@@ -62,13 +62,17 @@ tf.app.flags.DEFINE_float('interval_scale', 1.0,
 tf.app.flags.DEFINE_float('base_image_size', 8,
                           """Base image size""")
 # network architectures
-tf.app.flags.DEFINE_string('regularization', 'GRU',
+tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method.""")
 tf.app.flags.DEFINE_string('optimizer', 'momentum',
                            """Optimizer to use. One of 'momentum' or 'rmsprop' """)
 tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for 3DCNNs""")
-tf.app.flags.DEFINE_string('network_mode', 'lite',
+tf.app.flags.DEFINE_string('refinement_train_mode', 'all',
+                            """One of 'all', 'refinement_only' or 'main_only'. If 'main_only' then only the main network is trained,
+                            if 'refinement_only', only the refinement network is trained, and if 'all' then the whole network is trained.
+                            Note this is only applicable if training with refinement=True and 3DCNN regularization """)
+tf.app.flags.DEFINE_string('network_mode', 'ultralite',
                             """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
 # training parameters
 tf.app.flags.DEFINE_integer('num_gpus', None,
@@ -272,17 +276,20 @@ def get_batch(training_iterator, validation_iterator):
 def get_loss(images, cams, depth_image, depth_start, depth_interval, i):
     """ Performs inference with specified network and return loss function """
     is_master_gpu = True if i == 0 else False
+
     # inference
     if FLAGS.regularization == '3DCNNs':
+        main_trainable = False if FLAGS.refinement_train_mode == 'refinement_only' and FLAGS.refinement=True else True
         # initial depth map
         depth_map, prob_map = inference(
-            images, cams, FLAGS.max_d, depth_start, depth_interval,FLAGS.network_mode, is_master_gpu)
+            images, cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, is_master_gpu, trainable=main_trainable)
         # refinement
         if FLAGS.refinement:
+            refine_trainable = False if FLAGS.refinement_train_mode == 'main_only' else True
             ref_image = tf.squeeze(
                 tf.slice(images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
             refined_depth_map = depth_refine(depth_map, ref_image,
-                                                FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode,  is_master_gpu)
+                                                FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode,  is_master_gpu, trainable=refine_trainable)
                                     # regression loss
             loss0, less_one_temp, less_three_temp = mvsnet_regression_loss(
                 depth_map, depth_image, depth_interval)
@@ -416,7 +423,7 @@ def train():
                         print(Notify.INFO,
                               'epoch, %d, step %d, total_step %d, loss = %.4f, (< 1px) = %.4f, (< 3px) = %.4f (%.3f sec/step)' %
                               (epoch, step, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
-                        wandb.log({'loss':out_loss,'less_one':out_less_one,'less_three':out_less_three},step=total_step)
+                        wandb.log({'loss':out_loss,'less_one':out_less_one,'less_three':out_less_three,'time_per_step':duration},step=total_step)
 
                     save_model(sess, saver, total_step, step)
                     step += FLAGS.batch_size * FLAGS.num_gpus
