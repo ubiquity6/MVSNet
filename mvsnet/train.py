@@ -51,9 +51,9 @@ tf.app.flags.DEFINE_integer('view_num', 3,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 64,
                             """Maximum depth step when training.""")
-tf.app.flags.DEFINE_integer('width', 128,
+tf.app.flags.DEFINE_integer('width', 256,
                             """Maximum image width when training.""")
-tf.app.flags.DEFINE_integer('height', 96,
+tf.app.flags.DEFINE_integer('height', 192,
                             """Maximum image height when training.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume.""")
@@ -68,8 +68,8 @@ tf.app.flags.DEFINE_string('optimizer', 'momentum',
                            """Optimizer to use. One of 'momentum' or 'rmsprop' """)
 tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for 3DCNNs""")
-tf.app.flags.DEFINE_string('network_mode', 'lite',
-                            """One of 'normal' or 'lite'. If 'lite' then networks have fewer params""")
+tf.app.flags.DEFINE_string('network_mode', 'ultralite',
+                            """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
 # training parameters
 tf.app.flags.DEFINE_integer('num_gpus', None,
                             """Number of GPUs.""")
@@ -137,7 +137,6 @@ def average_gradients(tower_grads):
         # across towers. So .. we will just return the first tower's pointer to
         # the Variable.
         v = grad_and_vars[0][1]
-        logger.info('Variables:'.format(v))
         grad_and_var = (grad, v)
         average_grads.append(grad_and_var)
     return average_grads
@@ -347,7 +346,7 @@ def validate(sess, val_sum_file, loss, less_one_accuracy, less_three_accuracy, e
 
     print(Notify.INFO, '\n VAL STEP COMPLETED. Average loss: {}, Average less one: {}, Average less three: {}\n'.format(
         l, l1, l3))
-    wandb.log({'loss':out_loss,'less_one':out_less_one,'less_three':out_less_three},step=total_step)
+    wandb.log({'val_loss':l,'val_less_one':l1,'val_less_three':l3}, step=total_step)
 
     with file_io.FileIO(val_sum_file, 'a+') as f:
         f.write('{},{},{},{}\n'.format(
