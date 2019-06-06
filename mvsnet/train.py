@@ -49,7 +49,7 @@ tf.app.flags.DEFINE_integer('ckpt_step', None,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 3,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 64,
+tf.app.flags.DEFINE_integer('max_d', 32,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('width', 256,
                             """Maximum image width when training.""")
@@ -62,13 +62,13 @@ tf.app.flags.DEFINE_float('interval_scale', 1.0,
 tf.app.flags.DEFINE_float('base_image_size', 8,
                           """Base image size""")
 # network architectures
-tf.app.flags.DEFINE_string('regularization', '3DCNNs',
+tf.app.flags.DEFINE_string('regularization', 'GRU',
                            """Regularization method.""")
 tf.app.flags.DEFINE_string('optimizer', 'momentum',
                            """Optimizer to use. One of 'momentum' or 'rmsprop' """)
-tf.app.flags.DEFINE_boolean('refinement', True,
+tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for 3DCNNs""")
-tf.app.flags.DEFINE_string('network_mode', 'ultralite',
+tf.app.flags.DEFINE_string('network_mode', 'lite',
                             """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
 # training parameters
 tf.app.flags.DEFINE_integer('num_gpus', None,

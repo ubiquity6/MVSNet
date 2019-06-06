@@ -265,7 +265,7 @@ def inference_prob_recurrent(images, cams, depth_num, depth_start, depth_interva
     view_towers = []
     for view in range(1, FLAGS.view_num):
         view_image = tf.squeeze(tf.slice(images, [0, view, 0, 0, 0], [-1, 1, -1, -1, -1]), axis=1)
-        view_tower = UNetDS2GN({'data': view_image}, trainable=trainable, reuse=True)
+        view_tower = UNetDS2GN({'data': view_image}, trainable=trainable, mode=network_mode, reuse=True)
         view_towers.append(view_tower)
 
     # get all homographies
@@ -286,9 +286,9 @@ def inference_prob_recurrent(images, cams, depth_num, depth_start, depth_interva
     state1 = tf.zeros([FLAGS.batch_size, feature_shape[1], feature_shape[2], gru1_filters])
     state2 = tf.zeros([FLAGS.batch_size, feature_shape[1], feature_shape[2], gru2_filters])
     state3 = tf.zeros([FLAGS.batch_size, feature_shape[1], feature_shape[2], gru3_filters])
-    conv_gru1 = ConvGRUCell(shape=gru_input_shape, kernel=[3, 3], filters=gru1_filters)
-    conv_gru2 = ConvGRUCell(shape=gru_input_shape, kernel=[3, 3], filters=gru2_filters)
-    conv_gru3 = ConvGRUCell(shape=gru_input_shape, kernel=[3, 3], filters=gru3_filters)
+    conv_gru1 = ConvGRUCell(shape=gru_input_shape, kernel=[3, 3], filters=gru1_filters, trainable=trainable)
+    conv_gru2 = ConvGRUCell(shape=gru_input_shape, kernel=[3, 3], filters=gru2_filters, trainable=trainable)
+    conv_gru3 = ConvGRUCell(shape=gru_input_shape, kernel=[3, 3], filters=gru3_filters, trainable=trainable)
 
     exp_div = tf.zeros([FLAGS.batch_size, feature_shape[1], feature_shape[2], 1])
     soft_depth_map = tf.zeros([FLAGS.batch_size, feature_shape[1], feature_shape[2], 1])
@@ -374,9 +374,9 @@ def inference_winner_take_all(images, cams, depth_num, depth_start, depth_end, n
     state1 = tf.zeros([FLAGS.batch_size, feature_shape[1], feature_shape[2], gru1_filters])
     state2 = tf.zeros([FLAGS.batch_size, feature_shape[1], feature_shape[2], gru2_filters])
     state3 = tf.zeros([FLAGS.batch_size, feature_shape[1], feature_shape[2], gru3_filters])
-    conv_gru1 = ConvGRUCell(shape=gru_input_shape, kernel=[3, 3], filters=gru1_filters)
-    conv_gru2 = ConvGRUCell(shape=gru_input_shape, kernel=[3, 3], filters=gru2_filters)
-    conv_gru3 = ConvGRUCell(shape=gru_input_shape, kernel=[3, 3], filters=gru3_filters)
+    conv_gru1 = ConvGRUCell(shape=gru_input_shape, kernel=[3, 3], filters=gru1_filters, trainable=trainable)
+    conv_gru2 = ConvGRUCell(shape=gru_input_shape, kernel=[3, 3], filters=gru2_filters, trainable=trainable)
+    conv_gru3 = ConvGRUCell(shape=gru_input_shape, kernel=[3, 3], filters=gru3_filters, trainable=trainable)
 
     # initialize variables
     exp_sum = tf.Variable(tf.zeros(
