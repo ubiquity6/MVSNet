@@ -64,9 +64,9 @@ tf.app.flags.DEFINE_float('base_image_size', 8,
 # network architectures
 tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method.""")
-tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
+tf.app.flags.DEFINE_string('optimizer', 'momentum',
                            """Optimizer to use. One of 'momentum' or 'rmsprop' """)
-tf.app.flags.DEFINE_boolean('refinement', False,
+tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for 3DCNNs""")
 tf.app.flags.DEFINE_string('network_mode', 'lite',
                             """One of 'normal' or 'lite'. If 'lite' then networks have fewer params""")
@@ -87,7 +87,7 @@ tf.app.flags.DEFINE_integer('stepvalue', None,
                             """Step interval to decay learning rate.""")
 tf.app.flags.DEFINE_integer('snapshot', 10000,
                             """Step interval to save the model.""")
-tf.app.flags.DEFINE_float('gamma', 0.9,
+tf.app.flags.DEFINE_float('gamma', 0.5,
                           """Learning rate decay rate.""")
 tf.app.flags.DEFINE_float('val_batch_size', 5,
                           """Number of images to run validation on when validation.""")
