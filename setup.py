@@ -2,15 +2,10 @@ from distutils.core import setup
 from setuptools import find_packages
 
 # Package Metadata
-
 NAME='MVSNet'
 VERSION='0.1.0'
 
-
-
-
 def required_packages():
-    # place dependencies here
     PACKAGES = [
         'progressbar2>=3.0',
         'numpy>=1.13',
@@ -29,7 +24,6 @@ def required_packages():
 setup(
     name=NAME,
     version=VERSION,
-    #packages=['mvsnet', 'mvsnet/cnn_wrapper','mvsnet/mvs_data_generation'],
     packages=find_packages(exclude=['datasets*','scripts*']),
     install_requires=required_packages(),
     license='Creative Commons Attribution-Noncommercial-Share Alike license',
