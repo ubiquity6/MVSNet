@@ -295,7 +295,12 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, i):
                 depth_map, depth_image, depth_interval)
             loss1, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
                 refined_depth_map, depth_image, depth_interval)
-            loss = (loss0 + loss1) / 2
+            if FLAGS.refinement_train_mode == 'refinement_only':
+                # If we are only training the refinement network we are only computing gradients wrt the refinement network params
+                # These gradients on l0 will be zero, so no need to include l0 in the loss
+                loss = loss1
+            else:
+                loss = (loss0 + loss1) / 2
         else:
             # regression loss
             loss, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
