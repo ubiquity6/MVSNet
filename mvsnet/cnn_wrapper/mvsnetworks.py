@@ -181,3 +181,67 @@ class RefineNet(Network):
         # which would lead to small gradients
         #(self.feed('refine_conv3', 'depth_image')
         # .add(name='refined_depth_image'))
+
+
+class RefineUNet(Network):
+    """Refinement network with 2D U-Net architecture and group normalization."""
+
+    def setup(self):
+        base_filter = 8
+        base_filter = max(1, int(base_filter / self.base_divisor))
+        logger.info('2D Unet with base filter {}'.format(base_filter))
+        (self.feed('color_image', 'depth_image')
+         .concat(axis=3, name='concat_image'))
+
+        (self.feed('concat_image')
+         .conv_gn(3, base_filter * 2, 2, center=True, scale=True, name='2dconv1_0')
+         .conv_gn(3, base_filter * 4, 2, center=True, scale=True, name='2dconv2_0')
+         .conv_gn(3, base_filter * 8, 2, center=True, scale=True, name='2dconv3_0')
+         .conv_gn(3, base_filter * 16, 2, center=True, scale=True, name='2dconv4_0'))
+
+        (self.feed('concat_image')
+         .conv_gn(3, base_filter, 1, center=True, scale=True, name='2dconv0_1')
+         .conv_gn(3, base_filter, 1, center=True, scale=True, name='2dconv0_2'))
+
+        (self.feed('2dconv1_0')
+         .conv_gn(3, base_filter * 2, 1, center=True, scale=True, name='2dconv1_1')
+         .conv_gn(3, base_filter * 2, 1, center=True, scale=True, name='2dconv1_2'))
+
+        (self.feed('2dconv2_0')
+         .conv_gn(3, base_filter * 4, 1, center=True, scale=True, name='2dconv2_1')
+         .conv_gn(3, base_filter * 4, 1, center=True, scale=True, name='2dconv2_2'))
+
+        (self.feed('2dconv3_0')
+         .conv_gn(3, base_filter * 8, 1, center=True, scale=True, name='2dconv3_1')
+         .conv_gn(3, base_filter * 8, 1, center=True, scale=True, name='2dconv3_2'))
+
+        (self.feed('2dconv4_0')
+         .conv_gn(3, base_filter * 16, 1, center=True, scale=True, name='2dconv4_1')
+         .conv_gn(3, base_filter * 16, 1, center=True, scale=True, name='2dconv4_2')
+         .deconv_gn(3, base_filter * 8, 2, center=True, scale=True, name='2dconv5_0'))
+
+        (self.feed('2dconv5_0', '2dconv3_2')
+         .concat(axis=-1, name='2dconcat5_0')
+         .conv_gn(3, base_filter * 8, 1, center=True, scale=True, name='2dconv5_1')
+         .conv_gn(3, base_filter * 8, 1, center=True, scale=True, name='2dconv5_2')
+         .deconv_gn(3, base_filter * 4, 2, center=True, scale=True, name='2dconv6_0'))
+
+        (self.feed('2dconv6_0', '2dconv2_2')
+         .concat(axis=-1, name='2dconcat6_0')
+         .conv_gn(3, base_filter * 4, 1, center=True, scale=True, name='2dconv6_1')
+         .conv_gn(3, base_filter * 4, 1, center=True, scale=True, name='2dconv6_2')
+         .deconv_gn(3, base_filter * 2, 2, center=True, scale=True, name='2dconv7_0'))
+
+        (self.feed('2dconv7_0', '2dconv1_2')
+         .concat(axis=-1, name='2dconcat7_0')
+         .conv_gn(3, base_filter * 2, 1, center=True, scale=True, name='2dconv7_1')
+         .conv_gn(3, base_filter * 2, 1, center=True, scale=True, name='2dconv7_2')
+         .deconv_gn(3, base_filter, 2, center=True, scale=True, name='2dconv8_0'))
+
+        (self.feed('2dconv8_0', '2dconv0_2')
+         .concat(axis=-1, name='2dconcat8_0')
+         .conv_gn(3, base_filter, 1, center=True, scale=True, name='2dconv8_1')
+         # end of UNet
+         .conv_gn(3, base_filter, 1, center=True, scale=True, name='2dconv8_2')
+         .conv_gn(3, base_filter * 4, 1, center=True, scale=True, name='2dconv8_3')
+         .conv(3, 1, 1, relu=False, name='2dconv8_3'))

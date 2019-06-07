@@ -66,7 +66,7 @@ tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method.""")
 tf.app.flags.DEFINE_string('optimizer', 'momentum',
                            """Optimizer to use. One of 'momentum' or 'rmsprop' """)
-tf.app.flags.DEFINE_boolean('refinement', False,
+tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for 3DCNNs""")
 tf.app.flags.DEFINE_string('refinement_train_mode', 'all',
                             """One of 'all', 'refinement_only' or 'main_only'. If 'main_only' then only the main network is trained,

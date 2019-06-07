@@ -467,6 +467,7 @@ def depth_refine(init_depth_map, image, depth_num, depth_start, depth_interval, 
 
     # normalization parameters
     depth_shape = tf.shape(init_depth_map)
+    image_shape = tf.shape(image)
     depth_end = depth_start + (tf.cast(depth_num, tf.float32) - 1) * depth_interval
     depth_start_mat = tf.tile(tf.reshape(
         depth_start, [depth_shape[0], 1, 1, 1]), [1, depth_shape[1], depth_shape[2], 1])
@@ -482,10 +483,10 @@ def depth_refine(init_depth_map, image, depth_num, depth_start, depth_interval, 
 
     # refinement network
     if is_master_gpu:
-        norm_depth_tower = RefineNet({'color_image': resized_image, 'depth_image': init_norm_depth_map},
+        norm_depth_tower = RefineUNet({'color_image': resized_image, 'depth_image': init_norm_depth_map},
                                         trainable=trainable, training=training, mode=network_mode, reuse=False)
     else:
-        norm_depth_tower = RefineNet({'color_image': resized_image, 'depth_image': init_norm_depth_map},
+        norm_depth_tower = RefineUNet({'color_image': resized_image, 'depth_image': init_norm_depth_map},
                                         trainable=trainable, training=training, mode=network_mode, reuse=True)
     norm_depth_map = norm_depth_tower.get_output()
 
