@@ -184,7 +184,8 @@ class RefineNet(Network):
 
 
 class RefineUNet(Network):
-    """Refinement network with 2D U-Net architecture and group normalization."""
+    """Refinement network with 2D U-Net architecture and group normalization.
+        Has the same input / output interface as the RefineNet above, but with a different body """
 
     def setup(self):
         base_filter = 8
@@ -194,54 +195,54 @@ class RefineUNet(Network):
          .concat(axis=3, name='concat_image'))
 
         (self.feed('concat_image')
-         .conv_gn(3, base_filter * 2, 2, center=True, scale=True, name='2dconv1_0')
-         .conv_gn(3, base_filter * 4, 2, center=True, scale=True, name='2dconv2_0')
-         .conv_gn(3, base_filter * 8, 2, center=True, scale=True, name='2dconv3_0')
-         .conv_gn(3, base_filter * 16, 2, center=True, scale=True, name='2dconv4_0'))
+         .conv_gn(3, base_filter * 2, 2, center=True, scale=True, name='2dconv1_0_refine')
+         .conv_gn(3, base_filter * 4, 2, center=True, scale=True, name='2dconv2_0_refine')
+         .conv_gn(3, base_filter * 8, 2, center=True, scale=True, name='2dconv3_0_refine')
+         .conv_gn(3, base_filter * 16, 2, center=True, scale=True, name='2dconv4_0_refine'))
 
         (self.feed('concat_image')
-         .conv_gn(3, base_filter, 1, center=True, scale=True, name='2dconv0_1')
-         .conv_gn(3, base_filter, 1, center=True, scale=True, name='2dconv0_2'))
+         .conv_gn(3, base_filter, 1, center=True, scale=True, name='2dconv0_1_refine')
+         .conv_gn(3, base_filter, 1, center=True, scale=True, name='2dconv0_2_refine'))
 
-        (self.feed('2dconv1_0')
-         .conv_gn(3, base_filter * 2, 1, center=True, scale=True, name='2dconv1_1')
-         .conv_gn(3, base_filter * 2, 1, center=True, scale=True, name='2dconv1_2'))
+        (self.feed('2dconv1_0_refine')
+         .conv_gn(3, base_filter * 2, 1, center=True, scale=True, name='2dconv1_1_refine')
+         .conv_gn(3, base_filter * 2, 1, center=True, scale=True, name='2dconv1_2_refine'))
 
-        (self.feed('2dconv2_0')
-         .conv_gn(3, base_filter * 4, 1, center=True, scale=True, name='2dconv2_1')
-         .conv_gn(3, base_filter * 4, 1, center=True, scale=True, name='2dconv2_2'))
+        (self.feed('2dconv2_0_refine')
+         .conv_gn(3, base_filter * 4, 1, center=True, scale=True, name='2dconv2_1_refine')
+         .conv_gn(3, base_filter * 4, 1, center=True, scale=True, name='2dconv2_2_refine'))
 
-        (self.feed('2dconv3_0')
-         .conv_gn(3, base_filter * 8, 1, center=True, scale=True, name='2dconv3_1')
-         .conv_gn(3, base_filter * 8, 1, center=True, scale=True, name='2dconv3_2'))
+        (self.feed('2dconv3_0_refine')
+         .conv_gn(3, base_filter * 8, 1, center=True, scale=True, name='2dconv3_1_refine')
+         .conv_gn(3, base_filter * 8, 1, center=True, scale=True, name='2dconv3_2_refine'))
 
-        (self.feed('2dconv4_0')
-         .conv_gn(3, base_filter * 16, 1, center=True, scale=True, name='2dconv4_1')
-         .conv_gn(3, base_filter * 16, 1, center=True, scale=True, name='2dconv4_2')
-         .deconv_gn(3, base_filter * 8, 2, center=True, scale=True, name='2dconv5_0'))
+        (self.feed('2dconv4_0_refine')
+         .conv_gn(3, base_filter * 16, 1, center=True, scale=True, name='2dconv4_1_refine')
+         .conv_gn(3, base_filter * 16, 1, center=True, scale=True, name='2dconv4_2_refine')
+         .deconv_gn(3, base_filter * 8, 2, center=True, scale=True, name='2dconv5_0_refine'))
 
-        (self.feed('2dconv5_0', '2dconv3_2')
-         .concat(axis=-1, name='2dconcat5_0')
-         .conv_gn(3, base_filter * 8, 1, center=True, scale=True, name='2dconv5_1')
-         .conv_gn(3, base_filter * 8, 1, center=True, scale=True, name='2dconv5_2')
-         .deconv_gn(3, base_filter * 4, 2, center=True, scale=True, name='2dconv6_0'))
+        (self.feed('2dconv5_0_refine', '2dconv3_2_refine')
+         .concat(axis=-1, name='2dconcat5_0_refine')
+         .conv_gn(3, base_filter * 8, 1, center=True, scale=True, name='2dconv5_1_refine')
+         .conv_gn(3, base_filter * 8, 1, center=True, scale=True, name='2dconv5_2_refine')
+         .deconv_gn(3, base_filter * 4, 2, center=True, scale=True, name='2dconv6_0_refine'))
 
-        (self.feed('2dconv6_0', '2dconv2_2')
-         .concat(axis=-1, name='2dconcat6_0')
-         .conv_gn(3, base_filter * 4, 1, center=True, scale=True, name='2dconv6_1')
-         .conv_gn(3, base_filter * 4, 1, center=True, scale=True, name='2dconv6_2')
-         .deconv_gn(3, base_filter * 2, 2, center=True, scale=True, name='2dconv7_0'))
+        (self.feed('2dconv6_0_refine', '2dconv2_2_refine')
+         .concat(axis=-1, name='2dconcat6_0_refine')
+         .conv_gn(3, base_filter * 4, 1, center=True, scale=True, name='2dconv6_1_refine')
+         .conv_gn(3, base_filter * 4, 1, center=True, scale=True, name='2dconv6_2_refine')
+         .deconv_gn(3, base_filter * 2, 2, center=True, scale=True, name='2dconv7_0_refine'))
 
-        (self.feed('2dconv7_0', '2dconv1_2')
-         .concat(axis=-1, name='2dconcat7_0')
-         .conv_gn(3, base_filter * 2, 1, center=True, scale=True, name='2dconv7_1')
-         .conv_gn(3, base_filter * 2, 1, center=True, scale=True, name='2dconv7_2')
-         .deconv_gn(3, base_filter, 2, center=True, scale=True, name='2dconv8_0'))
+        (self.feed('2dconv7_0_refine', '2dconv1_2_refine')
+         .concat(axis=-1, name='2dconcat7_0_refine')
+         .conv_gn(3, base_filter * 2, 1, center=True, scale=True, name='2dconv7_1_refine')
+         .conv_gn(3, base_filter * 2, 1, center=True, scale=True, name='2dconv7_2_refine')
+         .deconv_gn(3, base_filter, 2, center=True, scale=True, name='2dconv8_0_refine'))
 
-        (self.feed('2dconv8_0', '2dconv0_2')
-         .concat(axis=-1, name='2dconcat8_0')
-         .conv_gn(3, base_filter, 1, center=True, scale=True, name='2dconv8_1')
+        (self.feed('2dconv8_0_refine', '2dconv0_2_refine')
+         .concat(axis=-1, name='2dconcat8_0_refine')
+         .conv_gn(3, base_filter, 1, center=True, scale=True, name='2dconv8_1_refine')
          # end of UNet
-         .conv_gn(3, base_filter, 1, center=True, scale=True, name='2dconv8_2')
-         .conv_gn(3, base_filter * 4, 1, center=True, scale=True, name='2dconv8_3')
-         .conv(3, 1, 1, relu=False, name='2dconv8_3'))
+         .conv_gn(3, base_filter, 1, center=True, scale=True, name='2dconv8_2_refine')
+         .conv_gn(3, base_filter * 4, 1, center=True, scale=True, name='2dconv8_3_refine')
+         .conv(3, 1, 1, relu=False, name='2dconv8_4_refine'))

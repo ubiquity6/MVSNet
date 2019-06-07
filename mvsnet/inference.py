@@ -62,7 +62,9 @@ tf.app.flags.DEFINE_bool('inverse_depth', True,
                          """Whether to apply inverse depth for R-MVSNet""")
 tf.app.flags.DEFINE_string('network_mode', 'ultralite',
                             """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
-
+tf.app.flags.DEFINE_string('refinement_network', 'unet',
+                            """Specifies network to use for refinement. One of 'original' or 'unet'. 
+                            If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -123,7 +125,7 @@ def compute_depth_maps(input_dir, output_dir = None, width = None, height = None
             ref_image = tf.squeeze(
                 tf.slice(centered_images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
             refined_depth_map = depth_refine(
-                init_depth_map, ref_image, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, True, training=False)
+                init_depth_map, ref_image, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, FLAGS.refinement_network,  True, training=False)
 
     # depth map inference using GRU
     elif FLAGS.regularization == 'GRU':
