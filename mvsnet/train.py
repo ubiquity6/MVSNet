@@ -66,7 +66,7 @@ tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method.""")
 tf.app.flags.DEFINE_string('optimizer', 'momentum',
                            """Optimizer to use. One of 'momentum' or 'rmsprop' """)
-tf.app.flags.DEFINE_boolean('refinement', False,
+tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for 3DCNNs""")
 tf.app.flags.DEFINE_string('refinement_train_mode', 'all',
                             """One of 'all', 'refinement_only' or 'main_only'. If 'main_only' then only the main network is trained,
@@ -279,7 +279,7 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, i):
 
     # inference
     if FLAGS.regularization == '3DCNNs':
-        main_trainable = False if FLAGS.refinement_train_mode == 'refinement_only' and FLAGS.refinement=True else True
+        main_trainable = False if FLAGS.refinement_train_mode == 'refinement_only' and FLAGS.refinement==True else True
         # initial depth map
         depth_map, prob_map = inference(
             images, cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, is_master_gpu, trainable=main_trainable)
