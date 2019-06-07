@@ -279,7 +279,7 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, i):
 
     # inference
     if FLAGS.regularization == '3DCNNs':
-        main_trainable = False if FLAGS.refinement_train_mode == 'refinement_only' and FLAGS.refinement=True else True
+        main_trainable = False if FLAGS.refinement_train_mode == 'refinement_only' and FLAGS.refinement==True else True
         # initial depth map
         depth_map, prob_map = inference(
             images, cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, is_master_gpu, trainable=main_trainable)
