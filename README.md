@@ -37,13 +37,13 @@ bzr ubq/ai/tools:map-to-mvs-training -- --map-id <atlas-map-id> --stack <stack> 
 Which would download a map from Atlas and then conver to the right format. Then you can do inference on that data by running this command from the root of the mvsnet repo
 
 ```
-python -m mvsnet.test --dense_folder <atlas-data-in-densify-train-format> --ckpt_step <ckpt-of-saved-model> --model_dir <dir-where-saved-model-is>
+python -m mvsnet.inference --input_dir <atlas-data-in-densify-train-format> --ckpt_step <ckpt-of-saved-model> --model_dir <dir-where-saved-model-is>
 ```
 
 Note that `--model_dir` can be a google storage bucket where models were saved during training with ml-engine, so you could run:
 
 ```
-python -m mvsnet.test --dense_folder <atlas-data-in-densify-train-format> --ckpt_step 35000 --model_dir gs://mvs-training-mlengine/dtu_scan_104_epochs_200_lr_0025_viewnum_4/models/ 
+python -m mvsnet.inference --input_dir <atlas-data-in-densify-train-format> --ckpt_step 35000 --model_dir gs://mvs-training-mlengine/dtu_scan_104_epochs_200_lr_0025_viewnum_4/models/ 
 ```
 
 To use one of our trained models trained for 35000 steps
