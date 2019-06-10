@@ -14,5 +14,6 @@ dist/*
 MANIFEST
 MVSNet.egg-info/*
 .vscode/*
+wandb/*
 
 nohup.out

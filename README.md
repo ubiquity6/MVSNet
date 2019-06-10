@@ -122,9 +122,9 @@ or vice versa.
 * Download the pre-trained MVSNet and R-MVSNet [models](https://drive.google.com/file/d/1h40Rq8ou5XLGFFSXTFBvrLla7-RMz73n/view) and upzip the file as ``MODEL_FOLDER``
 * Enter the ``MVSNet/mvsnet`` folder, in ``test.py``, set ``model_dir`` to ``MODEL_FOLDER``
 * Run MVSNet (GTX1080Ti): 
-``python test.py --dense_folder TEST_DATA_FOLDER  --regularization '3DCNNs' --max_w 1152 --max_h 864 --max_d 192 --interval_scale 1.06``
+``python test.py --dense_folder TEST_DATA_FOLDER  --regularization '3DCNNs' --width 1152 --height 864 --max_d 192 --interval_scale 1.06``
 * Run R-MVSNet (GTX1080Ti): 
-``python test.py --dense_folder TEST_DATA_FOLDER  --regularization 'GRU' --max_w 1600 --max_h 1200 --max_d 256 --interval_scale 0.8``
+``python test.py --dense_folder TEST_DATA_FOLDER  --regularization 'GRU' --width 1600 --height 1200 --max_d 256 --interval_scale 0.8``
 * Inspect the .pfm format outputs in ``TEST_DATA_FOLDER/depths_mvsnet`` using ``python visualize.py .pfm``. For example the depth map and probability map for image `00000012` should be something like:
 
 <img src="doc/image.png" width="250">   | <img src="doc/depth_example.png" width="250"> |  <img src="doc/probability_example.png" width="250">

@@ -22,7 +22,7 @@ import cv2
 import numpy as np
 
 import pylab as plt
-from preprocess import *
+from mvsnet.preprocess import *
 
 
 def read_gipuma_dmb(path):

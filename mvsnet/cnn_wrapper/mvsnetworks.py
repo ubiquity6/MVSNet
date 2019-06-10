@@ -3,11 +3,9 @@
 Copyright 2019, Yao Yao, HKUST.
 MVSNet sub-models.
 """
-
-from network import Network
 import sys
-sys.path.append('../')
-from MVSNet.mvsnet.utils import setup_logger
+from mvsnet.cnn_wrapper.network import Network
+from mvsnet.utils import setup_logger
 
 logger = setup_logger('mvsnet-networks')
 

@@ -1,6 +1,7 @@
 import os
-from mvs_cluster import Cluster
-import utils as ut
+from mvsnet.mvs_data_generation.mvs_cluster import Cluster
+import mvsnet.mvs_data_generation.utils as ut
+from mvsnet.utils import setup_logger
 import random
 import numpy as np
 import imageio
@@ -19,10 +20,7 @@ Copyright 2019, Chris Heinrich, Ubiquity6.
 class ClusterGenerator:
     def __init__(self, sessions_dir, view_num = 3, image_width=1024, image_height=768, depth_num=256,
                  interval_scale=1, base_image_size=1, include_empty=False, mode='training', val_split=0.1, rescaling=True, output_scale=0.25, flip_cams=True):
-        # Setup logger
-
-        self.logger = logging.getLogger('ClusterGenerator')
-        ut.set_log_level(self.logger)
+        self.logger = setup_logger('ClusterGenerator')
         self.sessions_dir = sessions_dir
         self.view_num = view_num
         self.image_width = image_width
@@ -67,6 +65,7 @@ class ClusterGenerator:
                 self.load_clusters(session_dir, clusters)
 
         self.logger.info(" There are {} clusters".format(len(clusters)))
+        self.logger.debug('Generating MVS clusters with width x height = {} x {}'.format(self.image_width,self.image_height))
         self.clusters = clusters
         return clusters
 
@@ -240,11 +239,4 @@ class ClusterGenerator:
                         'output cams shape: {}'.format(output_cams.shape))
                     self.logger.debug('image index: {}'.format(image_index))
 
-                    c_dir = os.path.join(
-                        self.sessions_dir, 'centered_images')
-                    ut.mkdir_p(c_dir)
-                    image_path = os.path.join(
-                        c_dir, '{}.jpg'.format(image_index))
-                    imageio.imsave(
-                        image_path, input_images[0].astype(np.uint8))
                     yield (output_images, input_images, output_cams, image_index)

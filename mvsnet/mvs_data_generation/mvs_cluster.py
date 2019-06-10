@@ -1,5 +1,6 @@
 import numpy as np
-from utils import mask_depth_image, scale_camera, scale_image, center_image, set_log_level
+from mvsnet.mvs_data_generation.utils import mask_depth_image, scale_camera, scale_image, center_image
+from mvsnet.utils import setup_logger
 import imageio
 import logging
 import json
@@ -31,9 +32,7 @@ Copyright 2019, Chris Heinrich, Ubiquity6.
 class Cluster:
     def __init__(self, session_dir, ref_index, views, min_depth, max_depth, view_num,
                  image_width=1024, image_height=768, depth_num=256, interval_scale=1.0):
-        logging.basicConfig()
-        self.logger = logging.getLogger('Cluster')
-        set_log_level(self.logger)
+        self.logger = setup_logger('Cluster')
         self.session_dir = session_dir
         self.ref_index = int(ref_index)
         self.views = views

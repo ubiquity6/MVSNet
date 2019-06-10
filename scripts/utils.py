@@ -11,7 +11,7 @@ def run(args):
 
 
 def test(dense_folder, ckpt_step, model_dir):
-    args = ["python", "-m", "mvsnet.test", "--dense_folder",
+    args = ["python", "-m", "mvsnet.inference", "--input_dir",
             dense_folder, "--ckpt_step", ckpt_step, "--model_dir", model_dir]
     run(args)
 
