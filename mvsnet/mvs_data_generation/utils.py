@@ -88,15 +88,20 @@ def scale_image(image, scale=1, interpolation='linear'):
         return cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_NEAREST)
 
 
-def scale_and_reshape_depth(depth, output_scale):
+def scale_and_reshape_depth(depth_image, output_scale):
     # Scale depth image to output_scale * image_scale
+    depth = np.copy(depth_image)
     depth = scale_image(
         depth, scale=output_scale, interpolation='nearest')
     # Increase rank of depth array and set shape[2] = 1
     depth_shape = (
         depth.shape[0], depth.shape[1], 1)
-    depth = np.reshape(depth, depth_shape)
-    return depth
+    return np.reshape(depth, depth_shape)
+
+def reshape_depth(depth):
+    depth_shape = (
+        depth.shape[0], depth.shape[1], 1)
+    return np.reshape(depth, depth_shape)
 
 
 def scale_mvs_input(images, cams, depth_image=None, scale=1):

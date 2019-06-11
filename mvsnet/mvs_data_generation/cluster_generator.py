@@ -65,7 +65,6 @@ class ClusterGenerator:
                 self.load_clusters(session_dir, clusters)
 
         self.logger.info(" There are {} clusters".format(len(clusters)))
-        self.logger.debug('Generating MVS clusters with width x height = {} x {}'.format(self.image_width,self.image_height))
         self.clusters = clusters
         return clusters
 
@@ -163,15 +162,16 @@ class ClusterGenerator:
                         images = ut.center_images(images)
                         images = np.stack(images, axis=0)
 
-                        # Cams are rescaled further to match the output dimensions of the network
-                        # this is because the cams are used for homographies after feature extraction
-                        # which is the step that downsamples the images
+                        # output_depth and output_cams are copies of depth and cams that are downsampled
+                        # by output_scale, as these downsampled copies are used for computation at certain stages
+                        rescaled_depth = ut.scale_and_reshape_depth(
+                            depth, self.output_scale)
+                        depth = ut.reshape_depth(depth)
                         cams = ut.scale_mvs_camera(
                             cams, scale=self.output_scale)
                         cams = np.stack(cams, axis=0)
 
-                        depth = ut.scale_and_reshape_depth(
-                            depth, self.output_scale)
+                        
                         self.logger.debug(
                             'Cluster transformation time: {}'.format(time.time() - start - load_time))
 
@@ -181,16 +181,18 @@ class ClusterGenerator:
                             'images shape: {}'.format(images.shape))
                         self.logger.debug('cams shape: {}'.format(cams.shape))
                         self.logger.debug(
-                            'depth shape: {}'.format(depth.shape))
+                            'Full depth shape: {}'.format(depth.shape))
+                        self.logger.debug(
+                            'Rescaled depth shape: {}'.format(rescaled_depth.shape))
                         self.logger.debug(
                             'Reference index: {}'.format(c.ref_index))
                         self.logger.debug('Cluster indices: {}. Session dir: {}'.format(
                             c.indices, c.session_dir))
-                        yield (images, cams, depth)
+                        yield (images, cams, rescaled_depth, depth)
 
                         if self.flip_cams:
                             cams = ut.flip_cams(cams, self.depth_num)
-                            yield (images, cams, depth)
+                            yield (images, cams, rescaled_depth, depth)
 
                     except Exception as e:
                         self.logger.warn('Cluster with indices: {} at dir: {} failed to load with error: "{}". Skipping!'.format(
