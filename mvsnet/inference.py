@@ -60,11 +60,13 @@ tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for MVSNet""")
 tf.app.flags.DEFINE_bool('inverse_depth', True,
                          """Whether to apply inverse depth for R-MVSNet""")
-tf.app.flags.DEFINE_string('network_mode', 'ultralite',
+tf.app.flags.DEFINE_string('network_mode', 'normal',
                             """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
 tf.app.flags.DEFINE_string('refinement_network', 'unet',
                             """Specifies network to use for refinement. One of 'original' or 'unet'. 
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
+tf.app.flags.DEFINE_boolean('upsample_before_refinement', False,
+                            """Whether to upsample depth map to input resolution before the refinement network.""")
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -85,7 +87,7 @@ def compute_depth_maps(input_dir, output_dir = None, width = None, height = None
     mvs_generator = iter(data_gen)
     sample_size = len(data_gen.train_clusters)
 
-    generator_data_type = (tf.float32, tf.float32, tf.float32, tf.int32)
+    generator_data_type = (tf.float32, tf.float32, tf.float32, tf.float32, tf.int32)
     mvs_set = tf.data.Dataset.from_generator(
         lambda: mvs_generator, generator_data_type)
     mvs_set = mvs_set.batch(FLAGS.batch_size)
@@ -93,7 +95,7 @@ def compute_depth_maps(input_dir, output_dir = None, width = None, height = None
 
     # data from dataset via iterator
     mvs_iterator = mvs_set.make_initializable_iterator()
-    scaled_images, centered_images, scaled_cams, image_index = mvs_iterator.get_next()
+    scaled_images, centered_images, scaled_cams, full_cams, image_index = mvs_iterator.get_next()
 
     # set shapes
     scaled_images.set_shape(tf.TensorShape(

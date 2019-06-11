@@ -276,19 +276,6 @@ def get_batch(training_iterator, validation_iterator):
     else:
         images, cams, depth, full_depth = validation_iterator.get_next()
 
-    """
-    cams = ut.scale_mvs_camera(
-        cams, scale=FLAGS.sample_scale)
-    cams = np.stack(cams, axis=0)
-
-    depth = ut.scale_and_reshape_depth(
-        depth, FLAGS.sample_scale)
-
-    output_width = int(FLAGS.width * FLAGS.sample_scale)
-    output_height = int(FLAGS.height * FLAGS.sample_scale)
-    new_size = tf.constant((output_width, output_height), dtype=tf.int32)
-    depth_image = tf.image.resize_images(depth_image, new_size, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-    """
     images.set_shape(tf.TensorShape(
         [None, FLAGS.view_num, None, None, 3]))
     cams.set_shape(tf.TensorShape(

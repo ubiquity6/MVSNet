@@ -229,6 +229,8 @@ class ClusterGenerator:
 
                     output_images = np.stack(output_images, axis=0)
                     output_cams = np.stack(output_cams, axis=0)
+                    # Full cams are scaled to input image resolution
+                    full_cams = np.stack(cropped_cams, axis=0)
 
                     image_index = c.ref_index
                     self.logger.debug(
@@ -241,4 +243,4 @@ class ClusterGenerator:
                         'output cams shape: {}'.format(output_cams.shape))
                     self.logger.debug('image index: {}'.format(image_index))
 
-                    yield (output_images, input_images, output_cams, image_index)
+                    yield (output_images, input_images, output_cams, full_cams, image_index)

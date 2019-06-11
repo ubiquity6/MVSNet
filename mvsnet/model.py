@@ -158,6 +158,8 @@ def inference_mem(images, cams, depth_num, depth_start, depth_interval, network_
     # image feature extraction   
     reuse = not is_master_gpu     
     ref_tower = UNetDS2GN({'data': ref_image}, trainable=trainable, training=training, mode=network_mode, reuse=reuse)
+    base_divisor = ref_tower.base_divisor
+    feature_c /= base_divisor
     ref_feature = ref_tower.get_output()
     ref_feature2 = tf.square(ref_feature)
 
