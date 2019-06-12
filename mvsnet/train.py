@@ -24,6 +24,7 @@ import cv2
 import numpy as np
 import wandb
 import tensorflow as tf
+import subprocess
 from tensorflow.python.lib.io import file_io
 
 
@@ -50,7 +51,7 @@ tf.app.flags.DEFINE_integer('ckpt_step', None,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 3,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 32,
+tf.app.flags.DEFINE_integer('max_d', 64,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('width', 256,
                             """Maximum image width when training.""")
@@ -96,7 +97,7 @@ tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
 tf.app.flags.DEFINE_integer('stepvalue', None,
                             """Step interval to decay learning rate.""")
-tf.app.flags.DEFINE_integer('snapshot', 10000,
+tf.app.flags.DEFINE_integer('snapshot', 1000,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.5,
                           """Learning rate decay rate.""")
@@ -107,7 +108,7 @@ tf.app.flags.DEFINE_float('train_steps_per_val', 50,
 
 FLAGS = tf.app.flags.FLAGS
 
-def load_model(total_step):
+def load_model(total_step, sess):
     """ Loads pretrained model if supplied """
     if FLAGS.ckpt_step:
         pretrained_model_path = os.path.join(
@@ -249,7 +250,8 @@ def initialize_trainer():
     logger.info("Training starting at time: {}".format(train_session_start))
     logger.info("Tensorflow version: {}".format(tf.__version__))
     logger.info("Flags: {}".format(FLAGS))
-    os.system('wandb login 08b2fe7c6c5d56f49b9c2dee8f24ca14c0679509') # Login to wandb
+    wandb_key = "08b2fe7c6c5d56f49b9c2dee8f24ca14c0679509"
+    subprocess.call(["wandb","login", wandb_key])
     wandb.init(project='mvsnet', tensorboard=True)
     wandb.config.update(FLAGS)
 
@@ -419,7 +421,7 @@ def train():
             # initialization
             total_step = 0
             sess.run(init_op)
-            load_model(total_step)
+            load_model(total_step, sess)
 
             # training several epochs
             num_iterations = int(np.ceil(float(FLAGS.epoch) / float(FLAGS.num_gpus)))
