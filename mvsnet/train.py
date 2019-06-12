@@ -51,9 +51,9 @@ tf.app.flags.DEFINE_integer('view_num', 3,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 32,
                             """Maximum depth step when training.""")
-tf.app.flags.DEFINE_integer('width', 256,
+tf.app.flags.DEFINE_integer('width', 128,
                             """Maximum image width when training.""")
-tf.app.flags.DEFINE_integer('height', 192,
+tf.app.flags.DEFINE_integer('height', 96,
                             """Maximum image height when training.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume.""")
@@ -68,9 +68,9 @@ tf.app.flags.DEFINE_string('optimizer', 'momentum',
                            """Optimizer to use. One of 'momentum' or 'rmsprop' """)
 tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for 3DCNNs""")
-tf.app.flags.DEFINE_string('refinement_train_mode', 'all',
-                            """One of 'all', 'refinement_only' or 'main_only'. If 'main_only' then only the main network is trained,
-                            if 'refinement_only', only the refinement network is trained, and if 'all' then the whole network is trained.
+tf.app.flags.DEFINE_string('refinement_train_mode', 'refine_only',
+                            """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
+                            if 'refine_only', only the refinement network is trained, and if 'all' then the whole network is trained.
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
 tf.app.flags.DEFINE_string('network_mode', 'ultralite',
                             """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
@@ -89,7 +89,7 @@ tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
 tf.app.flags.DEFINE_integer('stepvalue', None,
                             """Step interval to decay learning rate.""")
-tf.app.flags.DEFINE_integer('snapshot', 10000,
+tf.app.flags.DEFINE_integer('snapshot', 20,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.5,
                           """Learning rate decay rate.""")
@@ -100,17 +100,21 @@ tf.app.flags.DEFINE_float('train_steps_per_val', 50,
 
 FLAGS = tf.app.flags.FLAGS
 
-def load_model(total_step):
+def load_model(sess):
     """ Loads pretrained model if supplied """
+    total_step = 0
     if FLAGS.ckpt_step:
         pretrained_model_path = os.path.join(
             FLAGS.model_load_dir, FLAGS.regularization, 'model.ckpt')
         restorer = tf.train.Saver(tf.global_variables())
         restorer.restore(
+            sess, '-'.join([pretrained_model_path, str(60)]))
+        restorer.restore(
             sess, '-'.join([pretrained_model_path, str(FLAGS.ckpt_step)]))
         print(Notify.INFO, 'Pre-trained model restored from %s' %
                 ('-'.join([pretrained_model_path, str(FLAGS.ckpt_step)])), Notify.ENDC)
         total_step = FLAGS.ckpt_step
+    return total_step
 
 def average_gradients(tower_grads):
     """Calculate the average gradient for each shared variable across all towers.
@@ -279,7 +283,7 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, i):
 
     # inference
     if FLAGS.regularization == '3DCNNs':
-        main_trainable = False if FLAGS.refinement_train_mode == 'refinement_only' and FLAGS.refinement==True else True
+        main_trainable = False if FLAGS.refinement_train_mode == 'refine_only' and FLAGS.refinement==True else True
         # initial depth map
         depth_map, prob_map = inference(
             images, cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, is_master_gpu, trainable=main_trainable)
@@ -291,11 +295,13 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, i):
             refined_depth_map = depth_refine(depth_map, ref_image,
                                                 FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode,  is_master_gpu, trainable=refine_trainable)
                                     # regression loss
-            loss0, less_one_temp, less_three_temp = mvsnet_regression_loss(
+            loss0, less_one_main, less_three_main = mvsnet_regression_loss(
                 depth_map, depth_image, depth_interval)
             loss1, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
                 refined_depth_map, depth_image, depth_interval)
-            if FLAGS.refinement_train_mode == 'refinement_only':
+           # if FLAGS.refinement_train_mode == 'main_only':
+           #     loss = loss0
+            if FLAGS.refinement_train_mode == 'refine_only':
                 # If we are only training the refinement network we are only computing gradients wrt the refinement network params
                 # These gradients on l0 will be zero, so no need to include l0 in the loss
                 loss = loss1
@@ -398,9 +404,10 @@ def train():
 
         with tf.Session(config=config) as sess:
             # initialization
-            total_step = 0
+            #global total_step
+            #total_step = 0
             sess.run(init_op)
-            load_model(total_step)
+            total_step = load_model(sess)
 
             # training several epochs
             num_iterations = int(np.ceil(float(FLAGS.epoch) / float(FLAGS.num_gpus)))
