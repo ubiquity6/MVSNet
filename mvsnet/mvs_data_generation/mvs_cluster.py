@@ -1,6 +1,6 @@
 import numpy as np
 from mvsnet.mvs_data_generation.utils import mask_depth_image, scale_camera, scale_image, center_image
-from mvsnet.utils import setup_logger
+from mvsnet.utils import setup_logger, ml_engine
 import imageio
 import logging
 import json
@@ -9,13 +9,7 @@ import scipy
 import cv2
 from tensorflow.python.lib.io import file_io
 import tensorflow as tf
-
-# Flag that determines if we are running on GCP or local
-if 'CLOUD_ML_JOB_ID' in os.environ:
-    GCP = True
-else:
-    GCP = False
-if GCP:
+if ml_engine():
     tf.enable_eager_execution()
 """
 
@@ -64,7 +58,7 @@ class Cluster:
 
     def load_depth(self, index):
         try:
-            if GCP:
+            if ml_engine():
                 depth_raw = tf.read_file(self.depth_path(index))
                 depth = tf.image.decode_png(depth_raw, dtype=tf.uint16).numpy()
                 return depth

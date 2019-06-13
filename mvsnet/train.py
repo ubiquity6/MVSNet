@@ -68,13 +68,13 @@ tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method.""")
 tf.app.flags.DEFINE_string('optimizer', 'momentum',
                            """Optimizer to use. One of 'momentum' or 'rmsprop' """)
-tf.app.flags.DEFINE_boolean('refinement', True,
+tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for 3DCNNs""")
 tf.app.flags.DEFINE_string('refinement_train_mode', 'all',
                             """One of 'all', 'refinement_only' or 'main_only'. If 'main_only' then only the main network is trained,
                             if 'refinement_only', only the refinement network is trained, and if 'all' then the whole network is trained.
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
-tf.app.flags.DEFINE_string('network_mode', 'ultralite',
+tf.app.flags.DEFINE_string('network_mode', 'normal',
                             """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
 
 tf.app.flags.DEFINE_string('refinement_network', 'unet',
@@ -251,7 +251,10 @@ def initialize_trainer():
     logger.info("Tensorflow version: {}".format(tf.__version__))
     logger.info("Flags: {}".format(FLAGS))
     wandb_key = "08b2fe7c6c5d56f49b9c2dee8f24ca14c0679509"
-    subprocess.call(["wandb","login", wandb_key])
+    if mu.ml_engine():
+        subprocess.call(["/root/.local/bin/wandb", "login", wandb_key])
+    else:
+        subprocess.call(["wandb","login", wandb_key])
     wandb.init(project='mvsnet', tensorboard=True)
     wandb.config.update(FLAGS)
 
