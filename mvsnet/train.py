@@ -68,7 +68,7 @@ tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method.""")
 tf.app.flags.DEFINE_string('optimizer', 'momentum',
                            """Optimizer to use. One of 'momentum' or 'rmsprop' """)
-tf.app.flags.DEFINE_boolean('refinement', True,
+tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for 3DCNNs""")
 tf.app.flags.DEFINE_string('refinement_train_mode', 'refine_only',
                             """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
@@ -232,7 +232,7 @@ def setup_optimizer():
 
     if FLAGS.stepvalue is None:
         # With this stepvalue, the lr will decay by a factor of decay_per_10_epoch every 10 epochs
-        decay_per_10_epoch = 0.025
+        decay_per_10_epoch = 0.1
         FLAGS.stepvalue = int(
             10 * np.log(FLAGS.gamma) * training_sample_size / np.log(decay_per_10_epoch))
     global_step = tf.Variable(0, trainable=False, name='global_step')
