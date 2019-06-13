@@ -38,7 +38,7 @@ tf.app.flags.DEFINE_string('log_dir', None,
 tf.app.flags.DEFINE_string('model_dir', None,
                            """Path to save the model.""")
 tf.app.flags.DEFINE_string('model_load_dir', None,
-                           """Path to load the saved model. Required if ckpt_step is not none""")
+                           """Path to load the saved model. If not specified, model will be loaded from model_dir""")
 tf.app.flags.DEFINE_string('job-dir', None,
                            """Path to save job artifacts""")
 tf.app.flags.DEFINE_boolean('train_dtu', True,
@@ -70,7 +70,7 @@ tf.app.flags.DEFINE_string('optimizer', 'momentum',
                            """Optimizer to use. One of 'momentum' or 'rmsprop' """)
 tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for 3DCNNs""")
-tf.app.flags.DEFINE_string('refinement_train_mode', 'all',
+tf.app.flags.DEFINE_string('refinement_train_mode', 'refine_only',
                             """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
                             if 'refine_only', only the refinement network is trained, and if 'all' then the whole network is trained.
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
@@ -112,11 +112,13 @@ def load_model(sess):
     """ Loads pretrained model if supplied """
     total_step = 0
     if FLAGS.ckpt_step:
-        pretrained_model_path = os.path.join(
-            FLAGS.model_load_dir, FLAGS.regularization, 'model.ckpt')
+        if FLAGS.model_load_dir:
+            pretrained_model_path = os.path.join(
+                FLAGS.model_load_dir, FLAGS.regularization, 'model.ckpt')
+        else:
+            pretrained_model_path = os.path.join(
+                FLAGS.model_dir, FLAGS.regularization, 'model.ckpt')
         restorer = tf.train.Saver(tf.global_variables())
-        restorer.restore(
-            sess, '-'.join([pretrained_model_path, str(60)]))
         restorer.restore(
             sess, '-'.join([pretrained_model_path, str(FLAGS.ckpt_step)]))
         print(Notify.INFO, 'Pre-trained model restored from %s' %
