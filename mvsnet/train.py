@@ -319,10 +319,14 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
                                     # regression loss
             loss0, less_one_main, less_three_main = mvsnet_regression_loss(
                 depth_map, depth_image, depth_interval)
-            loss1, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
-                refined_depth_map, depth_image, depth_interval)
-           # if FLAGS.refinement_train_mode == 'main_only':
-           #     loss = loss0
+            # If we upsampled the depth image to full resolution we need to compute loss with full_depth
+            
+            if FLAGS.upsample_before_refinement:
+                loss1, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
+                    refined_depth_map, full_depth, depth_interval)
+            else:
+                loss1, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
+                    refined_depth_map, depth_image, depth_interval)
             if FLAGS.refinement_train_mode == 'refine_only':
                 # If we are only training the refinement network we are only computing gradients wrt the refinement network params
                 # These gradients on l0 will be zero, so no need to include l0 in the loss
