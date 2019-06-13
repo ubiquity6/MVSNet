@@ -74,7 +74,7 @@ tf.app.flags.DEFINE_string('refinement_train_mode', 'all',
                             """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
                             if 'refine_only', only the refinement network is trained, and if 'all' then the whole network is trained.
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
-tf.app.flags.DEFINE_string('network_mode', 'normal',
+tf.app.flags.DEFINE_string('network_mode', 'lite',
                             """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
 
 tf.app.flags.DEFINE_string('refinement_network', 'unet',
