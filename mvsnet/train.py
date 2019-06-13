@@ -74,6 +74,10 @@ tf.app.flags.DEFINE_string('refinement_train_mode', 'all',
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
 tf.app.flags.DEFINE_string('network_mode', 'ultralite',
                             """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
+
+tf.app.flags.DEFINE_string('refinement_network', 'original',
+                            """Specifies network to use for refinement. One of 'original' or 'unet'. 
+                            If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
 # training parameters
 tf.app.flags.DEFINE_integer('num_gpus', None,
                             """Number of GPUs.""")
@@ -289,7 +293,7 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, i):
             ref_image = tf.squeeze(
                 tf.slice(images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
             refined_depth_map = depth_refine(depth_map, ref_image,
-                                                FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode,  is_master_gpu, trainable=refine_trainable)
+                                                FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, FLAGS.refinement_network,  is_master_gpu, trainable=refine_trainable)
                                     # regression loss
             loss0, less_one_temp, less_three_temp = mvsnet_regression_loss(
                 depth_map, depth_image, depth_interval)
