@@ -39,3 +39,10 @@ def mkdir_p(dir_path):
     """ Makes the directory dir_path if it doesn't exist """
     if not os.path.isdir(dir_path):
         os.mkdir(dir_path)
+
+
+def ml_engine():
+    if 'CLOUD_ML_JOB_ID' in os.environ:
+        return True
+    else:
+        return False

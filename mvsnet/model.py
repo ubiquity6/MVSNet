@@ -158,6 +158,8 @@ def inference_mem(images, cams, depth_num, depth_start, depth_interval, network_
     # image feature extraction   
     reuse = not is_master_gpu     
     ref_tower = UNetDS2GN({'data': ref_image}, trainable=trainable, training=training, mode=network_mode, reuse=reuse)
+    base_divisor = ref_tower.base_divisor
+    feature_c /= base_divisor
     ref_feature = ref_tower.get_output()
     ref_feature2 = tf.square(ref_feature)
 
@@ -452,7 +454,7 @@ def inference_winner_take_all(images, cams, depth_num, depth_start, depth_end, n
     forward_depth_map = depth_image
     return forward_depth_map, max_prob_image / forward_exp_sum
 
-def depth_refine(init_depth_map, image, depth_num, depth_start, depth_interval, network_mode, network_type, is_master_gpu=True, training=True, trainable=True):
+def depth_refine(init_depth_map, image, depth_num, depth_start, depth_interval, network_mode, network_type, is_master_gpu=True, training=True, trainable=True, upsample_depth=False):
     """ refine depth image with the image """
 
     # normalization parameters
@@ -468,16 +470,21 @@ def depth_refine(init_depth_map, image, depth_num, depth_start, depth_interval, 
     # normalize depth map (to 0~1)
     init_norm_depth_map = tf.div(init_depth_map - depth_start_mat, depth_scale_mat)
 
-    # resize normalized image to the same size of depth image
-    resized_image = tf.image.resize_bilinear(image, [depth_shape[1], depth_shape[2]])
+    if upsample_depth:
+        # Upsample depth map to resolution of input image
+        init_norm_depth_map = tf.image.resize_bilinear(init_norm_depth_map, [image_shape[1], image_shape[2]])
+        init_depth_map = tf.image.resize_bilinear(init_depth_map, [image_shape[1], image_shape[2]])
+    else:
+        # Downsample original image to size of depth map
+        image = tf.image.resize_bilinear(image, [depth_shape[1], depth_shape[2]])
 
     # refinement network
     reuse = not is_master_gpu
     if network_type == 'unet':
-        norm_depth_tower = RefineUNet({'color_image': resized_image, 'depth_image': init_norm_depth_map},
+        norm_depth_tower = RefineUNet({'color_image': image, 'depth_image': init_norm_depth_map},
                                         trainable=trainable, training=training, mode=network_mode, reuse=reuse)
     elif network_type == 'original':
-        norm_depth_tower = RefineNet({'color_image': resized_image, 'depth_image': init_norm_depth_map},
+        norm_depth_tower = RefineNet({'color_image': image, 'depth_image': init_norm_depth_map},
                                         trainable=trainable, training=training, mode=network_mode, reuse=reuse)
     else:
         raise NotImplementedError

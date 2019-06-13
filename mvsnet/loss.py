@@ -11,13 +11,15 @@ import numpy as np
 
 FLAGS = tf.app.flags.FLAGS
 
-def non_zero_mean_absolute_diff(y_true, y_pred, interval):
+def non_zero_mean_absolute_diff(y_true, y_pred, interval, denom_exponent=1):
     """ non zero mean absolute loss for one batch """
     with tf.name_scope('MAE'):
+        denom_exponent = tf.constant(denom_exponent, dtype=tf.float32)
         shape = tf.shape(y_pred)
         interval = tf.reshape(interval, [shape[0]])
         mask_true = tf.cast(tf.not_equal(y_true, 0.0), dtype='float32')
         denom = tf.abs(tf.reduce_sum(mask_true, axis=[1, 2, 3])) + 1e-6
+        denom = tf.math.pow(denom, denom_exponent)
         masked_abs_error = tf.abs(mask_true * (y_true - y_pred))            # 4D
         masked_mae = tf.reduce_sum(masked_abs_error, axis=[1, 2, 3])        # 1D
         masked_mae = tf.reduce_sum((masked_mae / interval) / denom)         # 1
