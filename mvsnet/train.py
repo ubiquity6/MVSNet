@@ -314,6 +314,7 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
             loss0, less_one_temp, less_three_temp = mvsnet_regression_loss(
                 depth_map, depth_image, depth_interval)
             # If we upsampled the depth image to full resolution we need to compute loss with full_depth
+            
             if FLAGS.upsample_before_refinement:
                 loss1, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
                     refined_depth_map, full_depth, depth_interval)
