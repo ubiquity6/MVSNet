@@ -51,17 +51,17 @@ def layer(op):
 class Network(object):
     """Class NetWork."""
 
-    def __init__(self, inputs, is_training, mode='normal',
+    def __init__(self, inputs, trainable, training=True, mode='normal',
                  dropout_rate=0.5, seed=None, epsilon=1e-5, reuse=False, fcn=True, regularize=True,
                  **kwargs):
         # The input nodes for this network
         self.inputs = inputs
         # If true, the resulting variables are set as trainable
-        self.trainable = is_training if isinstance(is_training, bool) else True
+        self.trainable = trainable if isinstance(trainable, bool) else True
         # If true, variables are shared between feature towers
         self.reuse = reuse
-        # If true, layers like batch normalization or dropout are working in training mode
-        self.training = is_training
+        #  Should be True for training mode and false for inference
+        self.training = training
         # Dropout rate
         self.dropout_rate = dropout_rate
         # Seed for randomness
@@ -71,7 +71,11 @@ class Network(object):
         # The epsilon paramater in BN layer.
         self.bn_epsilon = epsilon
         self.extra_args = kwargs
-        self.base_divisor = 1 if mode == 'normal' else 2 # for dividing the base_filter size of the network
+        self.base_divisor = 1  # for dividing the base_filter size of the network
+        if mode == 'lite':
+            self.base_divisor = 2
+        if mode == 'ultralite':
+            self.base_divisor = 4
         if inputs is not None:
             # The current list of terminal nodes
             self.terminals = []

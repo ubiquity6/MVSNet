@@ -60,7 +60,8 @@ class ConvGRUCell(tf.contrib.rnn.RNNCell):
                  kernel,
                  initializer=None,
                  activation=tf.tanh,
-                 normalize=True):
+                 normalize=True,
+                 trainable=True):
         self._filters = filters
         self._kernel = kernel
         self._initializer = initializer
@@ -68,6 +69,7 @@ class ConvGRUCell(tf.contrib.rnn.RNNCell):
         self._size = tf.TensorShape(shape + [self._filters])
         self._normalize = normalize
         self._feature_axis = self._size.ndims
+        self.trainable=trainable
 
     @property
     def state_size(self):
@@ -88,7 +90,7 @@ class ConvGRUCell(tf.contrib.rnn.RNNCell):
 
                 # convolution
                 conv = tf.layers.conv2d(
-                    inputs, 2 * self._filters, self._kernel, padding='same', name='conv')
+                    inputs, 2 * self._filters, self._kernel, padding='same', name='conv', trainable=self.trainable)
                 reset_gate, update_gate = tf.split(conv, 2, axis=self._feature_axis)
 
                 # group normalization, actually is 'instance normalization' as to save GPU memory 
@@ -106,7 +108,7 @@ class ConvGRUCell(tf.contrib.rnn.RNNCell):
 
                 # convolution
                 conv = tf.layers.conv2d(
-                    inputs, self._filters, self._kernel, padding='same', name='output_conv')
+                    inputs, self._filters, self._kernel, padding='same', name='output_conv', trainable=self.trainable)
 
                 # group normalization
                 conv = group_norm(conv, 'output_norm', group_channel=16)

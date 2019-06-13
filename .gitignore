@@ -15,5 +15,6 @@ MANIFEST
 MVSNet.egg-info/*
 .vscode/*
 wandb/*
+scratch/*
 
 nohup.out

@@ -49,11 +49,11 @@ tf.app.flags.DEFINE_integer('ckpt_step', None,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 3,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 192,
+tf.app.flags.DEFINE_integer('max_d', 32,
                             """Maximum depth step when training.""")
-tf.app.flags.DEFINE_integer('width', 640,
+tf.app.flags.DEFINE_integer('width', 256,
                             """Maximum image width when training.""")
-tf.app.flags.DEFINE_integer('height', 480,
+tf.app.flags.DEFINE_integer('height', 192,
                             """Maximum image height when training.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume.""")
@@ -64,12 +64,16 @@ tf.app.flags.DEFINE_float('base_image_size', 8,
 # network architectures
 tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method.""")
-tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
+tf.app.flags.DEFINE_string('optimizer', 'momentum',
                            """Optimizer to use. One of 'momentum' or 'rmsprop' """)
-tf.app.flags.DEFINE_boolean('refinement', False,
+tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for 3DCNNs""")
-tf.app.flags.DEFINE_string('network_mode', 'normal',
-                            """One of 'normal' or 'lite'. If 'lite' then networks have fewer params""")
+tf.app.flags.DEFINE_string('refinement_train_mode', 'all',
+                            """One of 'all', 'refinement_only' or 'main_only'. If 'main_only' then only the main network is trained,
+                            if 'refinement_only', only the refinement network is trained, and if 'all' then the whole network is trained.
+                            Note this is only applicable if training with refinement=True and 3DCNN regularization """)
+tf.app.flags.DEFINE_string('network_mode', 'ultralite',
+                            """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
 # training parameters
 tf.app.flags.DEFINE_integer('num_gpus', None,
                             """Number of GPUs.""")
@@ -87,7 +91,7 @@ tf.app.flags.DEFINE_integer('stepvalue', None,
                             """Step interval to decay learning rate.""")
 tf.app.flags.DEFINE_integer('snapshot', 10000,
                             """Step interval to save the model.""")
-tf.app.flags.DEFINE_float('gamma', 0.9,
+tf.app.flags.DEFINE_float('gamma', 0.5,
                           """Learning rate decay rate.""")
 tf.app.flags.DEFINE_float('val_batch_size', 5,
                           """Number of images to run validation on when validation.""")
@@ -239,7 +243,8 @@ def initialize_trainer():
     logger.info("Tensorflow version: {}".format(tf.__version__))
     logger.info("Flags: {}".format(FLAGS))
     os.system('wandb login 08b2fe7c6c5d56f49b9c2dee8f24ca14c0679509') # Login to wandb
-    wandb.init()
+    wandb.init(project='mvsnet', tensorboard=True)
+    wandb.config.update(FLAGS)
 
     # Prepare validation summary 
     val_sum_file = os.path.join(
@@ -271,23 +276,31 @@ def get_batch(training_iterator, validation_iterator):
 def get_loss(images, cams, depth_image, depth_start, depth_interval, i):
     """ Performs inference with specified network and return loss function """
     is_master_gpu = True if i == 0 else False
+
     # inference
     if FLAGS.regularization == '3DCNNs':
+        main_trainable = False if FLAGS.refinement_train_mode == 'refinement_only' and FLAGS.refinement==True else True
         # initial depth map
         depth_map, prob_map = inference(
-            images, cams, FLAGS.max_d, depth_start, depth_interval,FLAGS.network_mode, is_master_gpu)
+            images, cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, is_master_gpu, trainable=main_trainable)
         # refinement
         if FLAGS.refinement:
+            refine_trainable = False if FLAGS.refinement_train_mode == 'main_only' else True
             ref_image = tf.squeeze(
                 tf.slice(images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
             refined_depth_map = depth_refine(depth_map, ref_image,
-                                                FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode,  is_master_gpu)
+                                                FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode,  is_master_gpu, trainable=refine_trainable)
                                     # regression loss
             loss0, less_one_temp, less_three_temp = mvsnet_regression_loss(
                 depth_map, depth_image, depth_interval)
             loss1, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
                 refined_depth_map, depth_image, depth_interval)
-            loss = (loss0 + loss1) / 2
+            if FLAGS.refinement_train_mode == 'refinement_only':
+                # If we are only training the refinement network we are only computing gradients wrt the refinement network params
+                # These gradients on l0 will be zero, so no need to include l0 in the loss
+                loss = loss1
+            else:
+                loss = (loss0 + loss1) / 2
         else:
             # regression loss
             loss, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
@@ -335,6 +348,7 @@ def validate(sess, val_sum_file, loss, less_one_accuracy, less_three_accuracy, e
         print(Notify.INFO, '_validating_',
                 'epoch, %d, train step %d, val loss = %.4f, val (< 1px) = %.4f, val (< 3px) = %.4f (%.3f sec/step)' %
                 (epoch, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
+
         val_loss.append(out_loss)
         val_less_one.append(out_less_one)
         val_less_three.append(out_less_three)
@@ -344,6 +358,7 @@ def validate(sess, val_sum_file, loss, less_one_accuracy, less_three_accuracy, e
 
     print(Notify.INFO, '\n VAL STEP COMPLETED. Average loss: {}, Average less one: {}, Average less three: {}\n'.format(
         l, l1, l3))
+    wandb.log({'val_loss':l,'val_less_one':l1,'val_less_three':l3}, step=total_step)
 
     with file_io.FileIO(val_sum_file, 'a+') as f:
         f.write('{},{},{},{}\n'.format(
@@ -366,7 +381,7 @@ def train():
         opt, global_step = setup_optimizer()    
 
         global training_status
-        training_status = True  # Set to true when training, false when validating
+        training_status = True  # This is set to true when training, false when validating
         tower_grads = [] # to keep track of the gradients across all towers.
         for i in xrange(FLAGS.num_gpus):
             with tf.device('/gpu:%d' % i):
@@ -374,7 +389,6 @@ def train():
                     images, cams, depth_image, depth_start, depth_interval = get_batch(training_iterator, validation_iterator)
                     loss, less_one_accuracy, less_three_accuracy = get_loss(images, cams, depth_image, depth_start, depth_interval,i)
                     grads = opt.compute_gradients(loss)
-                    
                     tower_grads.append(grads)
 
         grads = average_gradients(tower_grads)
@@ -414,6 +428,7 @@ def train():
                         print(Notify.INFO,
                               'epoch, %d, step %d, total_step %d, loss = %.4f, (< 1px) = %.4f, (< 3px) = %.4f (%.3f sec/step)' %
                               (epoch, step, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
+                        wandb.log({'loss':out_loss,'less_one':out_less_one,'less_three':out_less_three,'time_per_step':duration},step=total_step)
 
                     save_model(sess, saver, total_step, step)
                     step += FLAGS.batch_size * FLAGS.num_gpus

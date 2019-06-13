@@ -60,8 +60,8 @@ tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for MVSNet""")
 tf.app.flags.DEFINE_bool('inverse_depth', True,
                          """Whether to apply inverse depth for R-MVSNet""")
-tf.app.flags.DEFINE_string('network_mode', 'normal',
-                            """One of 'normal' or 'lite'. If 'lite' then networks have fewer params""")
+tf.app.flags.DEFINE_string('network_mode', 'ultralite',
+                            """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -117,18 +117,18 @@ def compute_depth_maps(input_dir, output_dir = None, width = None, height = None
     # depth map inference using 3DCNNs
     if FLAGS.regularization == '3DCNNs':
         init_depth_map, prob_map = inference_mem(
-            centered_images, scaled_cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode)
+            centered_images, scaled_cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, training=False)
 
         if FLAGS.refinement:
             ref_image = tf.squeeze(
                 tf.slice(centered_images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
             refined_depth_map = depth_refine(
-                init_depth_map, ref_image, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, True)
+                init_depth_map, ref_image, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, True, training=False)
 
     # depth map inference using GRU
     elif FLAGS.regularization == 'GRU':
         init_depth_map, prob_map = inference_winner_take_all(centered_images, scaled_cams,
-                                                             depth_num, depth_start, depth_end, network_mode=FLAGS.network_mode, reg_type='GRU', inverse_depth=FLAGS.inverse_depth)
+                                                             depth_num, depth_start, depth_end, network_mode=FLAGS.network_mode, reg_type='GRU', inverse_depth=FLAGS.inverse_depth, training=False)
 
     # init option
     var_init_op = tf.local_variables_initializer()
