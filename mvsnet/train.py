@@ -71,8 +71,8 @@ tf.app.flags.DEFINE_string('optimizer', 'momentum',
 tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for 3DCNNs""")
 tf.app.flags.DEFINE_string('refinement_train_mode', 'all',
-                            """One of 'all', 'refinement_only' or 'main_only'. If 'main_only' then only the main network is trained,
-                            if 'refinement_only', only the refinement network is trained, and if 'all' then the whole network is trained.
+                            """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
+                            if 'refine_only', only the refinement network is trained, and if 'all' then the whole network is trained.
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
 tf.app.flags.DEFINE_string('network_mode', 'normal',
                             """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
@@ -299,7 +299,7 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
 
     # inference
     if FLAGS.regularization == '3DCNNs':
-        main_trainable = False if FLAGS.refinement_train_mode == 'refinement_only' and FLAGS.refinement==True else True
+        main_trainable = False if FLAGS.refinement_train_mode == 'refine_only' and FLAGS.refinement==True else True
         # initial depth map
         depth_map, prob_map = inference(
             images, cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, is_master_gpu, trainable=main_trainable)
@@ -320,7 +320,7 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
             else:
                 loss1, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
                     refined_depth_map, depth_image, depth_interval)
-            if FLAGS.refinement_train_mode == 'refinement_only':
+            if FLAGS.refinement_train_mode == 'refine_only':
                 # If we are only training the refinement network we are only computing gradients wrt the refinement network params
                 # These gradients on l0 will be zero, so no need to include l0 in the loss
                 loss = loss1
