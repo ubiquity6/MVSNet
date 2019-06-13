@@ -53,15 +53,9 @@ tf.app.flags.DEFINE_integer('view_num', 3,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 192,
                             """Maximum depth step when training.""")
-<<<<<<< HEAD
 tf.app.flags.DEFINE_integer('width', 640,
                             """Maximum image width when training.""")
 tf.app.flags.DEFINE_integer('height', 480,
-=======
-tf.app.flags.DEFINE_integer('width', 128,
-                            """Maximum image width when training.""")
-tf.app.flags.DEFINE_integer('height', 96,
->>>>>>> chris/freeze
                             """Maximum image height when training.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume.""")
@@ -76,11 +70,7 @@ tf.app.flags.DEFINE_string('optimizer', 'momentum',
                            """Optimizer to use. One of 'momentum' or 'rmsprop' """)
 tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for 3DCNNs""")
-<<<<<<< HEAD
 tf.app.flags.DEFINE_string('refinement_train_mode', 'all',
-=======
-tf.app.flags.DEFINE_string('refinement_train_mode', 'refine_only',
->>>>>>> chris/freeze
                             """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
                             if 'refine_only', only the refinement network is trained, and if 'all' then the whole network is trained.
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
