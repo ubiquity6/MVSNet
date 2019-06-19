@@ -47,9 +47,11 @@ tf.app.flags.DEFINE_boolean('use_pretrain', True,
                             """Whether to train.""")
 tf.app.flags.DEFINE_integer('ckpt_step', None,
                             """ckpt step.""")
+tf.app.flags.DEFINE_string('run_name', None,
+                           """A name to use for wandb logging""")
 
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 3,
+tf.app.flags.DEFINE_integer('view_num', 6,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 192,
                             """Maximum depth step when training.""")
@@ -66,15 +68,15 @@ tf.app.flags.DEFINE_float('base_image_size', 8,
 # network architectures
 tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method.""")
-tf.app.flags.DEFINE_string('optimizer', 'momentum',
+tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
                            """Optimizer to use. One of 'momentum' or 'rmsprop' """)
 tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for 3DCNNs""")
-tf.app.flags.DEFINE_string('refinement_train_mode', 'refine_only',
+tf.app.flags.DEFINE_string('refinement_train_mode', 'all',
                             """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
                             if 'refine_only', only the refinement network is trained, and if 'all' then the whole network is trained.
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
-tf.app.flags.DEFINE_string('network_mode', 'lite',
+tf.app.flags.DEFINE_string('network_mode', 'normal',
                             """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
 
 tf.app.flags.DEFINE_string('refinement_network', 'unet',
@@ -89,15 +91,13 @@ tf.app.flags.DEFINE_integer('batch_size', 1,
                             """Training batch size.""")
 tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
-tf.app.flags.DEFINE_float('val_ratio', 0,
-                          """Ratio of validation set when splitting dataset.""")
 tf.app.flags.DEFINE_float('base_lr', 0.001,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
 tf.app.flags.DEFINE_integer('stepvalue', None,
                             """Step interval to decay learning rate.""")
-tf.app.flags.DEFINE_integer('snapshot', 2000,
+tf.app.flags.DEFINE_integer('snapshot', 5000,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.5,
                           """Learning rate decay rate.""")
@@ -232,7 +232,7 @@ def setup_optimizer():
 
     if FLAGS.stepvalue is None:
         # With this stepvalue, the lr will decay by a factor of decay_per_10_epoch every 10 epochs
-        decay_per_10_epoch = 0.1
+        decay_per_10_epoch = 0.05
         FLAGS.stepvalue = int(
             10 * np.log(FLAGS.gamma) * training_sample_size / np.log(decay_per_10_epoch))
     global_step = tf.Variable(0, trainable=False, name='global_step')
@@ -261,7 +261,7 @@ def initialize_trainer():
         subprocess.call(["/root/.local/bin/wandb", "login", wandb_key])
     else:
         subprocess.call(["wandb","login", wandb_key])
-    wandb.init(project='mvsnet', tensorboard=True)
+    wandb.init(project='mvsnet', name=FLAGS.run_name)
     wandb.config.update(FLAGS)
 
     # Prepare validation summary 

@@ -39,6 +39,7 @@ class ClusterGenerator:
         # Factor by which output is scaled relative to input
         self.output_scale = output_scale
         self.flip_cams = flip_cams
+        self.sessions_frac = 0.2 # The sessions_fraction [0,1] is the fraction of all available sessions in sessions_dir
         self.parse_sessions()
         self.set_iter_clusters()
 
@@ -53,6 +54,8 @@ class ClusterGenerator:
         Returns:
             clusters: A list of Cluster objects. See mvs_cluster.py for their declaration.
         """
+        # TODO: Cache the session data afters its been parsed into clusters so that we don't have to 
+        # do this everytime since it takes a long time when we have many many sessions
 
         clusters = []
         if self.mode == 'test':
@@ -60,9 +63,19 @@ class ClusterGenerator:
         else:
             sessions = [f for f in tf.gfile.ListDirectory(
                 self.sessions_dir) if not f.startswith('.') if not f.endswith('.txt')]
-            for session in sessions:
+            total_sessions = len(sessions)
+            self.logger.info('There are {} total sessions'.format(total_sessions))
+            seed = 5  # We shuffle with the same random seed for reproducibility
+            random.Random(seed).shuffle(sessions)
+            num_sessions = int(total_sessions * self.sessions_frac)
+            self.logger.info('{} sessions will be used '.format(num_sessions))
+            # TODO: Implement the train / val split at the session level rather than at the cluster level. This will also prevent the val
+            # generator from needing to load all of the clusters. In fact we might just want to do lazy loading of clusters
+            for s, session in enumerate(sessions[:num_sessions]):
                 session_dir = os.path.join(self.sessions_dir, session)
                 self.load_clusters(session_dir, clusters)
+                if s % 25 == 0:
+                    self.logger.info('Parsed {} / {} sessions'.format(s, num_sessions))
 
         self.logger.info(" There are {} clusters".format(len(clusters)))
         self.clusters = clusters
