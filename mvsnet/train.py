@@ -51,7 +51,7 @@ tf.app.flags.DEFINE_string('run_name', None,
                            """A name to use for wandb logging""")
 
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 6,
+tf.app.flags.DEFINE_integer('view_num', 3,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 192,
                             """Maximum depth step when training.""")
@@ -69,16 +69,15 @@ tf.app.flags.DEFINE_float('base_image_size', 8,
 tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method.""")
 tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
-                           """Optimizer to use. One of 'momentum' or 'rmsprop' """)
-tf.app.flags.DEFINE_boolean('refinement', False,
+                           """Optimizer to use. One of 'momentum', 'rmsprop' or 'adam' """)
+tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for 3DCNNs""")
-tf.app.flags.DEFINE_string('refinement_train_mode', 'all',
+tf.app.flags.DEFINE_string('refinement_train_mode', 'refine_only',
                             """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
                             if 'refine_only', only the refinement network is trained, and if 'all' then the whole network is trained.
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
 tf.app.flags.DEFINE_string('network_mode', 'normal',
                             """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
-
 tf.app.flags.DEFINE_string('refinement_network', 'unet',
                             """Specifies network to use for refinement. One of 'original' or 'unet'. 
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
@@ -244,6 +243,9 @@ def setup_optimizer():
     elif FLAGS.optimizer == 'momentum':
         opt = tf.train.MomentumOptimizer(
             learning_rate=lr_op, momentum=0.9, use_nesterov=False)
+        return opt, global_step
+    elif FLAGS.optimizer == 'adam':
+        opt = tf.train.AdamOptimizer(learning_rate=lr_op)
         return opt, global_step
     else:
         logger.error("Optimizer {} is not implemented. Please use 'rmsprop' or 'momentum".format(
