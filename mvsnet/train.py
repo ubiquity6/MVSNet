@@ -53,7 +53,7 @@ tf.app.flags.DEFINE_string('run_name', None,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 3,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 192,
+tf.app.flags.DEFINE_integer('max_d', 32,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('width', 640,
                             """Maximum image width when training.""")
@@ -72,17 +72,19 @@ tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
                            """Optimizer to use. One of 'momentum', 'rmsprop' or 'adam' """)
 tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for 3DCNNs""")
-tf.app.flags.DEFINE_string('refinement_train_mode', 'refine_only',
+tf.app.flags.DEFINE_string('refinement_train_mode', 'all',
                             """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
                             if 'refine_only', only the refinement network is trained, and if 'all' then the whole network is trained.
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
 tf.app.flags.DEFINE_string('network_mode', 'normal',
                             """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
-tf.app.flags.DEFINE_string('refinement_network', 'unet',
+tf.app.flags.DEFINE_string('refinement_network', 'original',
                             """Specifies network to use for refinement. One of 'original' or 'unet'. 
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
 tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
                             """Whether to upsample depth map to input resolution before the refinement network""")
+tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
+                            """Whether or not to concatenate the confidence map as an input channel to refinement network""")
 # training parameters
 tf.app.flags.DEFINE_integer('num_gpus', None,
                             """Number of GPUs.""")
@@ -108,7 +110,7 @@ tf.app.flags.DEFINE_float('train_steps_per_val', 50,
 FLAGS = tf.app.flags.FLAGS
 
 def load_model(sess):
-    """ Loads pretrained model if supplied """
+    """ Loads pretrained model if supplied  """
     total_step = 0
     if FLAGS.ckpt_step:
         if FLAGS.model_load_dir:
@@ -316,8 +318,8 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
             refine_trainable = False if FLAGS.refinement_train_mode == 'main_only' else True
             ref_image = tf.squeeze(
                 tf.slice(images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
-            refined_depth_map = depth_refine(depth_map, ref_image, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, \
-                FLAGS.refinement_network, is_master_gpu, trainable=refine_trainable, upsample_depth=FLAGS.upsample_before_refinement)
+            refined_depth_map = depth_refine(depth_map, ref_image, prob_map, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, \
+                FLAGS.refinement_network, is_master_gpu, trainable=refine_trainable, upsample_depth=FLAGS.upsample_before_refinement, refine_with_confidence=FLAGS.refine_with_confidence)
                                     # regression loss
             loss0, less_one_main, less_three_main = mvsnet_regression_loss(
                 depth_map, depth_image, depth_interval)

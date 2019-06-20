@@ -67,6 +67,8 @@ tf.app.flags.DEFINE_string('refinement_network', 'unet',
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
 tf.app.flags.DEFINE_boolean('upsample_before_refinement', False,
                             """Whether to upsample depth map to input resolution before the refinement network.""")
+tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
+                            """Whether or not to concatenate the confidence map as an input channel to refinement network""")
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -127,7 +129,8 @@ def compute_depth_maps(input_dir, output_dir = None, width = None, height = None
             ref_image = tf.squeeze(
                 tf.slice(centered_images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
             refined_depth_map = depth_refine(
-                init_depth_map, ref_image, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, FLAGS.refinement_network,  True, training=False)
+                init_depth_map, ref_image, prob_map, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, FLAGS.refinement_network, \
+                    True, training=False, upsample_depth=FLAGS.upsample_before_refinement, refine_with_confidence=FLAGS.refine_with_confidence)
 
     # depth map inference using GRU
     elif FLAGS.regularization == 'GRU':
