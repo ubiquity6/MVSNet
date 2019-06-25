@@ -171,25 +171,23 @@ def pose_string(cam):
     return pose_string
 
 
-def write_inverse_depth_map(image, file_path, exp=0.25):
-    """ Writes an inverted depth map for visualization purposes. exp is a value in [0,1]. Use a higher (lower)
-    value for faster (slower) decay with distance """
-    file_path_inverse = file_path.replace('.png', '_inverse.png')
+def write_inverse_depth_map(image, file_path, exp=2):
+    """ Writes an inverted depth map for visualization purposes
+    args:
+        image: Depth image to write
+        file_path: Path where that image is
+        exp: A positive number. Higher numbers lead to faster decay of brightness with depth"""
+    file_path_inverse = file_path.replace('.png', '_inverse_3.png')
+    max_int = 65535
     image = image.astype(np.float)
-    image = image - image.min()
-    image *= (65535 / image.max())
-    inv_depth = 65535 / np.power((1+image),exp) - np.power(image, 1-exp)
-    inv_depth = np.clip(inv_depth, 0, 65535).astype(np.uint16)
+    # First normalize image so it has min 0 and max = max_int
+    image -= image.min()
+    image *= (max_int / image.max())
+    # Invert the depth map and clip values
+    inv_depth = np.power((max_int - image)/max_int,exp)*max_int
+    inv_depth = np.clip(inv_depth, 0, max_int).astype(np.uint16)
     imageio.imsave(file_path_inverse, inv_depth)
 
-
-def write_inverse_depth_map_2(image, file_path, exp=0.25):
-    """ Writes an inverted depth map for visualization purposes. exp is a value in [0,1]. Use a higher (lower)
-    value for faster (slower) decay with distance """
-    file_path_inverse = file_path.replace('.png', '_inverse_2.png')
-    inv_depth = 65535 - image
-    inv_depth = np.clip(inv_depth, 0, 65535).astype(np.uint16)
-    imageio.imsave(file_path_inverse, inv_depth)
 
 def write_depth_map(file_path, image, visualization = True):
     # convert to int and clip to range of [0, 2^16 -1]
@@ -197,9 +195,6 @@ def write_depth_map(file_path, image, visualization = True):
     imageio.imsave(file_path, image)
     if visualization:
         write_inverse_depth_map(image, file_path)
-
-
-
 
 def write_confidence_map(file_path, image):
     # we convert probabilities in range [0,1] to ints in range [0, 2^16-1]
