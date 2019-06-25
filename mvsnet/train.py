@@ -51,9 +51,9 @@ tf.app.flags.DEFINE_string('run_name', None,
                            """A name to use for wandb logging""")
 
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 3,
+tf.app.flags.DEFINE_integer('view_num', 7,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 32,
+tf.app.flags.DEFINE_integer('max_d', 192,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('width', 640,
                             """Maximum image width when training.""")
@@ -72,7 +72,7 @@ tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
                            """Optimizer to use. One of 'momentum', 'rmsprop' or 'adam' """)
 tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for 3DCNNs""")
-tf.app.flags.DEFINE_string('refinement_train_mode', 'all',
+tf.app.flags.DEFINE_string('refinement_train_mode', 'refine_only',
                             """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
                             if 'refine_only', only the refinement network is trained, and if 'all' then the whole network is trained.
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
@@ -81,9 +81,9 @@ tf.app.flags.DEFINE_string('network_mode', 'normal',
 tf.app.flags.DEFINE_string('refinement_network', 'original',
                             """Specifies network to use for refinement. One of 'original' or 'unet'. 
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
-tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
+tf.app.flags.DEFINE_boolean('upsample_before_refinement', False,
                             """Whether to upsample depth map to input resolution before the refinement network""")
-tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
+tf.app.flags.DEFINE_boolean('refine_with_confidence', False,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
 # training parameters
 tf.app.flags.DEFINE_integer('num_gpus', None,

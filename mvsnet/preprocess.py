@@ -171,18 +171,32 @@ def pose_string(cam):
     return pose_string
 
 
-def write_visualization_depth_map(image, file_path):
-    file_path_scaled = file_path.replace('.png', '_scaled.png')
-    # rescales the image so max distance is 6.5 meters, making contrast more visible
-    image_scaled = np.clip(image*50, 0, 65535).astype(np.uint16)
-    imageio.imsave(file_path_scaled, image_scaled)
+def write_inverse_depth_map(image, file_path, exp=0.25):
+    """ Writes an inverted depth map for visualization purposes. exp is a value in [0,1]. Use a higher (lower)
+    value for faster (slower) decay with distance """
+    file_path_inverse = file_path.replace('.png', '_inverse.png')
+    image = image.astype(np.float)
+    image = image - image.min()
+    image *= (65535 / image.max())
+    inv_depth = 65535 / np.power((1+image),exp) - np.power(image, 1-exp)
+    inv_depth = np.clip(inv_depth, 0, 65535).astype(np.uint16)
+    imageio.imsave(file_path_inverse, inv_depth)
 
-def write_depth_map(file_path, image, visualization = False):
+
+def write_inverse_depth_map_2(image, file_path, exp=0.25):
+    """ Writes an inverted depth map for visualization purposes. exp is a value in [0,1]. Use a higher (lower)
+    value for faster (slower) decay with distance """
+    file_path_inverse = file_path.replace('.png', '_inverse_2.png')
+    inv_depth = 65535 - image
+    inv_depth = np.clip(inv_depth, 0, 65535).astype(np.uint16)
+    imageio.imsave(file_path_inverse, inv_depth)
+
+def write_depth_map(file_path, image, visualization = True):
     # convert to int and clip to range of [0, 2^16 -1]
     image = np.clip(image, 0, 65535).astype(np.uint16)
     imageio.imsave(file_path, image)
     if visualization:
-        write_visualization_depth_map(image, file_path)
+        write_inverse_depth_map(image, file_path)
 
 
 

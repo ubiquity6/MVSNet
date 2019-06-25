@@ -475,13 +475,14 @@ def depth_refine(init_depth_map, image, prob_map, depth_num, depth_start, depth_
         init_norm_depth_map = tf.image.resize_bilinear(init_norm_depth_map, [image_shape[1], image_shape[2]])
         init_depth_map = tf.image.resize_bilinear(init_depth_map, [image_shape[1], image_shape[2]])
         if refine_with_confidence:
+            # TODO: resize the probability map with nearest neighbor interpolation instead of bilinear
             prob_map = tf.image.resize_bilinear(prob_map, [image_shape[1], image_shape[2]])
     else:
         # Downsample original image to size of depth map
         image = tf.image.resize_bilinear(image, [depth_shape[1], depth_shape[2]])
     
     if refine_with_confidence:
-        init_norm_depth_map = tf.concat([init_norm_depth_map, prob_map], axis=0)
+        init_norm_depth_map = tf.concat([init_norm_depth_map, prob_map], axis=3)
 
 
     # refinement network

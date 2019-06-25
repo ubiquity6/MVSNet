@@ -36,7 +36,7 @@ tf.app.flags.DEFINE_integer('ckpt_step', 1350000,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 6,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 256,
+tf.app.flags.DEFINE_integer('max_d', 64,
                             """Maximum depth step when testing.""")
 tf.app.flags.DEFINE_integer('width', 1024,
                             """Maximum image width when testing.""")
@@ -61,9 +61,9 @@ tf.app.flags.DEFINE_boolean('refinement', False,
 tf.app.flags.DEFINE_bool('inverse_depth', True,
                          """Whether to apply inverse depth for R-MVSNet""")
 tf.app.flags.DEFINE_string('network_mode', 'normal',
-                            """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
+                           """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
 tf.app.flags.DEFINE_string('refinement_network', 'unet',
-                            """Specifies network to use for refinement. One of 'original' or 'unet'. 
+                           """Specifies network to use for refinement. One of 'original' or 'unet'. 
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
 tf.app.flags.DEFINE_boolean('upsample_before_refinement', False,
                             """Whether to upsample depth map to input resolution before the refinement network.""")
@@ -72,11 +72,12 @@ tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
 FLAGS = tf.app.flags.FLAGS
 
 
-def compute_depth_maps(input_dir, output_dir = None, width = None, height = None):
+def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
     """ Performs inference using trained MVSNet model on data located in input_dir """
     if width and height:
         FLAGS.width, FLAGS.height = width, height
-    logger.info('Computing depth maps with MVSNet. Using input width x height = {} x {}'.format(FLAGS.width,FLAGS.height))
+    logger.info('Computing depth maps with MVSNet. Using input width x height = {} x {}'.format(
+        FLAGS.width, FLAGS.height))
 
     # create output folder
     if output_dir is None:
@@ -89,7 +90,8 @@ def compute_depth_maps(input_dir, output_dir = None, width = None, height = None
     mvs_generator = iter(data_gen)
     sample_size = len(data_gen.train_clusters)
 
-    generator_data_type = (tf.float32, tf.float32, tf.float32, tf.float32, tf.int32)
+    generator_data_type = (tf.float32, tf.float32,
+                           tf.float32, tf.float32, tf.int32)
     mvs_set = tf.data.Dataset.from_generator(
         lambda: mvs_generator, generator_data_type)
     mvs_set = mvs_set.batch(FLAGS.batch_size)
@@ -129,8 +131,8 @@ def compute_depth_maps(input_dir, output_dir = None, width = None, height = None
             ref_image = tf.squeeze(
                 tf.slice(centered_images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
             refined_depth_map = depth_refine(
-                init_depth_map, ref_image, prob_map, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, FLAGS.refinement_network, \
-                    True, training=False, upsample_depth=FLAGS.upsample_before_refinement, refine_with_confidence=FLAGS.refine_with_confidence)
+                init_depth_map, ref_image, prob_map, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, FLAGS.refinement_network,
+                True, training=False, upsample_depth=FLAGS.upsample_before_refinement, refine_with_confidence=FLAGS.refine_with_confidence)
 
     # depth map inference using GRU
     elif FLAGS.regularization == 'GRU':
