@@ -36,11 +36,11 @@ tf.app.flags.DEFINE_integer('ckpt_step', 110000,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 6,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 128,
+tf.app.flags.DEFINE_integer('max_d', 192,
                             """Maximum depth step when testing.""")
-tf.app.flags.DEFINE_integer('width', 1024,
+tf.app.flags.DEFINE_integer('width', 512,
                             """Maximum image width when testing.""")
-tf.app.flags.DEFINE_integer('height', 768,
+tf.app.flags.DEFINE_integer('height', 384,
                             """Maximum image height when testing.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume (W and H).""")
@@ -122,6 +122,28 @@ def load_model(sess):
               ('-'.join([pretrained_model_ckpt_path, str(FLAGS.ckpt_step)])), Notify.ENDC)
 
 
+def get_depth_and_prob_map(centered_images, scaled_cams, depth_start, depth_interval):
+    """ Computes depth and prob map. Inference mode depends on regularization choice and whether refinement is used """
+    # depth map inference using 3DCNNs
+    if FLAGS.regularization == '3DCNNs':
+        init_depth_map, prob_map = inference_mem(
+            centered_images, scaled_cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode)
+
+        if FLAGS.refinement:
+            ref_image = tf.squeeze(
+                tf.slice(centered_images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
+            init_depth_map = depth_refine(
+                init_depth_map, ref_image, prob_map, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, FLAGS.refinement_network,
+                True, upsample_depth=FLAGS.upsample_before_refinement, refine_with_confidence=FLAGS.refine_with_confidence)
+    # depth map inference using GRU
+    elif FLAGS.regularization == 'GRU':
+        init_depth_map, prob_map = inference_winner_take_all(centered_images, scaled_cams,
+                                                             depth_num, depth_start, depth_end, network_mode=FLAGS.network_mode, reg_type='GRU', inverse_depth=FLAGS.inverse_depth, training=False)
+    else:
+        raise NotImplementedError
+    return init_depth_map, prob_map
+
+
 def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
     """ Performs inference using trained MVSNet model on data located in input_dir """
     if width and height:
@@ -151,6 +173,10 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
     depth_end = get_depth_end(scaled_cams, depth_start,
                               depth_num, depth_interval)
 
+    init_depth_map, prob_map = get_depth_and_prob_map(
+        centered_images, scaled_cams, depth_start, depth_interval)
+
+    """
     # depth map inference using 3DCNNs
     if FLAGS.regularization == '3DCNNs':
         init_depth_map, prob_map = inference_mem(
@@ -167,7 +193,7 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
     elif FLAGS.regularization == 'GRU':
         init_depth_map, prob_map = inference_winner_take_all(centered_images, scaled_cams,
                                                              depth_num, depth_start, depth_end, network_mode=FLAGS.network_mode, reg_type='GRU', inverse_depth=FLAGS.inverse_depth, training=False)
-
+    """
     # init option
     var_init_op = tf.local_variables_initializer()
     init_op, config = mu.init_session()
@@ -180,7 +206,6 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
         load_model(sess)
         sess.run(mvs_iterator.initializer)
         for step in range(sample_size):
-
             start_time = time.time()
             try:
                 out_init_depth_map, out_prob_map, out_images, out_cams, out_index = sess.run(
