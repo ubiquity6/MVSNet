@@ -144,6 +144,9 @@ def get_depth_and_prob_map(centered_images, scaled_cams, depth_start, depth_inte
     return init_depth_map, prob_map
 
 
+def get_sample
+
+
 def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
     """ Performs inference using trained MVSNet model on data located in input_dir """
     if width and height:
@@ -176,24 +179,6 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
     init_depth_map, prob_map = get_depth_and_prob_map(
         centered_images, scaled_cams, depth_start, depth_interval)
 
-    """
-    # depth map inference using 3DCNNs
-    if FLAGS.regularization == '3DCNNs':
-        init_depth_map, prob_map = inference_mem(
-            centered_images, scaled_cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode)
-
-        if FLAGS.refinement:
-            ref_image = tf.squeeze(
-                tf.slice(centered_images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
-            init_depth_map = depth_refine(
-                init_depth_map, ref_image, prob_map, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, FLAGS.refinement_network,
-                True, upsample_depth=FLAGS.upsample_before_refinement, refine_with_confidence=FLAGS.refine_with_confidence)
-
-    # depth map inference using GRU
-    elif FLAGS.regularization == 'GRU':
-        init_depth_map, prob_map = inference_winner_take_all(centered_images, scaled_cams,
-                                                             depth_num, depth_start, depth_end, network_mode=FLAGS.network_mode, reg_type='GRU', inverse_depth=FLAGS.inverse_depth, training=False)
-    """
     # init option
     var_init_op = tf.local_variables_initializer()
     init_op, config = mu.init_session()
