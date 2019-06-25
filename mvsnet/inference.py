@@ -36,11 +36,11 @@ tf.app.flags.DEFINE_integer('ckpt_step', 1350000,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 6,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 192,
+tf.app.flags.DEFINE_integer('max_d', 128,
                             """Maximum depth step when testing.""")
-tf.app.flags.DEFINE_integer('width', 1024,
+tf.app.flags.DEFINE_integer('width', 512,
                             """Maximum image width when testing.""")
-tf.app.flags.DEFINE_integer('height', 768,
+tf.app.flags.DEFINE_integer('height', 384,
                             """Maximum image height when testing.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume (W and H).""")
@@ -125,14 +125,14 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
     # depth map inference using 3DCNNs
     if FLAGS.regularization == '3DCNNs':
         init_depth_map, prob_map = inference_mem(
-            centered_images, scaled_cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, training=False)
+            centered_images, scaled_cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode)
 
         if FLAGS.refinement:
             ref_image = tf.squeeze(
                 tf.slice(centered_images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
             refined_depth_map = depth_refine(
                 init_depth_map, ref_image, prob_map, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, FLAGS.refinement_network,
-                True, training=False, upsample_depth=FLAGS.upsample_before_refinement, refine_with_confidence=FLAGS.refine_with_confidence)
+                True, upsample_depth=FLAGS.upsample_before_refinement, refine_with_confidence=FLAGS.refine_with_confidence)
 
     # depth map inference using GRU
     elif FLAGS.regularization == 'GRU':
@@ -206,7 +206,7 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
 
             # for png outputs
             write_depth_map(depth_png, out_init_depth_image,
-                            visualization=False)
+                            visualization=True)
             write_confidence_map(prob_png, out_prob_map)
 
             out_ref_image = cv2.cvtColor(out_ref_image, cv2.COLOR_RGB2BGR)

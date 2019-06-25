@@ -177,7 +177,7 @@ def write_inverse_depth_map(image, file_path, exp=2):
         image: Depth image to write
         file_path: Path where that image is
         exp: A positive number. Higher numbers lead to faster decay of brightness with depth"""
-    file_path_inverse = file_path.replace('.png', '_inverse_3.png')
+    file_path_inverse = file_path.replace('.png', '_inverse.png')
     max_int = 65535
     image = image.astype(np.float)
     # First normalize image so it has min 0 and max = max_int
