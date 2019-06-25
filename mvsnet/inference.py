@@ -29,18 +29,18 @@ tf.app.flags.DEFINE_string('input_dir', None,
 tf.app.flags.DEFINE_string('output_dir', None,
                            """Path to data to dir to output results""")
 tf.app.flags.DEFINE_string('model_dir',
-                           'gs://mvs-training-mlengine/trained-models/06-04-2019/',
+                           'gs://mvs-training-mlengine/mvsnet_refine_geom_viewnum7_conf_refine_2/models/',
                            """Path to restore the model.""")
-tf.app.flags.DEFINE_integer('ckpt_step', 1350000,
+tf.app.flags.DEFINE_integer('ckpt_step', 110000,
                             """ckpt  step.""")
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 6,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 128,
                             """Maximum depth step when testing.""")
-tf.app.flags.DEFINE_integer('width', 512,
+tf.app.flags.DEFINE_integer('width', 1024,
                             """Maximum image width when testing.""")
-tf.app.flags.DEFINE_integer('height', 384,
+tf.app.flags.DEFINE_integer('height', 768,
                             """Maximum image height when testing.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume (W and H).""")
@@ -56,34 +56,23 @@ tf.app.flags.DEFINE_bool('adaptive_scaling', True,
 # network architecture
 tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method, including '3DCNNs' and 'GRU'""")
-tf.app.flags.DEFINE_boolean('refinement', False,
+tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for MVSNet""")
 tf.app.flags.DEFINE_bool('inverse_depth', True,
                          """Whether to apply inverse depth for R-MVSNet""")
 tf.app.flags.DEFINE_string('network_mode', 'normal',
                            """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
-tf.app.flags.DEFINE_string('refinement_network', 'unet',
+tf.app.flags.DEFINE_string('refinement_network', 'original',
                            """Specifies network to use for refinement. One of 'original' or 'unet'. 
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
-tf.app.flags.DEFINE_boolean('upsample_before_refinement', False,
+tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
                             """Whether to upsample depth map to input resolution before the refinement network.""")
 tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
 FLAGS = tf.app.flags.FLAGS
 
 
-def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
-    """ Performs inference using trained MVSNet model on data located in input_dir """
-    if width and height:
-        FLAGS.width, FLAGS.height = width, height
-    logger.info('Computing depth maps with MVSNet. Using input width x height = {} x {}'.format(
-        FLAGS.width, FLAGS.height))
-
-    # create output folder
-    if output_dir is None:
-        output_dir = os.path.join(input_dir, 'depths_mvsnet')
-    mu.mkdir_p(output_dir)
-
+def setup_data_iterator(input_dir):
     # testing set
     data_gen = ClusterGenerator(input_dir, FLAGS.view_num, FLAGS.width, FLAGS.height,
                                 FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='test')
@@ -99,6 +88,50 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
 
     # data from dataset via iterator
     mvs_iterator = mvs_set.make_initializable_iterator()
+    return mvs_iterator, sample_size
+
+
+def setup_output_dir(input_dir, output_dir):
+    # create output folder
+    if output_dir is None:
+        output_dir = os.path.join(input_dir, 'depths_mvsnet')
+    mu.mkdir_p(output_dir)
+    return output_dir
+
+
+def get_depth_end(scaled_cams, depth_start, depth_num, depth_interval):
+    # deal with inverse depth
+    if FLAGS.regularization == '3DCNNs' and FLAGS.inverse_depth:
+        depth_end = tf.reshape(
+            tf.slice(scaled_cams, [0, 0, 1, 3, 3], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
+    else:
+        depth_end = depth_start + \
+            (tf.cast(depth_num, tf.float32) - 1) * depth_interval
+    return depth_end
+
+
+def load_model(sess):
+    """Load trained model for inference """
+    if FLAGS.model_dir is not None:
+        pretrained_model_ckpt_path = os.path.join(
+            FLAGS.model_dir, FLAGS.regularization, 'model.ckpt')
+        restorer = tf.train.Saver(tf.global_variables())
+        restorer.restore(
+            sess, '-'.join([pretrained_model_ckpt_path, str(FLAGS.ckpt_step)]))
+        print(Notify.INFO, 'Pre-trained model restored from %s' %
+              ('-'.join([pretrained_model_ckpt_path, str(FLAGS.ckpt_step)])), Notify.ENDC)
+
+
+def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
+    """ Performs inference using trained MVSNet model on data located in input_dir """
+    if width and height:
+        FLAGS.width, FLAGS.height = width, height
+    logger.info('Computing depth maps with MVSNet. Using input width x height = {} x {}.\n Flags: {}'.format(
+        FLAGS.width, FLAGS.height, FLAGS))
+
+    output_dir = setup_output_dir(input_dir, output_dir)
+    mvs_iterator, sample_size = setup_data_iterator(input_dir)
+
     scaled_images, centered_images, scaled_cams, full_cams, image_index = mvs_iterator.get_next()
 
     # set shapes
@@ -107,6 +140,7 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
     centered_images.set_shape(tf.TensorShape(
         [None, FLAGS.view_num, None, None, 3]))
     scaled_cams.set_shape(tf.TensorShape([None, FLAGS.view_num, 2, 4, 4]))
+    full_cams.set_shape(tf.TensorShape([None, FLAGS.view_num, 2, 4, 4]))
     depth_start = tf.reshape(
         tf.slice(scaled_cams, [0, 0, 1, 3, 0], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
     depth_interval = tf.reshape(
@@ -114,13 +148,8 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
     depth_num = tf.cast(
         tf.reshape(tf.slice(scaled_cams, [0, 0, 1, 3, 2], [1, 1, 1, 1, 1]), []), 'int32')
 
-    # deal with inverse depth
-    if FLAGS.regularization == '3DCNNs' and FLAGS.inverse_depth:
-        depth_end = tf.reshape(
-            tf.slice(scaled_cams, [0, 0, 1, 3, 3], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
-    else:
-        depth_end = depth_start + \
-            (tf.cast(depth_num, tf.float32) - 1) * depth_interval
+    depth_end = get_depth_end(scaled_cams, depth_start,
+                              depth_num, depth_interval)
 
     # depth map inference using 3DCNNs
     if FLAGS.regularization == '3DCNNs':
@@ -130,7 +159,7 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
         if FLAGS.refinement:
             ref_image = tf.squeeze(
                 tf.slice(centered_images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
-            refined_depth_map = depth_refine(
+            init_depth_map = depth_refine(
                 init_depth_map, ref_image, prob_map, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, FLAGS.refinement_network,
                 True, upsample_depth=FLAGS.upsample_before_refinement, refine_with_confidence=FLAGS.refine_with_confidence)
 
@@ -144,24 +173,11 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
     init_op, config = mu.init_session()
 
     with tf.Session(config=config) as sess:
-
         # initialization
         sess.run(var_init_op)
         sess.run(init_op)
-        total_step = 0
 
-        # load model
-        if FLAGS.model_dir is not None:
-            pretrained_model_ckpt_path = os.path.join(
-                FLAGS.model_dir, FLAGS.regularization, 'model.ckpt')
-            restorer = tf.train.Saver(tf.global_variables())
-            restorer.restore(
-                sess, '-'.join([pretrained_model_ckpt_path, str(FLAGS.ckpt_step)]))
-            print(Notify.INFO, 'Pre-trained model restored from %s' %
-                  ('-'.join([pretrained_model_ckpt_path, str(FLAGS.ckpt_step)])), Notify.ENDC)
-            total_step = FLAGS.ckpt_step
-
-        # run inference for each reference view
+        load_model(sess)
         sess.run(mvs_iterator.initializer)
         for step in range(sample_size):
 
@@ -213,7 +229,6 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
             image_file = file_io.FileIO(out_ref_image_path, mode='w')
             scipy.misc.imsave(image_file, out_ref_image)
             write_cam(out_ref_cam_path, out_ref_cam)
-            total_step += 1
 
 
 def main(_):  # pylint: disable=unused-argument
