@@ -38,9 +38,9 @@ tf.app.flags.DEFINE_integer('view_num', 6,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 192,
                             """Maximum depth step when testing.""")
-tf.app.flags.DEFINE_integer('width', 512,
+tf.app.flags.DEFINE_integer('width', 640,
                             """Maximum image width when testing.""")
-tf.app.flags.DEFINE_integer('height', 384,
+tf.app.flags.DEFINE_integer('height', 480,
                             """Maximum image height when testing.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume (W and H).""")
@@ -65,7 +65,7 @@ tf.app.flags.DEFINE_string('network_mode', 'normal',
 tf.app.flags.DEFINE_string('refinement_network', 'original',
                            """Specifies network to use for refinement. One of 'original' or 'unet'. 
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
-tf.app.flags.DEFINE_boolean('upsample_before_refinement', False,
+tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
                             """Whether to upsample depth map to input resolution before the refinement network.""")
 tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
@@ -144,6 +144,72 @@ def get_depth_and_prob_map(full_images, scaled_cams, depth_start, depth_interval
     return init_depth_map, prob_map
 
 
+def write_output(output_dir, out_depth_map, out_prob_map, out_images, out_cams, out_full_cams, out_full_images, out_index):
+    """ Writes the output from the network to disk """
+    upsample = True if FLAGS.refinement == True and FLAGS.upsample_before_refinement == True else False
+    out_depth_image = np.squeeze(out_depth_map)
+    out_prob_map = np.squeeze(out_prob_map)
+    # If we upsampled before refinement we write the full sized cams
+    if upsample:
+        out_ref_image = np.squeeze(out_full_images)
+        out_ref_cam = np.squeeze(out_full_cams)
+    else:
+        out_ref_image = np.squeeze(out_images)
+        out_ref_cam = np.squeeze(out_cams)
+    out_ref_image = np.squeeze(out_ref_image[0, :, :, :])
+    out_ref_cam = np.squeeze(out_ref_cam[0, :, :, :])
+    out_index = np.squeeze(out_index)
+
+    # paths
+    init_depth_map_path = os.path.join(
+        output_dir, '{}_init.pfm'.format(out_index))
+    prob_map_path = os.path.join(
+        output_dir, '{}_prob.pfm'.format(out_index))
+    out_ref_image_path = os.path.join(
+        output_dir, '{}.jpg'.format(out_index))
+    out_ref_cam_path = os.path.join(
+        output_dir, '{}.txt'.format(out_index))
+    # png outputs
+    prob_png = os.path.join(
+        output_dir, '{}_prob.png'.format(out_index))
+    depth_png = os.path.join(
+        output_dir, '{}_depth.png'.format(out_index))
+
+    # save output
+    write_pfm(init_depth_map_path, out_depth_image)
+    write_pfm(prob_map_path, out_prob_map)
+
+    # for png outputs
+    write_depth_map(depth_png, out_depth_image,
+                    visualization=True)
+    write_confidence_map(prob_png, out_prob_map)
+
+    out_ref_image = cv2.cvtColor(out_ref_image, cv2.COLOR_RGB2BGR)
+    image_file = file_io.FileIO(out_ref_image_path, mode='w')
+    scipy.misc.imsave(image_file, out_ref_image)
+    write_cam(out_ref_cam_path, out_ref_cam)
+
+
+def set_shapes(scaled_images, full_images, scaled_cams, full_cams):
+    """ Reshapes tensors to prepare for input to network """
+    scaled_images.set_shape(tf.TensorShape(
+        [None, FLAGS.view_num, None, None, 3]))
+    full_images.set_shape(tf.TensorShape(
+        [None, FLAGS.view_num, None, None, 3]))
+    scaled_cams.set_shape(tf.TensorShape([None, FLAGS.view_num, 2, 4, 4]))
+    full_cams.set_shape(tf.TensorShape([None, FLAGS.view_num, 2, 4, 4]))
+    depth_start = tf.reshape(
+        tf.slice(scaled_cams, [0, 0, 1, 3, 0], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
+    depth_interval = tf.reshape(
+        tf.slice(scaled_cams, [0, 0, 1, 3, 1], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
+    depth_num = tf.cast(
+        tf.reshape(tf.slice(scaled_cams, [0, 0, 1, 3, 2], [1, 1, 1, 1, 1]), []), 'int32')
+
+    depth_end = get_depth_end(scaled_cams, depth_start,
+                              depth_num, depth_interval)
+    return depth_start, depth_end, depth_interval, depth_num
+
+
 def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
     """ Performs inference using trained MVSNet model on data located in input_dir """
     if width and height:
@@ -155,7 +221,9 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
     mvs_iterator, sample_size = setup_data_iterator(input_dir)
 
     scaled_images, full_images, scaled_cams, full_cams, image_index = mvs_iterator.get_next()
-
+    depth_start, depth_end, depth_interval, depth_num = set_shapes(
+        scaled_images, full_images, scaled_cams, full_cams)
+    """
     # set shapes
     scaled_images.set_shape(tf.TensorShape(
         [None, FLAGS.view_num, None, None, 3]))
@@ -172,6 +240,7 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
 
     depth_end = get_depth_end(scaled_cams, depth_start,
                               depth_num, depth_interval)
+    """
 
     init_depth_map, prob_map = get_depth_and_prob_map(
         full_images, scaled_cams, depth_start, depth_interval)
@@ -184,7 +253,6 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
         # initialization
         sess.run(var_init_op)
         sess.run(init_op)
-
         load_model(sess)
         sess.run(mvs_iterator.initializer)
         for step in range(sample_size):
@@ -195,47 +263,10 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
             except tf.errors.OutOfRangeError:
                 print("all dense finished")  # ==> "End of dataset"
                 break
-            duration = time.time() - start_time
-            print(Notify.INFO, 'depth inference %d finished. (%.3f sec/step)' % (step, duration),
+            print(Notify.INFO, 'depth inference %d/%d finished. (%.3f sec/step)' % (step, sample_size, time.time() - start_time),
                   Notify.ENDC)
-
-            # squeeze output
-            out_depth_image = np.squeeze(out_depth_map)
-            out_prob_map = np.squeeze(out_prob_map)
-            out_ref_image = np.squeeze(out_images)
-            out_ref_image = np.squeeze(out_ref_image[0, :, :, :])
-            out_ref_cam = np.squeeze(out_cams)
-            out_ref_cam = np.squeeze(out_ref_cam[0, :, :, :])
-            out_index = np.squeeze(out_index)
-
-            # paths
-            init_depth_map_path = os.path.join(
-                output_dir, '{}_init.pfm'.format(out_index))
-            prob_map_path = os.path.join(
-                output_dir, '{}_prob.pfm'.format(out_index))
-            out_ref_image_path = os.path.join(
-                output_dir, '{}.jpg'.format(out_index))
-            out_ref_cam_path = os.path.join(
-                output_dir, '{}.txt'.format(out_index))
-            # png outputs
-            prob_png = os.path.join(
-                output_dir, '{}_prob.png'.format(out_index))
-            depth_png = os.path.join(
-                output_dir, '{}_depth.png'.format(out_index))
-
-            # save output
-            write_pfm(init_depth_map_path, out_depth_image)
-            write_pfm(prob_map_path, out_prob_map)
-
-            # for png outputs
-            write_depth_map(depth_png, out_depth_image,
-                            visualization=True)
-            write_confidence_map(prob_png, out_prob_map)
-
-            out_ref_image = cv2.cvtColor(out_ref_image, cv2.COLOR_RGB2BGR)
-            image_file = file_io.FileIO(out_ref_image_path, mode='w')
-            scipy.misc.imsave(image_file, out_ref_image)
-            write_cam(out_ref_cam_path, out_ref_cam)
+            write_output(output_dir, out_depth_map, out_prob_map, out_images,
+                         out_cams, out_full_cams, out_full_images, out_index)
 
 
 def main(_):  # pylint: disable=unused-argument
