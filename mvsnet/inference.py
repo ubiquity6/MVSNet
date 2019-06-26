@@ -19,6 +19,7 @@ from mvsnet.preprocess import *
 from mvsnet.cnn_wrapper.common import Notify
 from mvsnet.mvs_data_generation.cluster_generator import ClusterGenerator
 import mvsnet.utils as mu
+from mvsnet.mvs_data_generation.utils import scale_image
 
 logger = mu.setup_logger('mvsnet-inference')
 sys.path.append("../")
@@ -148,14 +149,18 @@ def write_output(output_dir, out_depth_map, out_prob_map, out_images, out_cams, 
     """ Writes the output from the network to disk """
     upsample = True if FLAGS.refinement == True and FLAGS.upsample_before_refinement == True else False
     out_depth_image = np.squeeze(out_depth_map)
-    out_prob_map = np.squeeze(out_prob_map)
-    # If we upsampled before refinement we write the full sized cams
+
+    # If we upsampled depth map to input size, then we need to write the full sized cams, probs and ref image
     if upsample:
         out_ref_image = np.squeeze(out_full_images)
         out_ref_cam = np.squeeze(out_full_cams)
+        out_prob_map = np.squeeze(out_prob_map)
+        out_prob_map = scale_image(
+            out_prob_map, 1.0 / FLAGS.sample_scale, 'nearest')
     else:
         out_ref_image = np.squeeze(out_images)
         out_ref_cam = np.squeeze(out_cams)
+        out_prob_map = np.squeeze(out_prob_map)
     out_ref_image = np.squeeze(out_ref_image[0, :, :, :])
     out_ref_cam = np.squeeze(out_ref_cam[0, :, :, :])
     out_index = np.squeeze(out_index)
@@ -223,25 +228,6 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
     scaled_images, full_images, scaled_cams, full_cams, image_index = mvs_iterator.get_next()
     depth_start, depth_end, depth_interval, depth_num = set_shapes(
         scaled_images, full_images, scaled_cams, full_cams)
-    """
-    # set shapes
-    scaled_images.set_shape(tf.TensorShape(
-        [None, FLAGS.view_num, None, None, 3]))
-    full_images.set_shape(tf.TensorShape(
-        [None, FLAGS.view_num, None, None, 3]))
-    scaled_cams.set_shape(tf.TensorShape([None, FLAGS.view_num, 2, 4, 4]))
-    full_cams.set_shape(tf.TensorShape([None, FLAGS.view_num, 2, 4, 4]))
-    depth_start = tf.reshape(
-        tf.slice(scaled_cams, [0, 0, 1, 3, 0], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
-    depth_interval = tf.reshape(
-        tf.slice(scaled_cams, [0, 0, 1, 3, 1], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
-    depth_num = tf.cast(
-        tf.reshape(tf.slice(scaled_cams, [0, 0, 1, 3, 2], [1, 1, 1, 1, 1]), []), 'int32')
-
-    depth_end = get_depth_end(scaled_cams, depth_start,
-                              depth_num, depth_interval)
-    """
-
     init_depth_map, prob_map = get_depth_and_prob_map(
         full_images, scaled_cams, depth_start, depth_interval)
 

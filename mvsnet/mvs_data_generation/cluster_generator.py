@@ -237,12 +237,10 @@ class ClusterGenerator:
                     full_cams = np.stack(cropped_cams, axis=0)
                     # Scaled for input size
                     input_images = ut.copy_and_center_images(cropped_images)
-
                     # Scaled to the output size of network
-                    # Scaled cams are used for the differential homography step
+                    # Scaled cams are used for the differential homography warping
                     output_images, output_cams = ut.scale_mvs_input(
                         cropped_images, cropped_cams, scale=self.output_scale)
-
                     output_images = np.stack(output_images, axis=0)
                     output_cams = np.stack(output_cams, axis=0)
 
