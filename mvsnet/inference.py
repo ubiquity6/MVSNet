@@ -30,9 +30,9 @@ tf.app.flags.DEFINE_string('input_dir', None,
 tf.app.flags.DEFINE_string('output_dir', None,
                            """Path to data to dir to output results""")
 tf.app.flags.DEFINE_string('model_dir',
-                           'gs://mvs-training-mlengine/mvsnet_refine_geom_viewnum7_conf_refine_2/models/',
+                           'gs://mvs-training-mlengine/trained-models/06-04-2019/',
                            """Path to restore the model.""")
-tf.app.flags.DEFINE_integer('ckpt_step', 110000,
+tf.app.flags.DEFINE_integer('ckpt_step', 1350000,
                             """ckpt  step.""")
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 6,
@@ -57,7 +57,7 @@ tf.app.flags.DEFINE_bool('adaptive_scaling', True,
 # network architecture
 tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method, including '3DCNNs' and 'GRU'""")
-tf.app.flags.DEFINE_boolean('refinement', True,
+tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for MVSNet""")
 tf.app.flags.DEFINE_bool('inverse_depth', True,
                          """Whether to apply inverse depth for R-MVSNet""")
