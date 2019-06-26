@@ -65,7 +65,7 @@ tf.app.flags.DEFINE_string('network_mode', 'normal',
 tf.app.flags.DEFINE_string('refinement_network', 'original',
                            """Specifies network to use for refinement. One of 'original' or 'unet'. 
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
-tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
+tf.app.flags.DEFINE_boolean('upsample_before_refinement', False,
                             """Whether to upsample depth map to input resolution before the refinement network.""")
 tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
@@ -122,29 +122,26 @@ def load_model(sess):
               ('-'.join([pretrained_model_ckpt_path, str(FLAGS.ckpt_step)])), Notify.ENDC)
 
 
-def get_depth_and_prob_map(centered_images, scaled_cams, depth_start, depth_interval):
+def get_depth_and_prob_map(full_images, scaled_cams, depth_start, depth_interval):
     """ Computes depth and prob map. Inference mode depends on regularization choice and whether refinement is used """
     # depth map inference using 3DCNNs
     if FLAGS.regularization == '3DCNNs':
         init_depth_map, prob_map = inference_mem(
-            centered_images, scaled_cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode)
+            full_images, scaled_cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode)
 
         if FLAGS.refinement:
             ref_image = tf.squeeze(
-                tf.slice(centered_images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
+                tf.slice(full_images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
             init_depth_map = depth_refine(
                 init_depth_map, ref_image, prob_map, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, FLAGS.refinement_network,
                 True, upsample_depth=FLAGS.upsample_before_refinement, refine_with_confidence=FLAGS.refine_with_confidence)
     # depth map inference using GRU
     elif FLAGS.regularization == 'GRU':
-        init_depth_map, prob_map = inference_winner_take_all(centered_images, scaled_cams,
+        init_depth_map, prob_map = inference_winner_take_all(full_images, scaled_cams,
                                                              depth_num, depth_start, depth_end, network_mode=FLAGS.network_mode, reg_type='GRU', inverse_depth=FLAGS.inverse_depth, training=False)
     else:
         raise NotImplementedError
     return init_depth_map, prob_map
-
-
-def get_sample
 
 
 def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
@@ -157,12 +154,12 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
     output_dir = setup_output_dir(input_dir, output_dir)
     mvs_iterator, sample_size = setup_data_iterator(input_dir)
 
-    scaled_images, centered_images, scaled_cams, full_cams, image_index = mvs_iterator.get_next()
+    scaled_images, full_images, scaled_cams, full_cams, image_index = mvs_iterator.get_next()
 
     # set shapes
     scaled_images.set_shape(tf.TensorShape(
         [None, FLAGS.view_num, None, None, 3]))
-    centered_images.set_shape(tf.TensorShape(
+    full_images.set_shape(tf.TensorShape(
         [None, FLAGS.view_num, None, None, 3]))
     scaled_cams.set_shape(tf.TensorShape([None, FLAGS.view_num, 2, 4, 4]))
     full_cams.set_shape(tf.TensorShape([None, FLAGS.view_num, 2, 4, 4]))
@@ -177,7 +174,7 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
                               depth_num, depth_interval)
 
     init_depth_map, prob_map = get_depth_and_prob_map(
-        centered_images, scaled_cams, depth_start, depth_interval)
+        full_images, scaled_cams, depth_start, depth_interval)
 
     # init option
     var_init_op = tf.local_variables_initializer()
@@ -193,8 +190,8 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
         for step in range(sample_size):
             start_time = time.time()
             try:
-                out_init_depth_map, out_prob_map, out_images, out_cams, out_index = sess.run(
-                    [init_depth_map, prob_map, scaled_images, scaled_cams, image_index])
+                out_depth_map, out_prob_map, out_images, out_cams, out_full_cams, out_full_images, out_index = sess.run(
+                    [init_depth_map, prob_map, scaled_images, scaled_cams, full_cams, full_images, image_index])
             except tf.errors.OutOfRangeError:
                 print("all dense finished")  # ==> "End of dataset"
                 break
@@ -203,7 +200,7 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
                   Notify.ENDC)
 
             # squeeze output
-            out_init_depth_image = np.squeeze(out_init_depth_map)
+            out_depth_image = np.squeeze(out_depth_map)
             out_prob_map = np.squeeze(out_prob_map)
             out_ref_image = np.squeeze(out_images)
             out_ref_image = np.squeeze(out_ref_image[0, :, :, :])
@@ -227,11 +224,11 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
                 output_dir, '{}_depth.png'.format(out_index))
 
             # save output
-            write_pfm(init_depth_map_path, out_init_depth_image)
+            write_pfm(init_depth_map_path, out_depth_image)
             write_pfm(prob_map_path, out_prob_map)
 
             # for png outputs
-            write_depth_map(depth_png, out_init_depth_image,
+            write_depth_map(depth_png, out_depth_image,
                             visualization=True)
             write_confidence_map(prob_png, out_prob_map)
 
