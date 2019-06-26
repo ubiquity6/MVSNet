@@ -40,7 +40,7 @@ class ClusterGenerator:
         self.output_scale = output_scale
         self.flip_cams = flip_cams
         # The sessions_fraction [0,1] is the fraction of all available sessions in sessions_dir
-        self.sessions_frac = 0.2
+        self.sessions_frac = 1.0
         self.parse_sessions()
         self.set_iter_clusters()
 
@@ -64,6 +64,7 @@ class ClusterGenerator:
         else:
             sessions = [f for f in tf.gfile.ListDirectory(
                 self.sessions_dir) if not f.startswith('.') if not f.endswith('.txt')]
+            sessions = sorted(sessions)
             total_sessions = len(sessions)
             self.logger.info(
                 'There are {} total sessions'.format(total_sessions))
