@@ -74,7 +74,7 @@ FLAGS = tf.app.flags.FLAGS
 
 
 def setup_data_iterator(input_dir):
-    # testing set
+    "Configures the data generator that is used to feed batches of data for inference"
     data_gen = ClusterGenerator(input_dir, FLAGS.view_num, FLAGS.width, FLAGS.height,
                                 FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='test')
     mvs_generator = iter(data_gen)
@@ -93,7 +93,7 @@ def setup_data_iterator(input_dir):
 
 
 def setup_output_dir(input_dir, output_dir):
-    # create output folder
+    "Creates output dir for saving mvsnet output"
     if output_dir is None:
         output_dir = os.path.join(input_dir, 'depths_mvsnet')
     mu.mkdir_p(output_dir)
