@@ -53,7 +53,7 @@ tf.app.flags.DEFINE_string('run_name', None,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 6,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 384,
+tf.app.flags.DEFINE_integer('max_d', 192,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('width', 640,
                             """Maximum image width when training.""")
@@ -65,14 +65,16 @@ tf.app.flags.DEFINE_float('interval_scale', 1.0,
                           """Downsample scale for building cost volume.""")
 tf.app.flags.DEFINE_float('base_image_size', 8,
                           """Base image size""")
+tf.app.flags.DEFINE_bool('inverse_depth', True,
+                         """Whether to apply inverse depth for R-MVSNet""")
 # network architectures
 tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method.""")
 tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
                            """Optimizer to use. One of 'momentum', 'rmsprop' or 'adam' """)
-tf.app.flags.DEFINE_boolean('refinement', False,
+tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for 3DCNNs""")
-tf.app.flags.DEFINE_string('refinement_train_mode', 'refine_only',
+tf.app.flags.DEFINE_string('refinement_train_mode', 'all',
                             """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
                             if 'refine_only', only the refinement network is trained, and if 'all' then the whole network is trained.
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
@@ -81,9 +83,9 @@ tf.app.flags.DEFINE_string('network_mode', 'normal',
 tf.app.flags.DEFINE_string('refinement_network', 'original',
                             """Specifies network to use for refinement. One of 'original' or 'unet'. 
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
-tf.app.flags.DEFINE_boolean('upsample_before_refinement', False,
+tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
                             """Whether to upsample depth map to input resolution before the refinement network""")
-tf.app.flags.DEFINE_boolean('refine_with_confidence', False,
+tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
 # training parameters
 tf.app.flags.DEFINE_integer('num_gpus', None,
@@ -92,7 +94,7 @@ tf.app.flags.DEFINE_integer('batch_size', 1,
                             """Training batch size.""")
 tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
-tf.app.flags.DEFINE_float('base_lr', 0.001,
+tf.app.flags.DEFINE_float('base_lr', 0.002,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
@@ -312,7 +314,7 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
         main_trainable = False if FLAGS.refinement_train_mode == 'refine_only' and FLAGS.refinement==True else True
         # initial depth map
         depth_map, prob_map = inference(
-            images, cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, is_master_gpu, trainable=main_trainable)
+            images, cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, is_master_gpu, trainable=main_trainable, inverse_depth = FLAGS.inverse_depth)
         # refinement
         if FLAGS.refinement:
             refine_trainable = False if FLAGS.refinement_train_mode == 'main_only' else True
@@ -352,6 +354,22 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
         loss, mae, less_one_accuracy, less_three_accuracy, depth_map = \
             mvsnet_classification_loss(
                 prob_volume, depth_image, FLAGS.max_d, depth_start, depth_interval)
+        """
+        depth_start = tf.reshape(
+            tf.slice(cams, [0, 0, 1, 3, 0], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
+        depth_num = tf.cast(
+            tf.reshape(tf.slice(cams, [0, 0, 1, 3, 2], [1, 1, 1, 1, 1]), []), 'int32')
+        if FLAGS.regularization == '3DCNNs' and FLAGS.inverse_depth:
+            depth_end = tf.reshape(
+                tf.slice(scaled_cams, [0, 0, 1, 3, 3], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
+        else:
+            depth_end = depth_start + \
+                (tf.cast(depth_num, tf.float32) - 1) * depth_interval
+        depth_map, prob_map = inference_winner_take_all(images, cams,
+                                                             depth_num, depth_start, depth_end, network_mode=FLAGS.network_mode, reg_type='GRU', inverse_depth=FLAGS.inverse_depth)
+        loss, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
+            depth_map, depth_image, depth_interval)
+        """
         return loss, less_one_accuracy, less_three_accuracy
 
 def save_model(sess, saver, total_step, step):

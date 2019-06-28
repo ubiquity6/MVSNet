@@ -30,18 +30,18 @@ tf.app.flags.DEFINE_string('input_dir', None,
 tf.app.flags.DEFINE_string('output_dir', None,
                            """Path to data to dir to output results""")
 tf.app.flags.DEFINE_string('model_dir',
-                           'gs://mvs-training-mlengine/trained-models/06-04-2019/',
+                           'gs://mvs-training-mlengine/mvsnet_refine_geom_viewnum7_conf_refine_2/models/',
                            """Path to restore the model.""")
-tf.app.flags.DEFINE_integer('ckpt_step', 1350000,
+tf.app.flags.DEFINE_integer('ckpt_step', 110000,
                             """ckpt  step.""")
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 6,
+tf.app.flags.DEFINE_integer('view_num', 4,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 192,
                             """Maximum depth step when testing.""")
-tf.app.flags.DEFINE_integer('width', 1024,
+tf.app.flags.DEFINE_integer('width', 512,
                             """Maximum image width when testing.""")
-tf.app.flags.DEFINE_integer('height', 768,
+tf.app.flags.DEFINE_integer('height', 384,
                             """Maximum image height when testing.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume (W and H).""")
@@ -57,7 +57,7 @@ tf.app.flags.DEFINE_bool('adaptive_scaling', True,
 # network architecture
 tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method, including '3DCNNs' and 'GRU'""")
-tf.app.flags.DEFINE_boolean('refinement', False,
+tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for MVSNet""")
 tf.app.flags.DEFINE_bool('inverse_depth', True,
                          """Whether to apply inverse depth for R-MVSNet""")
@@ -139,7 +139,7 @@ def get_depth_and_prob_map(full_images, scaled_cams, depth_start, depth_interval
     # depth map inference using GRU
     elif FLAGS.regularization == 'GRU':
         init_depth_map, prob_map = inference_winner_take_all(full_images, scaled_cams,
-                                                             depth_num, depth_start, depth_end, network_mode=FLAGS.network_mode, reg_type='GRU', inverse_depth=FLAGS.inverse_depth, training=False)
+                                                             depth_num, depth_start, depth_end, network_mode=FLAGS.network_mode, reg_type='GRU', inverse_depth=FLAGS.inverse_depth)
     else:
         raise NotImplementedError
     return init_depth_map, prob_map

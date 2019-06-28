@@ -69,7 +69,7 @@ def get_propability_map(cv, depth_map, depth_start, depth_interval):
 
     return prob_map
 
-def inference(images, cams, depth_num, depth_start, depth_interval, network_mode, is_master_gpu=True, trainable=True):
+def inference(images, cams, depth_num, depth_start, depth_interval, network_mode, is_master_gpu=True, trainable=True, inverse_depth = False):
     """ infer depth image from multi-view images and cameras """
 
     # dynamic gpu params
@@ -91,9 +91,14 @@ def inference(images, cams, depth_num, depth_start, depth_interval, network_mode
     # get all homographies
     view_homographies = []
     for view in range(1, FLAGS.view_num):
-        view_cam = tf.squeeze(tf.slice(cams, [0, view, 0, 0, 0], [-1, 1, 2, 4, 4]), axis=1)
-        homographies = get_homographies(ref_cam, view_cam, depth_num=depth_num,
-                                        depth_start=depth_start, depth_interval=depth_interval)
+        view_cam = tf.squeeze(
+            tf.slice(cams, [0, view, 0, 0, 0], [-1, 1, 2, 4, 4]), axis=1)
+        if inverse_depth:
+            homographies = get_homographies_inv_depth(ref_cam, view_cam, depth_num=depth_num,
+                                                      depth_start=depth_start, depth_end=depth_end)
+        else:
+            homographies = get_homographies(ref_cam, view_cam, depth_num=depth_num,
+                                            depth_start=depth_start, depth_interval=depth_interval)
         view_homographies.append(homographies)
 
     # build cost volume by differentialble homography
@@ -129,7 +134,14 @@ def inference(images, cams, depth_num, depth_start, depth_interval, network_mode
         volume_shape = tf.shape(probability_volume)
         soft_2d = []
         for i in range(FLAGS.batch_size):
-            soft_1d = tf.linspace(depth_start[i], depth_end[i], tf.cast(depth_num, tf.int32))
+            if inverse_depth:
+                inv_depth_start = tf.reshape(tf.div(1.0, depth_start[i]), [])
+                inv_depth_end = tf.reshape(tf.div(1.0, depth_end[i]), [])
+                inv_depth = tf.lin_space(
+                    inv_depth_start, inv_depth_end, tf.cast(depth_num, tf.int32))
+                soft_1d = tf.div(1.0, inv_depth)
+            else:
+                soft_1d = tf.linspace(depth_start[i], depth_end[i], tf.cast(depth_num, tf.int32))
             soft_2d.append(soft_1d)
         soft_2d = tf.reshape(tf.stack(soft_2d, axis=0), [volume_shape[0], volume_shape[1], 1, 1])
         soft_4d = tf.tile(soft_2d, [1, 1, volume_shape[2], volume_shape[3]])
