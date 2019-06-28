@@ -59,7 +59,7 @@ tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method, including '3DCNNs' and 'GRU'""")
 tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for MVSNet""")
-tf.app.flags.DEFINE_bool('inverse_depth', True,
+tf.app.flags.DEFINE_bool('inverse_depth', False,
                          """Whether to apply inverse depth for R-MVSNet""")
 tf.app.flags.DEFINE_string('network_mode', 'normal',
                            """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
@@ -128,7 +128,7 @@ def get_depth_and_prob_map(full_images, scaled_cams, depth_start, depth_interval
     # depth map inference using 3DCNNs
     if FLAGS.regularization == '3DCNNs':
         init_depth_map, prob_map = inference_mem(
-            full_images, scaled_cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode)
+            full_images, scaled_cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, inverse_depth=FLAGS.inverse_depth)
 
         if FLAGS.refinement:
             ref_image = tf.squeeze(

@@ -65,7 +65,7 @@ tf.app.flags.DEFINE_float('interval_scale', 1.0,
                           """Downsample scale for building cost volume.""")
 tf.app.flags.DEFINE_float('base_image_size', 8,
                           """Base image size""")
-tf.app.flags.DEFINE_bool('inverse_depth', True,
+tf.app.flags.DEFINE_bool('inverse_depth', False,
                          """Whether to apply inverse depth for R-MVSNet""")
 # network architectures
 tf.app.flags.DEFINE_string('regularization', '3DCNNs',
@@ -94,7 +94,7 @@ tf.app.flags.DEFINE_integer('batch_size', 1,
                             """Training batch size.""")
 tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
-tf.app.flags.DEFINE_float('base_lr', 0.002,
+tf.app.flags.DEFINE_float('base_lr', 0.001,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")

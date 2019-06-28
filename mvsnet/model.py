@@ -16,7 +16,7 @@ logger = setup_logger('mvsnet.cnn_wrapper.model')
 
 FLAGS = tf.app.flags.FLAGS
 
-def get_propability_map(cv, depth_map, depth_start, depth_interval):
+def get_probability_map(cv, depth_map, depth_start, depth_interval):
     """ get probability map from cost volume """
 
     def _repeat_(x, num_repeats):
@@ -149,11 +149,11 @@ def inference(images, cams, depth_num, depth_start, depth_interval, network_mode
         estimated_depth_map = tf.expand_dims(estimated_depth_map, axis=3)
 
     # probability map
-    prob_map = get_propability_map(probability_volume, estimated_depth_map, depth_start, depth_interval)
+    prob_map = get_probability_map(probability_volume, estimated_depth_map, depth_start, depth_interval)
 
     return estimated_depth_map, prob_map#, filtered_depth_map, probability_volume
 
-def inference_mem(images, cams, depth_num, depth_start, depth_interval, network_mode, is_master_gpu=True, training=True, trainable=True):
+def inference_mem(images, cams, depth_num, depth_start, depth_interval, network_mode, is_master_gpu=True, training=True, trainable=True, inverse_depth=False):
     """ inference of depth image from multi-view images and cameras """
 
     # dynamic gpu params
@@ -184,9 +184,14 @@ def inference_mem(images, cams, depth_num, depth_start, depth_interval, network_
     # get all homographies
     view_homographies = []
     for view in range(1, FLAGS.view_num):
-        view_cam = tf.squeeze(tf.slice(cams, [0, view, 0, 0, 0], [-1, 1, 2, 4, 4]), axis=1)
-        homographies = get_homographies(ref_cam, view_cam, depth_num=depth_num,
-                                        depth_start=depth_start, depth_interval=depth_interval)
+        view_cam = tf.squeeze(
+            tf.slice(cams, [0, view, 0, 0, 0], [-1, 1, 2, 4, 4]), axis=1)
+        if inverse_depth:
+            homographies = get_homographies_inv_depth(ref_cam, view_cam, depth_num=depth_num,
+                                                      depth_start=depth_start, depth_end=depth_end)
+        else:
+            homographies = get_homographies(ref_cam, view_cam, depth_num=depth_num,
+                                            depth_start=depth_start, depth_interval=depth_interval)
         view_homographies.append(homographies)
     view_homographies = tf.stack(view_homographies, axis=0)
 
@@ -239,7 +244,15 @@ def inference_mem(images, cams, depth_num, depth_start, depth_interval, network_
         volume_shape = tf.shape(probability_volume)
         soft_2d = []
         for i in range(FLAGS.batch_size):
-            soft_1d = tf.linspace(depth_start[i], depth_end[i], tf.cast(depth_num, tf.int32))
+            if inverse_depth:
+                inv_depth_start = tf.reshape(tf.div(1.0, depth_start[i]), [])
+                inv_depth_end = tf.reshape(tf.div(1.0, depth_end[i]), [])
+                inv_depth = tf.lin_space(
+                    inv_depth_start, inv_depth_end, tf.cast(depth_num, tf.int32))
+                soft_1d = tf.div(1.0, inv_depth)
+            else:
+                soft_1d = tf.linspace(
+                    depth_start[i], depth_end[i], tf.cast(depth_num, tf.int32))
             soft_2d.append(soft_1d)
         soft_2d = tf.reshape(tf.stack(soft_2d, axis=0), [volume_shape[0], volume_shape[1], 1, 1])
         soft_4d = tf.tile(soft_2d, [1, 1, volume_shape[2], volume_shape[3]])
@@ -247,7 +260,7 @@ def inference_mem(images, cams, depth_num, depth_start, depth_interval, network_
         estimated_depth_map = tf.expand_dims(estimated_depth_map, axis=3)
 
     # probability map
-    prob_map = get_propability_map(probability_volume, estimated_depth_map, depth_start, depth_interval)
+    prob_map = get_probability_map(probability_volume, estimated_depth_map, depth_start, depth_interval)
 
     # return filtered_depth_map, 
     return estimated_depth_map, prob_map
