@@ -80,7 +80,7 @@ class Cluster:
             camera_data = json.load(c)
 
         depth_interval = ((self.max_depth - self.min_depth) /
-                          self.depth_num) * self.interval_scale
+                          (self.depth_num - 1)) * self.interval_scale
 
         cam = np.zeros((2, 4, 4))
         #rand = (1.0 + random.uniform(-.0025, .0025))

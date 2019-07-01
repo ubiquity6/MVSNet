@@ -17,8 +17,11 @@ logger = setup_logger('mvsnet.cnn_wrapper.model')
 FLAGS = tf.app.flags.FLAGS
 
 
-def get_probability_map(cv, depth_map, depth_start, depth_interval):
-    """ get probability map from cost volume """
+def get_probability_map(cv, depth_map, depth_start, depth_interval, inverse_depth = False):
+    """ get probability map from cost volume 
+    The probability map is computed by summing the probabilities of the four depth slices int he cost volume that are closest
+    to the predicted depth ~ this is a simple measure of confidence that works well for downstream tasks like fusion
+    """
 
     def _repeat_(x, num_repeats):
         """ repeat each element num_repeats times """
@@ -32,7 +35,8 @@ def get_probability_map(cv, depth_map, depth_start, depth_interval):
     batch_size = shape[0]
     height = shape[1]
     width = shape[2]
-    depth = tf.shape(cv)[1]
+    depth_num = tf.shape(cv)[1]
+    # dynamic gpu params
 
     # byx coordinate, batched & flattened
     b_coordinates = tf.range(batch_size)
@@ -44,17 +48,44 @@ def get_probability_map(cv, depth_map, depth_start, depth_interval):
     y_coordinates = _repeat_(y_coordinates, batch_size)
     x_coordinates = _repeat_(x_coordinates, batch_size)
 
-    # d coordinate (floored and ceiled), batched & flattened
-    d_coordinates = tf.reshape(
-        (depth_map - depth_start) / depth_interval, [-1])
-    d_coordinates_left0 = tf.clip_by_value(
-        tf.cast(tf.floor(d_coordinates), 'int32'), 0, depth - 1)
-    d_coordinates_left1 = tf.clip_by_value(
-        d_coordinates_left0 - 1, 0, depth - 1)
-    d_coordinates1_right0 = tf.clip_by_value(
-        tf.cast(tf.ceil(d_coordinates), 'int32'), 0, depth - 1)
-    d_coordinates1_right1 = tf.clip_by_value(
-        d_coordinates1_right0 + 1, 0, depth - 1)
+    if inverse_depth:
+        depth_end = depth_start + \
+            (tf.cast(depth_num, tf.float32) - 1) * depth_interval
+        inv_depth_start = tf.reshape(tf.div(1.0, depth_start), [])
+        inv_depth_end = tf.reshape(tf.div(1.0, depth_end), [])
+        inv_depth = tf.lin_space(inv_depth_start, inv_depth_end, depth_num)
+        depth_samples = tf.div(1.0, inv_depth)
+        # Here we compute the depth bucket indices to be used for probability averaging
+        # Since we are using inverse depth, we compute them in inverse depth space
+        inv_depth_interval = tf.div(
+            (inv_depth_start - inv_depth_end), tf.cast(depth_num, tf.float32) - 1.0)
+        inv_depth_data = tf.div(1.0, depth_map)
+        inv_depth_data = tf.div(inv_depth_data - inv_depth_end, inv_depth_interval)
+        inv_depth_data = tf.reshape(inv_depth_data,[-1])
+        # We need to linearly invert the index to get the correct index in depth space
+        d_coordinates_left0 = depth_num - tf.cast(tf.ceil(inv_depth_data), 'int32') - 1
+        d_coordinates_left0 = tf.clip_by_value(d_coordinates_left0,0, depth_num-1)
+        d_coordinates1_right0 = depth_num - \
+            tf.cast(tf.floor(inv_depth_data), 'int32') - 1
+        d_coordinates1_right0 = tf.clip_by_value(
+            d_coordinates1_right0, 0, depth_num-1)
+        d_coordinates_left1 = tf.clip_by_value(
+            d_coordinates_left0 - 1, 0, depth_num - 1)
+        d_coordinates1_right1 = tf.clip_by_value(
+            d_coordinates1_right0 + 1, 0, depth_num - 1)
+
+    else:
+        # d coordinate (floored and ceiled), batched & flattened
+        d_coordinates = tf.reshape(
+            (depth_map - depth_start) / depth_interval, [-1])
+        d_coordinates_left0 = tf.clip_by_value(
+            tf.cast(tf.floor(d_coordinates), 'int32'), 0, depth_num - 1)
+        d_coordinates_left1 = tf.clip_by_value(
+            d_coordinates_left0 - 1, 0, depth_num - 1)
+        d_coordinates1_right0 = tf.clip_by_value(
+            tf.cast(tf.ceil(d_coordinates), 'int32'), 0, depth_num - 1)
+        d_coordinates1_right1 = tf.clip_by_value(
+            d_coordinates1_right0 + 1, 0, depth_num - 1)
 
     # voxel coordinates
     voxel_coordinates_left0 = tf.stack(
@@ -120,7 +151,6 @@ def inference(images, cams, depth_num, depth_start, depth_interval, network_mode
     rectification using a homograph at a fixed depth, say 1.0 meters out.
 
     """
-
 
     # get all homographies
     view_homographies = []
@@ -191,7 +221,7 @@ def inference(images, cams, depth_num, depth_start, depth_interval, network_mode
 
     # probability map
     prob_map = get_probability_map(
-        probability_volume, estimated_depth_map, depth_start, depth_interval)
+        probability_volume, estimated_depth_map, depth_start, depth_interval, inverse_depth=inverse_depth)
 
     return estimated_depth_map, prob_map#, filtered_depth_map, probability_volume
 
@@ -318,7 +348,7 @@ def inference_mem(images, cams, depth_num, depth_start, depth_interval, network_
 
     # probability map
     prob_map = get_probability_map(
-        probability_volume, estimated_depth_map, depth_start, depth_interval)
+        probability_volume, estimated_depth_map, depth_start, depth_interval, inverse_depth=inverse_depth)
 
     # return filtered_depth_map,
     return estimated_depth_map, prob_map
@@ -609,7 +639,6 @@ def depth_refine(init_depth_map, image, prob_map, depth_num, depth_start, depth_
     if stereo_image is not None:
         data = tf.concat(
             [data, stereo_image], axis=3)
-PinfePin
     # refinement network
     reuse = not is_master_gpu
     if network_type == 'unet':
