@@ -18,7 +18,7 @@ Copyright 2019, Chris Heinrich, Ubiquity6.
 
 
 class ClusterGenerator:
-    def __init__(self, sessions_dir, view_num = 3, image_width=1024, image_height=768, depth_num=256,
+    def __init__(self, sessions_dir, view_num=3, image_width=1024, image_height=768, depth_num=256,
                  interval_scale=1, base_image_size=1, include_empty=False, mode='training', val_split=0.1, rescaling=True, output_scale=0.25, flip_cams=True):
         self.logger = setup_logger('ClusterGenerator')
         self.sessions_dir = sessions_dir
@@ -39,6 +39,8 @@ class ClusterGenerator:
         # Factor by which output is scaled relative to input
         self.output_scale = output_scale
         self.flip_cams = flip_cams
+        # The sessions_fraction [0,1] is the fraction of all available sessions in sessions_dir
+        self.sessions_frac = 1.0
         self.parse_sessions()
         self.set_iter_clusters()
 
@@ -53,6 +55,8 @@ class ClusterGenerator:
         Returns:
             clusters: A list of Cluster objects. See mvs_cluster.py for their declaration.
         """
+        # TODO: Cache the session data afters its been parsed into clusters so that we don't have to
+        # do this everytime since it takes a long time when we have many many sessions
 
         clusters = []
         if self.mode == 'test':
@@ -60,9 +64,22 @@ class ClusterGenerator:
         else:
             sessions = [f for f in tf.gfile.ListDirectory(
                 self.sessions_dir) if not f.startswith('.') if not f.endswith('.txt')]
-            for session in sessions:
+            sessions = sorted(sessions)
+            total_sessions = len(sessions)
+            self.logger.info(
+                'There are {} total sessions'.format(total_sessions))
+            seed = 5  # We shuffle with the same random seed for reproducibility
+            random.Random(seed).shuffle(sessions)
+            num_sessions = int(total_sessions * self.sessions_frac)
+            self.logger.info('{} sessions will be used '.format(num_sessions))
+            # TODO: Implement the train / val split at the session level rather than at the cluster level. This will also prevent the val
+            # generator from needing to load all of the clusters. In fact we might just want to do lazy loading of clusters
+            for s, session in enumerate(sessions[:num_sessions]):
                 session_dir = os.path.join(self.sessions_dir, session)
                 self.load_clusters(session_dir, clusters)
+                if s % 25 == 0:
+                    self.logger.info(
+                        'Parsed {} / {} sessions'.format(s, num_sessions))
 
         self.logger.info(" There are {} clusters".format(len(clusters)))
         self.clusters = clusters
@@ -171,7 +188,6 @@ class ClusterGenerator:
                             cams, scale=self.output_scale)
                         cams = np.stack(cams, axis=0)
 
-                        
                         self.logger.debug(
                             'Cluster transformation time: {}'.format(time.time() - start - load_time))
 
@@ -218,19 +234,16 @@ class ClusterGenerator:
                         images, cams, scale=c.rescale)
                     cropped_images, cropped_cams = ut.crop_mvs_input(
                         images, cams, self.image_width, self.image_height, self.base_image_size)
-
-                    # Scaled for input size
-                    input_images = ut.copy_and_center_images(cropped_images)
-
-                    # Scaled to the output size of network
-                    # Scaled cams are used for the differential homography step
-                    output_images, output_cams = ut.scale_mvs_input(
-                        cropped_images, cropped_cams, scale=self.output_scale)
-
-                    output_images = np.stack(output_images, axis=0)
-                    output_cams = np.stack(output_cams, axis=0)
                     # Full cams are scaled to input image resolution
                     full_cams = np.stack(cropped_cams, axis=0)
+                    # Scaled for input size
+                    input_images = ut.copy_and_center_images(cropped_images)
+                    # Scaled to the output size of network
+                    # Scaled cams are used for the differential homography warping
+                    output_images, output_cams = ut.scale_mvs_input(
+                        cropped_images, cropped_cams, scale=self.output_scale)
+                    output_images = np.stack(output_images, axis=0)
+                    output_cams = np.stack(output_cams, axis=0)
 
                     image_index = c.ref_index
                     self.logger.debug(
@@ -242,5 +255,9 @@ class ClusterGenerator:
                     self.logger.debug(
                         'output cams shape: {}'.format(output_cams.shape))
                     self.logger.debug('image index: {}'.format(image_index))
+                    self.logger.debug(
+                        'first full cam: {}'.format(full_cams[0]))
+                    self.logger.debug(
+                        'first cam: {}'.format(cams[0]))
 
                     yield (output_images, input_images, output_cams, full_cams, image_index)

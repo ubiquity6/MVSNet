@@ -144,7 +144,6 @@ def inference(images, cams, depth_num, depth_start, depth_interval, network_mode
 def inference_mem(images, cams, depth_num, depth_start, depth_interval, network_mode, is_master_gpu=True, training=True, trainable=True):
     """ inference of depth image from multi-view images and cameras """
 
-
     # dynamic gpu params
     depth_end = depth_start + (tf.cast(depth_num, tf.float32) - 1) * depth_interval
     feature_c = 32
@@ -454,7 +453,8 @@ def inference_winner_take_all(images, cams, depth_num, depth_start, depth_end, n
     forward_depth_map = depth_image
     return forward_depth_map, max_prob_image / forward_exp_sum
 
-def depth_refine(init_depth_map, image, depth_num, depth_start, depth_interval, network_mode, network_type, is_master_gpu=True, training=True, trainable=True, upsample_depth=False):
+def depth_refine(init_depth_map, image, prob_map, depth_num, depth_start, depth_interval, network_mode, network_type, \
+    is_master_gpu=True, training=True, trainable=True, upsample_depth=False, refine_with_confidence=False):
     """ refine depth image with the image """
 
     # normalization parameters
@@ -474,9 +474,16 @@ def depth_refine(init_depth_map, image, depth_num, depth_start, depth_interval, 
         # Upsample depth map to resolution of input image
         init_norm_depth_map = tf.image.resize_bilinear(init_norm_depth_map, [image_shape[1], image_shape[2]])
         init_depth_map = tf.image.resize_bilinear(init_depth_map, [image_shape[1], image_shape[2]])
+        if refine_with_confidence:
+            # TODO: resize the probability map with nearest neighbor interpolation instead of bilinear
+            prob_map = tf.image.resize_bilinear(prob_map, [image_shape[1], image_shape[2]])
     else:
         # Downsample original image to size of depth map
         image = tf.image.resize_bilinear(image, [depth_shape[1], depth_shape[2]])
+    
+    if refine_with_confidence:
+        init_norm_depth_map = tf.concat([init_norm_depth_map, prob_map], axis=3)
+
 
     # refinement network
     reuse = not is_master_gpu

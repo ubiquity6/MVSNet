@@ -7,3 +7,4 @@ scipy>=0.18
 matplotlib>=1.5
 Pillow>=3.1.2
 nvidia-ml-py
+wandb

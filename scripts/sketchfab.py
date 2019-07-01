@@ -35,8 +35,6 @@ def upload(model_file, api_token='5f2cad0a1eff43699ebe0765b8d9a8ba', name='', de
 
    # password = 'my-password'  # requires a pro account
    # private = 1  # requires a pro account
-    tags = ['bob', 'character', 'video-games']  # Array of tags
-    categories = ['people']  # Array of categories slugs
     license = 'CC Attribution'  # License label
     isPublished = True,  # Model will be on draft instead of published
     isInspectable = True,  # Allow 2D view in model inspector
@@ -44,8 +42,6 @@ def upload(model_file, api_token='5f2cad0a1eff43699ebe0765b8d9a8ba', name='', de
     data = {
         'name': name,
         'description': description,
-        'tags': tags,
-        'categories': categories,
         'license': license,
         # 'private': private,
         # 'password': password,

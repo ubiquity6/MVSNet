@@ -38,7 +38,7 @@ tf.app.flags.DEFINE_string('log_dir', None,
 tf.app.flags.DEFINE_string('model_dir', None,
                            """Path to save the model.""")
 tf.app.flags.DEFINE_string('model_load_dir', None,
-                           """Path to load the saved model. Required if ckpt_step is not none""")
+                           """Path to load the saved model. If not specified, model will be loaded from model_dir""")
 tf.app.flags.DEFINE_string('job-dir', None,
                            """Path to save job artifacts""")
 tf.app.flags.DEFINE_boolean('train_dtu', True,
@@ -47,15 +47,17 @@ tf.app.flags.DEFINE_boolean('use_pretrain', True,
                             """Whether to train.""")
 tf.app.flags.DEFINE_integer('ckpt_step', None,
                             """ckpt step.""")
+tf.app.flags.DEFINE_string('run_name', None,
+                           """A name to use for wandb logging""")
 
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 3,
+tf.app.flags.DEFINE_integer('view_num', 6,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 64,
+tf.app.flags.DEFINE_integer('max_d', 384,
                             """Maximum depth step when training.""")
-tf.app.flags.DEFINE_integer('width', 256,
+tf.app.flags.DEFINE_integer('width', 640,
                             """Maximum image width when training.""")
-tf.app.flags.DEFINE_integer('height', 192,
+tf.app.flags.DEFINE_integer('height', 480,
                             """Maximum image height when training.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume.""")
@@ -66,22 +68,23 @@ tf.app.flags.DEFINE_float('base_image_size', 8,
 # network architectures
 tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method.""")
-tf.app.flags.DEFINE_string('optimizer', 'momentum',
-                           """Optimizer to use. One of 'momentum' or 'rmsprop' """)
+tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
+                           """Optimizer to use. One of 'momentum', 'rmsprop' or 'adam' """)
 tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for 3DCNNs""")
-tf.app.flags.DEFINE_string('refinement_train_mode', 'all',
-                            """One of 'all', 'refinement_only' or 'main_only'. If 'main_only' then only the main network is trained,
-                            if 'refinement_only', only the refinement network is trained, and if 'all' then the whole network is trained.
+tf.app.flags.DEFINE_string('refinement_train_mode', 'refine_only',
+                            """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
+                            if 'refine_only', only the refinement network is trained, and if 'all' then the whole network is trained.
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
 tf.app.flags.DEFINE_string('network_mode', 'normal',
                             """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
-
-tf.app.flags.DEFINE_string('refinement_network', 'unet',
+tf.app.flags.DEFINE_string('refinement_network', 'original',
                             """Specifies network to use for refinement. One of 'original' or 'unet'. 
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
-tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
+tf.app.flags.DEFINE_boolean('upsample_before_refinement', False,
                             """Whether to upsample depth map to input resolution before the refinement network""")
+tf.app.flags.DEFINE_boolean('refine_with_confidence', False,
+                            """Whether or not to concatenate the confidence map as an input channel to refinement network""")
 # training parameters
 tf.app.flags.DEFINE_integer('num_gpus', None,
                             """Number of GPUs.""")
@@ -89,15 +92,13 @@ tf.app.flags.DEFINE_integer('batch_size', 1,
                             """Training batch size.""")
 tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
-tf.app.flags.DEFINE_float('val_ratio', 0,
-                          """Ratio of validation set when splitting dataset.""")
 tf.app.flags.DEFINE_float('base_lr', 0.001,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
 tf.app.flags.DEFINE_integer('stepvalue', None,
                             """Step interval to decay learning rate.""")
-tf.app.flags.DEFINE_integer('snapshot', 1000,
+tf.app.flags.DEFINE_integer('snapshot', 5000,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.5,
                           """Learning rate decay rate.""")
@@ -108,17 +109,23 @@ tf.app.flags.DEFINE_float('train_steps_per_val', 50,
 
 FLAGS = tf.app.flags.FLAGS
 
-def load_model(total_step, sess):
-    """ Loads pretrained model if supplied """
+def load_model(sess):
+    """ Loads pretrained model if supplied  """
+    total_step = 0
     if FLAGS.ckpt_step:
-        pretrained_model_path = os.path.join(
-            FLAGS.model_load_dir, FLAGS.regularization, 'model.ckpt')
+        if FLAGS.model_load_dir:
+            pretrained_model_path = os.path.join(
+                FLAGS.model_load_dir, FLAGS.regularization, 'model.ckpt')
+        else:
+            pretrained_model_path = os.path.join(
+                FLAGS.model_dir, FLAGS.regularization, 'model.ckpt')
         restorer = tf.train.Saver(tf.global_variables())
         restorer.restore(
             sess, '-'.join([pretrained_model_path, str(FLAGS.ckpt_step)]))
         print(Notify.INFO, 'Pre-trained model restored from %s' %
                 ('-'.join([pretrained_model_path, str(FLAGS.ckpt_step)])), Notify.ENDC)
         total_step = FLAGS.ckpt_step
+    return total_step
 
 def average_gradients(tower_grads):
     """Calculate the average gradient for each shared variable across all towers.
@@ -226,7 +233,7 @@ def setup_optimizer():
 
     if FLAGS.stepvalue is None:
         # With this stepvalue, the lr will decay by a factor of decay_per_10_epoch every 10 epochs
-        decay_per_10_epoch = 0.025
+        decay_per_10_epoch = 0.05
         FLAGS.stepvalue = int(
             10 * np.log(FLAGS.gamma) * training_sample_size / np.log(decay_per_10_epoch))
     global_step = tf.Variable(0, trainable=False, name='global_step')
@@ -238,6 +245,9 @@ def setup_optimizer():
     elif FLAGS.optimizer == 'momentum':
         opt = tf.train.MomentumOptimizer(
             learning_rate=lr_op, momentum=0.9, use_nesterov=False)
+        return opt, global_step
+    elif FLAGS.optimizer == 'adam':
+        opt = tf.train.AdamOptimizer(learning_rate=lr_op)
         return opt, global_step
     else:
         logger.error("Optimizer {} is not implemented. Please use 'rmsprop' or 'momentum".format(
@@ -255,7 +265,7 @@ def initialize_trainer():
         subprocess.call(["/root/.local/bin/wandb", "login", wandb_key])
     else:
         subprocess.call(["wandb","login", wandb_key])
-    wandb.init(project='mvsnet', tensorboard=True)
+    wandb.init(project='mvsnet', name=FLAGS.run_name)
     wandb.config.update(FLAGS)
 
     # Prepare validation summary 
@@ -299,7 +309,7 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
 
     # inference
     if FLAGS.regularization == '3DCNNs':
-        main_trainable = False if FLAGS.refinement_train_mode == 'refinement_only' and FLAGS.refinement==True else True
+        main_trainable = False if FLAGS.refinement_train_mode == 'refine_only' and FLAGS.refinement==True else True
         # initial depth map
         depth_map, prob_map = inference(
             images, cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, is_master_gpu, trainable=main_trainable)
@@ -308,19 +318,20 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
             refine_trainable = False if FLAGS.refinement_train_mode == 'main_only' else True
             ref_image = tf.squeeze(
                 tf.slice(images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
-            refined_depth_map = depth_refine(depth_map, ref_image, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, \
-                FLAGS.refinement_network, is_master_gpu, trainable=refine_trainable, upsample_depth=FLAGS.upsample_before_refinement)
+            refined_depth_map = depth_refine(depth_map, ref_image, prob_map, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, \
+                FLAGS.refinement_network, is_master_gpu, trainable=refine_trainable, upsample_depth=FLAGS.upsample_before_refinement, refine_with_confidence=FLAGS.refine_with_confidence)
                                     # regression loss
-            loss0, less_one_temp, less_three_temp = mvsnet_regression_loss(
+            loss0, less_one_main, less_three_main = mvsnet_regression_loss(
                 depth_map, depth_image, depth_interval)
             # If we upsampled the depth image to full resolution we need to compute loss with full_depth
+            
             if FLAGS.upsample_before_refinement:
                 loss1, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
                     refined_depth_map, full_depth, depth_interval)
             else:
                 loss1, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
                     refined_depth_map, depth_image, depth_interval)
-            if FLAGS.refinement_train_mode == 'refinement_only':
+            if FLAGS.refinement_train_mode == 'refine_only':
                 # If we are only training the refinement network we are only computing gradients wrt the refinement network params
                 # These gradients on l0 will be zero, so no need to include l0 in the loss
                 loss = loss1
@@ -422,9 +433,10 @@ def train():
 
         with tf.Session(config=config) as sess:
             # initialization
-            total_step = 0
+            #global total_step
+            #total_step = 0
             sess.run(init_op)
-            load_model(total_step, sess)
+            total_step = load_model(sess)
 
             # training several epochs
             num_iterations = int(np.ceil(float(FLAGS.epoch) / float(FLAGS.num_gpus)))
