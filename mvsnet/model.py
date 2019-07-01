@@ -622,14 +622,6 @@ PinfePin
         raise NotImplementedError
 
     residual_norm_depth_map = norm_depth_tower.get_output()
-
-    # denormalize depth map
-    # (CH) I am experimenting with adding the residual to the 
-    # original depth estimate, rather than adding to normalized depth estimate
-    # followed by the denormalizing scaling. I think this is a good idea because the previous
-    # way of doing things constrained the output of refine_conv3 to only take on very small values
-    # which would lead to small gradients
-    # Add the output of network to normalized depth map
     norm_refined_depth_map = tf.add_n((residual_norm_depth_map, init_norm_depth_map), name='add_residual')
     # Renormalize the depth map to add back in the scale
     refined_depth_map = tf.multiply(

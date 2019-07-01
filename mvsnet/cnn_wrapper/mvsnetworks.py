@@ -174,14 +174,6 @@ class RefineNet(Network):
          .conv_bn(3, base_filter, 1, name='refine_conv2')
          .conv(3, 1, 1, relu=False, name='refine_conv3'))
 
-        # (CH) I am experimenting with adding the residual to the
-        # original depth estimate, rather than adding to normalized depth estimate
-        # followed by the denormalizing scaling. I think this is a good idea because the previous
-        # way of doing things constrained the output of refine_conv3 to only take on very small values
-        # which would lead to small gradients
-        # (self.feed('refine_conv3', 'depth_image')
-        # .add(name='refined_depth_image'))
-
 
 class RefineNetConv(Network):
     """network for depth map refinement using original image. Same as previous network except
@@ -199,14 +191,6 @@ class RefineNetConv(Network):
          .conv(3, base_filter, 1, name='refine_conv1')
          .conv(3, base_filter, 1, name='refine_conv2')
          .conv(3, 1, 1, relu=False, name='refine_conv3'))
-
-        # (CH) I am experimenting with adding the residual to the
-        # original depth estimate, rather than adding to normalized depth estimate
-        # followed by the denormalizing scaling. I think this is a good idea because the previous
-        # way of doing things constrained the output of refine_conv3 to only take on very small values
-        # which would lead to small gradients
-        # (self.feed('refine_conv3', 'depth_image')
-        # .add(name='refined_depth_image'))
 
 
 class RefineUNet(Network):
