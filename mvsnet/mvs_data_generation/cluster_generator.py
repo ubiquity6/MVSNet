@@ -19,7 +19,7 @@ Copyright 2019, Chris Heinrich, Ubiquity6.
 
 class ClusterGenerator:
     def __init__(self, sessions_dir, view_num=3, image_width=1024, image_height=768, depth_num=256,
-                 interval_scale=1, base_image_size=1, include_empty=False, mode='training', val_split=0.1, rescaling=True, output_scale=0.25, flip_cams=True):
+                 interval_scale=1, base_image_size=1, include_empty=False, mode='training', val_split=0.1, rescaling=True, output_scale=0.25, flip_cams=True, sessions_frac=1.0):
         self.logger = setup_logger('ClusterGenerator')
         self.sessions_dir = sessions_dir
         self.view_num = view_num
@@ -40,7 +40,7 @@ class ClusterGenerator:
         self.output_scale = output_scale
         self.flip_cams = flip_cams
         # The sessions_fraction [0,1] is the fraction of all available sessions in sessions_dir
-        self.sessions_frac = 1.0
+        self.sessions_frac = sessions_frac
         self.parse_sessions()
         self.set_iter_clusters()
 
@@ -110,8 +110,9 @@ class ClusterGenerator:
             val_clusters: A list of clusters to use for validation
         """
         seed = 5  # We shuffle with the same random seed so that training stays in training
-        # and validation stays in validation
-        random.Random(seed).shuffle(self.clusters)
+        # and validation stays in validation. We don't shuffle on inference
+        if self.mode != 'test':
+            random.Random(seed).shuffle(self.clusters)
         num = len(self.clusters)
         val_end = int(num*self.val_split)
         # Partition all clusters into a training and validation set

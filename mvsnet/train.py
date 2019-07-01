@@ -51,7 +51,7 @@ tf.app.flags.DEFINE_string('run_name', None,
                            """A name to use for wandb logging""")
 
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 6,
+tf.app.flags.DEFINE_integer('view_num', 4,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 192,
                             """Maximum depth step when training.""")
@@ -74,7 +74,7 @@ tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
                            """Optimizer to use. One of 'momentum', 'rmsprop' or 'adam' """)
 tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for 3DCNNs""")
-tf.app.flags.DEFINE_string('refinement_train_mode', 'all',
+tf.app.flags.DEFINE_string('refinement_train_mode', 'main_only',
                             """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
                             if 'refine_only', only the refinement network is trained, and if 'all' then the whole network is trained.
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
@@ -83,10 +83,12 @@ tf.app.flags.DEFINE_string('network_mode', 'normal',
 tf.app.flags.DEFINE_string('refinement_network', 'original',
                             """Specifies network to use for refinement. One of 'original' or 'unet'. 
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
-tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
+tf.app.flags.DEFINE_boolean('upsample_before_refinement', False,
                             """Whether to upsample depth map to input resolution before the refinement network""")
-tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
+tf.app.flags.DEFINE_boolean('refine_with_confidence', False,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
+tf.app.flags.DEFINE_boolean('refine_with_stereo', False,
+                            """Whether or not to inject a stereo partner into refinement network""")
 # training parameters
 tf.app.flags.DEFINE_integer('num_gpus', None,
                             """Number of GPUs.""")
@@ -100,7 +102,7 @@ tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
 tf.app.flags.DEFINE_integer('stepvalue', None,
                             """Step interval to decay learning rate.""")
-tf.app.flags.DEFINE_integer('snapshot', 5000,
+tf.app.flags.DEFINE_integer('snapshot', 1000,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.5,
                           """Learning rate decay rate.""")
@@ -108,6 +110,8 @@ tf.app.flags.DEFINE_float('val_batch_size', 5,
                           """Number of images to run validation on when validation.""")
 tf.app.flags.DEFINE_float('train_steps_per_val', 50,
                           """Number of samples to train on before running a round of validation.""")
+tf.app.flags.DEFINE_float('dataset_fraction', 0.1,
+                          """Fraction of dataset to use for training. Float between 0 and 1. """)
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -172,7 +176,7 @@ def generator(n, mode):
     if FLAGS.regularization == 'GRU':
         flip_cams = True
     gen = ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.width, FLAGS.height,
-                                FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode=mode, flip_cams=flip_cams)
+                                FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode=mode, flip_cams=flip_cams, sessions_frac = FLAGS.dataset_fraction)
     logger.info('Initializing generator with mode {}'.format(mode))
     if mode == 'training':
         global training_sample_size
@@ -230,7 +234,7 @@ def setup_optimizer():
         """
     global training_sample_size
     # We initialize a dummy generator so we can get the training_sample_size
-    dummy_gen = ClusterGenerator(FLAGS.train_data_root, mode='training')
+    dummy_gen = ClusterGenerator(FLAGS.train_data_root, mode='training', sessions_frac=FLAGS.dataset_fraction)
     training_sample_size = len(dummy_gen.train_clusters)
 
     if FLAGS.stepvalue is None:
@@ -311,22 +315,28 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
 
     # inference
     if FLAGS.regularization == '3DCNNs':
-        main_trainable = False if FLAGS.refinement_train_mode == 'refine_only' and FLAGS.refinement==True else True
+        #main_trainable = False if FLAGS.refinement_train_mode == 'refine_only' and FLAGS.refinement==True else True
+        main_trainable = True
         # initial depth map
         depth_map, prob_map = inference(
             images, cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, is_master_gpu, trainable=main_trainable, inverse_depth = FLAGS.inverse_depth)
         # refinement
         if FLAGS.refinement:
-            refine_trainable = False if FLAGS.refinement_train_mode == 'main_only' else True
+            #refine_trainable = False if FLAGS.refinement_train_mode == 'main_only' else True
+            refine_trainable = True
             ref_image = tf.squeeze(
                 tf.slice(images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
+            stereo_image = None
+            if images.shape[1] > 1 and FLAGS.refine_with_stereo:
+                stereo_image = tf.squeeze(
+                    tf.slice(images, [0, 1, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
+
             refined_depth_map = depth_refine(depth_map, ref_image, prob_map, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, \
-                FLAGS.refinement_network, is_master_gpu, trainable=refine_trainable, upsample_depth=FLAGS.upsample_before_refinement, refine_with_confidence=FLAGS.refine_with_confidence)
+                FLAGS.refinement_network, is_master_gpu, trainable=refine_trainable, upsample_depth=FLAGS.upsample_before_refinement, refine_with_confidence=FLAGS.refine_with_confidence, stereo_image=stereo_image)
                                     # regression loss
             loss0, less_one_main, less_three_main = mvsnet_regression_loss(
                 depth_map, depth_image, depth_interval)
             # If we upsampled the depth image to full resolution we need to compute loss with full_depth
-            
             if FLAGS.upsample_before_refinement:
                 loss1, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
                     refined_depth_map, full_depth, depth_interval)
@@ -336,7 +346,11 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
             if FLAGS.refinement_train_mode == 'refine_only':
                 # If we are only training the refinement network we are only computing gradients wrt the refinement network params
                 # These gradients on l0 will be zero, so no need to include l0 in the loss
-                loss = loss1
+                loss = loss1 + 1e-9*loss0
+            elif FLAGS.refinement_train_mode == 'main_only':
+                loss = loss0 + 1e-9*loss1
+                less_one_accuracy = less_one_main
+                less_three_accuracy = less_three_main
             else:
                 loss = (loss0 + loss1) / 2
         else:
