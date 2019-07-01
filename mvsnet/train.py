@@ -368,22 +368,6 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
         loss, mae, less_one_accuracy, less_three_accuracy, depth_map = \
             mvsnet_classification_loss(
                 prob_volume, depth_image, FLAGS.max_d, depth_start, depth_interval)
-        """
-        depth_start = tf.reshape(
-            tf.slice(cams, [0, 0, 1, 3, 0], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
-        depth_num = tf.cast(
-            tf.reshape(tf.slice(cams, [0, 0, 1, 3, 2], [1, 1, 1, 1, 1]), []), 'int32')
-        if FLAGS.regularization == '3DCNNs' and FLAGS.inverse_depth:
-            depth_end = tf.reshape(
-                tf.slice(scaled_cams, [0, 0, 1, 3, 3], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
-        else:
-            depth_end = depth_start + \
-                (tf.cast(depth_num, tf.float32) - 1) * depth_interval
-        depth_map, prob_map = inference_winner_take_all(images, cams,
-                                                             depth_num, depth_start, depth_end, network_mode=FLAGS.network_mode, reg_type='GRU', inverse_depth=FLAGS.inverse_depth)
-        loss, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
-            depth_map, depth_image, depth_interval)
-        """
         return loss, less_one_accuracy, less_three_accuracy
 
 def save_model(sess, saver, total_step, step):
