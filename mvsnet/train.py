@@ -74,7 +74,7 @@ tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
                            """Optimizer to use. One of 'momentum', 'rmsprop' or 'adam' """)
 tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for 3DCNNs""")
-tf.app.flags.DEFINE_string('refinement_train_mode', 'refine_only',
+tf.app.flags.DEFINE_string('refinement_train_mode', 'main_only',
                             """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
                             if 'refine_only', only the refinement network is trained, and if 'all' then the whole network is trained.
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
@@ -85,9 +85,9 @@ tf.app.flags.DEFINE_string('refinement_network', 'original',
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
 tf.app.flags.DEFINE_boolean('upsample_before_refinement', False,
                             """Whether to upsample depth map to input resolution before the refinement network""")
-tf.app.flags.DEFINE_boolean('refine_with_confidence', False,
+tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
-tf.app.flags.DEFINE_boolean('refine_with_stereo', False,
+tf.app.flags.DEFINE_boolean('refine_with_stereo', True,
                             """Whether or not to inject a stereo partner into refinement network""")
 # training parameters
 tf.app.flags.DEFINE_integer('num_gpus', None,
@@ -96,7 +96,7 @@ tf.app.flags.DEFINE_integer('batch_size', 1,
                             """Training batch size.""")
 tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
-tf.app.flags.DEFINE_float('base_lr', 0.00001,
+tf.app.flags.DEFINE_float('base_lr', 0.001,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
@@ -112,6 +112,8 @@ tf.app.flags.DEFINE_float('train_steps_per_val', 50,
                           """Number of samples to train on before running a round of validation.""")
 tf.app.flags.DEFINE_float('dataset_fraction', 0.05,
                           """Fraction of dataset to use for training. Float between 0 and 1. """)
+tf.app.flags.DEFINE_float('decay_per_10_epoch', 0.05,
+                          """ The fraction by which learning rate should decay every 10 epochs""")
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -239,7 +241,7 @@ def setup_optimizer():
 
     if FLAGS.stepvalue is None:
         # With this stepvalue, the lr will decay by a factor of decay_per_10_epoch every 10 epochs
-        decay_per_10_epoch = 0.05
+        decay_per_10_epoch = FLAGS.decay_per_10_epoch
         FLAGS.stepvalue = int(
             10 * np.log(FLAGS.gamma) * training_sample_size / np.log(decay_per_10_epoch))
     global_step = tf.Variable(0, trainable=False, name='global_step')
