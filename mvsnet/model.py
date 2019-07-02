@@ -603,7 +603,7 @@ def inference_winner_take_all(images, cams, depth_num, depth_start, depth_end, n
     return forward_depth_map, max_prob_image / forward_exp_sum
 
 def depth_refine(init_depth_map, image, prob_map, depth_num, depth_start, depth_interval, network_mode, network_type, \
-    is_master_gpu=True, training=True, trainable=True, upsample_depth=False, refine_with_confidence=False, stereo_image=None):
+    is_master_gpu=True, training=True, trainable=True, upsample_depth=False, refine_with_confidence=False, stereo_image=None, residual_refinement=True):
     """ refine depth image with the image """
 
     # normalization parameters
@@ -651,7 +651,12 @@ def depth_refine(init_depth_map, image, prob_map, depth_num, depth_start, depth_
         raise NotImplementedError
 
     residual_norm_depth_map = norm_depth_tower.get_output()
-    norm_refined_depth_map = tf.add_n((residual_norm_depth_map, init_norm_depth_map), name='add_residual')
+    # residual_refinement controls whether the refinement network predicts the residual or the depth map itself
+    if residual_refinement:
+        norm_refined_depth_map = tf.add_n((residual_norm_depth_map, init_norm_depth_map), name='add_residual')
+    else:
+        norm_refined_depth_map = residual_norm_depth_map
+
     # Renormalize the depth map to add back in the scale
     refined_depth_map = tf.multiply(
         norm_refined_depth_map, depth_scale) + depth_start
