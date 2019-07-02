@@ -74,16 +74,16 @@ tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
                            """Optimizer to use. One of 'momentum', 'rmsprop' or 'adam' """)
 tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for 3DCNNs""")
-tf.app.flags.DEFINE_string('refinement_train_mode', 'refine_only',
+tf.app.flags.DEFINE_string('refinement_train_mode', 'main_only',
                             """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
                             if 'refine_only', only the refinement network is trained, and if 'all' then the whole network is trained.
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
 tf.app.flags.DEFINE_string('network_mode', 'normal',
                             """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
-tf.app.flags.DEFINE_string('refinement_network', 'original',
+tf.app.flags.DEFINE_string('refinement_network', 'unet',
                             """Specifies network to use for refinement. One of 'original' or 'unet'. 
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
-tf.app.flags.DEFINE_boolean('upsample_before_refinement', False,
+tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
                             """Whether to upsample depth map to input resolution before the refinement network""")
 tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
@@ -96,7 +96,7 @@ tf.app.flags.DEFINE_integer('batch_size', 1,
                             """Training batch size.""")
 tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
-tf.app.flags.DEFINE_float('base_lr', 0.0001,
+tf.app.flags.DEFINE_float('base_lr', 0.001,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
@@ -110,7 +110,7 @@ tf.app.flags.DEFINE_float('val_batch_size', 5,
                           """Number of images to run validation on when validation.""")
 tf.app.flags.DEFINE_float('train_steps_per_val', 50,
                           """Number of samples to train on before running a round of validation.""")
-tf.app.flags.DEFINE_float('dataset_fraction', 0.05,
+tf.app.flags.DEFINE_float('dataset_fraction', 0.1,
                           """Fraction of dataset to use for training. Float between 0 and 1. """)
 tf.app.flags.DEFINE_float('decay_per_10_epoch', 0.05,
                           """ The fraction by which learning rate should decay every 10 epochs""")
