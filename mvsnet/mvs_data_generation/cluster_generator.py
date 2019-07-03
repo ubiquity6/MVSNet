@@ -256,9 +256,5 @@ class ClusterGenerator:
                     self.logger.debug(
                         'output cams shape: {}'.format(output_cams.shape))
                     self.logger.debug('image index: {}'.format(image_index))
-                    self.logger.debug(
-                        'first full cam: {}'.format(full_cams[0]))
-                    self.logger.debug(
-                        'first cam: {}'.format(cams[0]))
 
                     yield (output_images, input_images, output_cams, full_cams, image_index)

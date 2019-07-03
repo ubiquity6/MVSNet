@@ -53,7 +53,7 @@ tf.app.flags.DEFINE_string('run_name', None,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 4,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 192,
+tf.app.flags.DEFINE_integer('max_d', 32,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('width', 640,
                             """Maximum image width when training.""")
@@ -74,7 +74,7 @@ tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
                            """Optimizer to use. One of 'momentum', 'rmsprop' or 'adam' """)
 tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for 3DCNNs""")
-tf.app.flags.DEFINE_string('refinement_train_mode', 'main_only',
+tf.app.flags.DEFINE_string('refinement_train_mode', 'refine_only',
                             """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
                             if 'refine_only', only the refinement network is trained, and if 'all' then the whole network is trained.
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
@@ -96,24 +96,27 @@ tf.app.flags.DEFINE_integer('batch_size', 1,
                             """Training batch size.""")
 tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
-tf.app.flags.DEFINE_float('base_lr', 0.001,
+tf.app.flags.DEFINE_float('base_lr', 0.0001,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
 tf.app.flags.DEFINE_integer('stepvalue', None,
                             """Step interval to decay learning rate.""")
-tf.app.flags.DEFINE_integer('snapshot', 1000,
+tf.app.flags.DEFINE_integer('snapshot', 5000,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.5,
                           """Learning rate decay rate.""")
-tf.app.flags.DEFINE_float('val_batch_size', 5,
+tf.app.flags.DEFINE_float('val_batch_size', 10,
                           """Number of images to run validation on when validation.""")
-tf.app.flags.DEFINE_float('train_steps_per_val', 50,
+tf.app.flags.DEFINE_float('train_steps_per_val', 100,
                           """Number of samples to train on before running a round of validation.""")
 tf.app.flags.DEFINE_float('dataset_fraction', 0.1,
-                          """Fraction of dataset to use for training. Float between 0 and 1. """)
-tf.app.flags.DEFINE_float('decay_per_10_epoch', 0.05,
+                          """Fraction of dataset to use for training. Float between 0 and 1. NOTE: For training a production model
+                           you should use 1, but for experiments it may be useful to use a fraction less than 1.""")
+tf.app.flags.DEFINE_float('decay_per_10_epoch', 0.01,
                           """ The fraction by which learning rate should decay every 10 epochs""")
+tf.app.flags.DEFINE_bool('wandb', True,
+                         """Whether or not to log inference results to wandb""")
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -268,13 +271,7 @@ def initialize_trainer():
     logger.info("Training starting at time: {}".format(train_session_start))
     logger.info("Tensorflow version: {}".format(tf.__version__))
     logger.info("Flags: {}".format(FLAGS))
-    wandb_key = "08b2fe7c6c5d56f49b9c2dee8f24ca14c0679509"
-    if mu.ml_engine():
-        subprocess.call(["/root/.local/bin/wandb", "login", wandb_key])
-    else:
-        subprocess.call(["wandb","login", wandb_key])
-    wandb.init(project='mvsnet', name=FLAGS.run_name)
-    wandb.config.update(FLAGS)
+    mu.initialize_wandb(FLAGS)
 
     # Prepare validation summary 
     val_sum_file = os.path.join(
@@ -333,7 +330,7 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
                 stereo_image = tf.squeeze(
                     tf.slice(images, [0, 1, 0, 0, 0], [-1, 1, -1, -1, 3]), axis=1)
 
-            refined_depth_map = depth_refine(depth_map, ref_image, prob_map, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, \
+            refined_depth_map, residual_depth_map = depth_refine(depth_map, ref_image, prob_map, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, \
                 FLAGS.refinement_network, is_master_gpu, trainable=refine_trainable, upsample_depth=FLAGS.upsample_before_refinement, refine_with_confidence=FLAGS.refine_with_confidence, stereo_image=stereo_image)
                                     # regression loss
             loss0, less_one_main, less_three_main = mvsnet_regression_loss(

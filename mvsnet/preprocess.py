@@ -21,6 +21,9 @@ import tensorflow as tf
 import scipy.io
 import urllib
 from tensorflow.python.lib.io import file_io
+from mvsnet.utils import setup_logger
+import wandb
+logger = setup_logger('image-processing')
 FLAGS = tf.app.flags.FLAGS
 
 def center_image(img):
@@ -177,7 +180,7 @@ def write_inverse_depth_map(image, file_path, exp=2):
         image: Depth image to write
         file_path: Path where that image is
         exp: A positive number. Higher numbers lead to faster decay of brightness with depth"""
-    file_path_inverse = file_path.replace('.png', '_inverse.png')
+    
     max_int = 65535
     image = image.astype(np.float)
     # First normalize image so it has min 0 and max = max_int
@@ -186,7 +189,44 @@ def write_inverse_depth_map(image, file_path, exp=2):
     # Invert the depth map and clip values
     inv_depth = np.power((max_int - image)/max_int,exp)*max_int
     inv_depth = np.clip(inv_depth, 0, max_int).astype(np.uint16)
-    imageio.imsave(file_path_inverse, inv_depth)
+    imageio.imsave(file_path, inv_depth)
+    if FLAGS.wandb:
+        wandb.log({"inverse_depths": wandb.Image(
+            (inv_depth.astype(np.float32)*(255.0/65535.0)), caption=file_path)})
+
+
+def write_residual_depth_map(image, file_path, exp=0.35):
+    """ Writes an inverted depth map for visualization purposes
+    args:
+        image: Depth image to write
+        file_path: Path where that image is
+        exp: A positive number. Higher numbers lead to faster decay of brightness with depth"""
+
+    max_int = 255
+    image = image.astype(np.float)
+    mean = image.mean()
+    max_val = image.max()
+    min_val = image.min()
+    
+    logger.debug('Residual max: {}'.format(max_val))
+    logger.debug('Residual min: {}'.format(min_val))
+    logger.debug('Residual mean: {}'.format(mean))
+    abs_max = max(abs(max_val), abs(min_val))
+    image *= (1.0/ abs_max)
+    residual_plus = np.clip(image, 0, 1)
+    residual_minus = -np.clip(image,-1, 0)
+    residual_plus = np.power(residual_plus , exp)*max_int
+    residual_minus = np.power(residual_minus, exp)*max_int
+    residual_plus = residual_plus.astype(np.uint8)
+    residual_minus = residual_minus.astype(np.uint8)
+    residual_color = np.zeros((image.shape[0],image.shape[1],3))
+    residual_color[:,:,0] = residual_plus
+    residual_color[:,:,1] = residual_minus
+    residual_color[:, :, 2] = (0.3*(residual_plus+residual_minus)).astype(np.uint8)
+    imageio.imsave(file_path, residual_color)
+    if FLAGS.wandb:
+        wandb.log({"residual_depths": wandb.Image(
+            residual_color, caption=file_path)})
 
 
 def write_depth_map(file_path, image, visualization = True):
@@ -194,14 +234,19 @@ def write_depth_map(file_path, image, visualization = True):
     image = np.clip(image, 0, 65535).astype(np.uint16)
     imageio.imsave(file_path, image)
     if visualization:
-        write_inverse_depth_map(image, file_path)
+        file_path_inverse = file_path.replace('.png', '_inverse.png')
+        write_inverse_depth_map(image, file_path_inverse)
 
 def write_confidence_map(file_path, image):
     # we convert probabilities in range [0,1] to ints in range [0, 2^16-1]
+    if FLAGS.wandb:
+        wandb.log({"confidence_maps": wandb.Image(
+            (image*255), caption=file_path)})
     scale_factor = 65535
     image *= scale_factor
     image = np.clip(image, 0, 65535).astype(np.uint16)
     imageio.imsave(file_path, image)
+
 
 def write_cam(file, cam):
     # f = open(file, "w")

@@ -651,14 +651,11 @@ def depth_refine(init_depth_map, image, prob_map, depth_num, depth_start, depth_
         raise NotImplementedError
 
     residual_norm_depth_map = norm_depth_tower.get_output()
+    residual_depth_map = tf.multiply(residual_norm_depth_map, depth_scale)
     # residual_refinement controls whether the refinement network predicts the residual or the depth map itself
     if residual_refinement:
-        norm_refined_depth_map = tf.add_n((residual_norm_depth_map, init_norm_depth_map), name='add_residual')
+        refined_depth_map = tf.add_n((residual_depth_map, init_depth_map), name='add_residual')
     else:
-        norm_refined_depth_map = residual_norm_depth_map
+        refined_depth_map = residual_depth_map
 
-    # Renormalize the depth map to add back in the scale
-    refined_depth_map = tf.multiply(
-        norm_refined_depth_map, depth_scale) + depth_start
-
-    return refined_depth_map
+    return refined_depth_map, residual_depth_map
