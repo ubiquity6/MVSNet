@@ -200,10 +200,8 @@ def write_output(output_dir, out_depth_map, out_prob_map, out_images, out_cams, 
     write_depth_map(depth_png, out_depth_map,
                     visualization=FLAGS.visualize)
     write_confidence_map(prob_png, out_prob_map)
+    write_reference_image(out_ref_image, out_ref_image_path)
 
-    out_ref_image = cv2.cvtColor(out_ref_image, cv2.COLOR_RGB2BGR)
-    image_file = file_io.FileIO(out_ref_image_path, mode='w')
-    scipy.misc.imsave(image_file, out_ref_image)
     write_cam(out_ref_cam_path, out_ref_cam)
     if out_residual_depth_map is not None and FLAGS.visualize:
         residual_path = depth_png.replace('_depth', '_depth_residual')

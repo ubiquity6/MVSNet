@@ -191,9 +191,22 @@ def write_inverse_depth_map(image, file_path, exp=2):
     inv_depth = np.clip(inv_depth, 0, max_int).astype(np.uint16)
     imageio.imsave(file_path, inv_depth)
     if FLAGS.wandb:
-        wandb.log({"inverse_depths": wandb.Image(
-            (inv_depth.astype(np.float32)*(255.0/65535.0)), caption=file_path)})
+        if 'unrefined' in file_path:
+            wandb.log({"inverse_depths_unrefined": wandb.Image(
+                (inv_depth.astype(np.float32)*(255.0/65535.0)), caption=file_path)})
+        else:
+            wandb.log({"inverse_depths": wandb.Image(
+                (inv_depth.astype(np.float32)*(255.0/65535.0)), caption=file_path)})
 
+
+def write_reference_image(image, file_path):
+    """ Write the reference image to file """
+    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    image_file = file_io.FileIO(file_path, mode='w')
+    scipy.misc.imsave(image_file, image)
+    if FLAGS.wandb:
+        wandb.log({"reference_images": wandb.Image(
+            image, caption=file_path)})
 
 def write_residual_depth_map(image, file_path, exp=0.35):
     """ Writes an inverted depth map for visualization purposes
