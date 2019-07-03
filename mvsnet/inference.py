@@ -31,16 +31,16 @@ tf.app.flags.DEFINE_string('input_dir', None,
 tf.app.flags.DEFINE_string('output_dir', None,
                            """Path to data to dir to output results""")
 tf.app.flags.DEFINE_string('model_dir',
-                           'gs://mvs-training-mlengine/a_main_only_conf_refine/models/',
+                           'gs://mvs-training-mlengine/a_main_unet_v4_refine/models/',
                            """Path to restore the model.""")
-tf.app.flags.DEFINE_integer('ckpt_step', 30000,
+tf.app.flags.DEFINE_integer('ckpt_step', 50000,
                             """ckpt  step.""")
 tf.app.flags.DEFINE_string('run_name', None,
                            """A name to use for wandb logging""")
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 4,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 96,
+tf.app.flags.DEFINE_integer('max_d', 192,
                             """Maximum depth step when testing.""")
 tf.app.flags.DEFINE_integer('width', 512,
                             """Maximum image width when testing.""")
@@ -66,7 +66,7 @@ tf.app.flags.DEFINE_bool('inverse_depth', False,
                          """Whether to apply inverse depth for R-MVSNet""")
 tf.app.flags.DEFINE_string('network_mode', 'normal',
                            """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
-tf.app.flags.DEFINE_string('refinement_network', 'original',
+tf.app.flags.DEFINE_string('refinement_network', 'unet',
                            """Specifies network to use for refinement. One of 'original' or 'unet'. 
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
 tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
@@ -81,18 +81,25 @@ tf.app.flags.DEFINE_bool('visualize', True,
                          This is useful when developing and debugging, but should probably be turned off in production""")
 tf.app.flags.DEFINE_bool('wandb', True,
                          """Whether or not to log inference results to wandb""")
+tf.app.flags.DEFINE_bool('benchmark', True,
+                         """If benchmark is True, the datagenerator will look for GT depth maps and benchmark the prediction against GT""")
 FLAGS = tf.app.flags.FLAGS
 
 
 def setup_data_iterator(input_dir):
     "Configures the data generator that is used to feed batches of data for inference"
     data_gen = ClusterGenerator(input_dir, FLAGS.view_num, FLAGS.width, FLAGS.height,
-                                FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='test')
+                                FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='test', benchmark=FLAGS.benchmark, output_scale=FLAGS.sample_scale)
     mvs_generator = iter(data_gen)
     sample_size = len(data_gen.train_clusters)
 
-    generator_data_type = (tf.float32, tf.float32,
-                           tf.float32, tf.float32, tf.int32)
+    if FLAGS.benchmark:
+        generator_data_type = (tf.float32, tf.float32,
+                               tf.float32, tf.float32, tf.float32, tf.int32)
+    else:
+        generator_data_type = (tf.float32, tf.float32,
+                               tf.float32, tf.float32, tf.int32)
+
     mvs_set = tf.data.Dataset.from_generator(
         lambda: mvs_generator, generator_data_type)
     mvs_set = mvs_set.batch(FLAGS.batch_size)
@@ -249,8 +256,12 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
     """ Performs inference using trained MVSNet model on data located in input_dir """
     output_dir = init_inference(input_dir, output_dir, width, height)
     mvs_iterator, sample_size = setup_data_iterator(input_dir)
+    # If we are benchmarking, the data generator also returns a depth map
+    if FLAGS.benchmark:
+        scaled_images, full_images, scaled_cams, full_cams, full_depth, image_index = mvs_iterator.get_next()
+    else:
+        scaled_images, full_images, scaled_cams, full_cams, image_index = mvs_iterator.get_next()
 
-    scaled_images, full_images, scaled_cams, full_cams, image_index = mvs_iterator.get_next()
     depth_start, depth_end, depth_interval, depth_num = set_shapes(
         scaled_images, full_images, scaled_cams, full_cams)
     if FLAGS.refinement:

@@ -14,12 +14,19 @@ logging.basicConfig()
 
 """
 Copyright 2019, Chris Heinrich, Ubiquity6.
+
+The ClusterGenerator object serves up batches of data to be used for training a multi view stereo network. 
+
+The data returned consists of multiple input images and their associated camera information, along with GT depth maps in 
+the case of training, validation or benchmarking.
+
+
 """
 
 
 class ClusterGenerator:
     def __init__(self, sessions_dir, view_num=3, image_width=1024, image_height=768, depth_num=256,
-                 interval_scale=1, base_image_size=1, include_empty=False, mode='training', val_split=0.1, rescaling=True, output_scale=0.25, flip_cams=True, sessions_frac=1.0):
+                 interval_scale=1, base_image_size=1, include_empty=False, mode='training', val_split=0.1, rescaling=True, output_scale=0.25, flip_cams=True, sessions_frac=1.0, benchmark=False):
         self.logger = setup_logger('ClusterGenerator')
         self.sessions_dir = sessions_dir
         self.view_num = view_num
@@ -41,6 +48,7 @@ class ClusterGenerator:
         self.flip_cams = flip_cams
         # The sessions_fraction [0,1] is the fraction of all available sessions in sessions_dir
         self.sessions_frac = sessions_frac
+        self.benchmark = benchmark
         self.parse_sessions()
         self.set_iter_clusters()
 
@@ -231,10 +239,20 @@ class ClusterGenerator:
                     images = c.images()
                     cams = c.cameras()
                     # Crop, scale and center images
-                    images, cams = ut.scale_mvs_input(
-                        images, cams, scale=c.rescale)
-                    cropped_images, cropped_cams = ut.crop_mvs_input(
-                        images, cams, self.image_width, self.image_height, self.base_image_size)
+                    if self.benchmark:
+                        # We also need to retrieve GT depth data if we are benchmarking
+                        depth = c.masked_reference_depth()
+                        images, cams, depth = ut.scale_mvs_input(
+                            images, cams, depth, c.rescale)
+                        images, cams, depth = ut.crop_mvs_input(
+                            images, cams, self.image_width, self.image_height, self.base_image_size, depth)
+                        depth = ut.reshape_depth(depth)
+
+                    else:
+                        images, cams = ut.scale_mvs_input(
+                            images, cams, scale=c.rescale)
+                        cropped_images, cropped_cams = ut.crop_mvs_input(
+                            images, cams, self.image_width, self.image_height, self.base_image_size)
                     # Full cams are scaled to input image resolution
                     full_cams = np.stack(cropped_cams, axis=0)
                     # Scaled for input size
@@ -257,4 +275,7 @@ class ClusterGenerator:
                         'output cams shape: {}'.format(output_cams.shape))
                     self.logger.debug('image index: {}'.format(image_index))
 
-                    yield (output_images, input_images, output_cams, full_cams, image_index)
+                    if self.benchmark:
+                        yield (output_images, input_images, output_cams, full_cams, depth, image_index)
+                    else:
+                        yield (output_images, input_images, output_cams, full_cams, image_index)
