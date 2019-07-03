@@ -33,7 +33,7 @@ tf.app.flags.DEFINE_string('output_dir', None,
 tf.app.flags.DEFINE_string('model_dir',
                            'gs://mvs-training-mlengine/a_main_only_conf_refine/models/',
                            """Path to restore the model.""")
-tf.app.flags.DEFINE_integer('ckpt_step', 25000,
+tf.app.flags.DEFINE_integer('ckpt_step', 30000,
                             """ckpt  step.""")
 tf.app.flags.DEFINE_string('run_name', None,
                            """A name to use for wandb logging""")
