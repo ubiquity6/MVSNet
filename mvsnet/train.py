@@ -352,12 +352,11 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
                 less_three_accuracy = less_three_main
             else:
                 loss = (loss0 + loss1) / 2
-            return loss, less_one_accuracy, less_three_accuracy, refined_depth_map, prob_map, residual_depth_map
         else:
             # regression loss
             loss, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
                 depth_map, depth_image, depth_interval)
-            return loss, less_one_accuracy, less_three_accuracy, depth_map, prob_map
+        return loss, less_one_accuracy, less_three_accuracy
 
     elif FLAGS.regularization == 'GRU':
         # probability volume
