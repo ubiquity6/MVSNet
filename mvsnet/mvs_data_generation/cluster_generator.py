@@ -127,7 +127,8 @@ class ClusterGenerator:
         train_clusters = self.clusters[val_end:]
         val_clusters = self.clusters[:val_end]
         # We shuffle the train and val clusters separately, so they don't mix
-        random.shuffle(train_clusters)
+        if self.mode != 'test':
+            random.shuffle(train_clusters)
         random.shuffle(val_clusters)
         if self.mode == 'test':
             self.logger.info(" {} clusters will be used for testing".format(
@@ -244,7 +245,7 @@ class ClusterGenerator:
                         depth = c.masked_reference_depth()
                         images, cams, depth = ut.scale_mvs_input(
                             images, cams, depth, c.rescale)
-                        images, cams, depth = ut.crop_mvs_input(
+                        cropped_images, cropped_cams, depth = ut.crop_mvs_input(
                             images, cams, self.image_width, self.image_height, self.base_image_size, depth)
                         depth = ut.reshape_depth(depth)
 
