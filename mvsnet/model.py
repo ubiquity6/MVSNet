@@ -17,10 +17,17 @@ logger = setup_logger('mvsnet.cnn_wrapper.model')
 FLAGS = tf.app.flags.FLAGS
 
 
-def get_probability_map(cv, depth_map, depth_start, depth_interval, inverse_depth = False):
+def get_probability_map(cv, depth_map, depth_start, depth_interval, inverse_depth = False, num_buckets=4):
     """ get probability map from cost volume 
     The probability map is computed by summing the probabilities of the four depth slices int he cost volume that are closest
-    to the predicted depth ~ this is a simple measure of confidence that works well for downstream tasks like fusion
+    to the predicted depth ~ this is a simple measure of confidence that works well for downstream tasks like fusion.
+    Args:
+        cv: Cost volume
+        depth_map: The depth map
+        depth_start: The minimum depth
+        depth_interval: The depth bucket size
+        inverse_depth: True if depth buckets are sampled uniformly in inverse depth space
+        num_buckets: Number of depth buckets of cost volume to sum to compute probability map -- we support 2 or 4
     """
 
     def _repeat_(x, num_repeats):
@@ -90,19 +97,23 @@ def get_probability_map(cv, depth_map, depth_start, depth_interval, inverse_dept
     # voxel coordinates
     voxel_coordinates_left0 = tf.stack(
         [b_coordinates, d_coordinates_left0, y_coordinates, x_coordinates], axis=1)
-    voxel_coordinates_left1 = tf.stack(
-        [b_coordinates, d_coordinates_left1, y_coordinates, x_coordinates], axis=1)
     voxel_coordinates_right0 = tf.stack(
         [b_coordinates, d_coordinates1_right0, y_coordinates, x_coordinates], axis=1)
-    voxel_coordinates_right1 = tf.stack(
-        [b_coordinates, d_coordinates1_right1, y_coordinates, x_coordinates], axis=1)
-
     # get probability image by gathering and interpolation
     prob_map_left0 = tf.gather_nd(cv, voxel_coordinates_left0)
-    prob_map_left1 = tf.gather_nd(cv, voxel_coordinates_left1)
     prob_map_right0 = tf.gather_nd(cv, voxel_coordinates_right0)
-    prob_map_right1 = tf.gather_nd(cv, voxel_coordinates_right1)
-    prob_map = prob_map_left0 + prob_map_left1 + prob_map_right0 + prob_map_right1
+    prob_map = prob_map_left0 + prob_map_right0 
+
+    if num_buckets == 4:
+        # If num_buckets = 4 then we also add the probability in another bucket to left and right
+        voxel_coordinates_right1 = tf.stack(
+            [b_coordinates, d_coordinates1_right1, y_coordinates, x_coordinates], axis=1)
+        voxel_coordinates_left1 = tf.stack(
+            [b_coordinates, d_coordinates_left1, y_coordinates, x_coordinates], axis=1)
+        prob_map_left1 = tf.gather_nd(cv, voxel_coordinates_left1)
+        prob_map_right1 = tf.gather_nd(cv, voxel_coordinates_right1)
+        prob_map += prob_map_left1 + prob_map_right1
+    
     prob_map = tf.reshape(prob_map, [batch_size, height, width, 1])
 
     return prob_map
