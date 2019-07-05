@@ -31,9 +31,9 @@ tf.app.flags.DEFINE_string('input_dir', None,
 tf.app.flags.DEFINE_string('output_dir', None,
                            """Path to data to dir to output results""")
 tf.app.flags.DEFINE_string('model_dir',
-                           'gs://mvs-training-mlengine/a_main_v6_4gpu_refine_from_490000_lr_001/models/',
+                           'gs://mvs-training-mlengine/a_main_unet_v4_refine/models/',
                            """Path to restore the model.""")
-tf.app.flags.DEFINE_integer('ckpt_step', 515000,
+tf.app.flags.DEFINE_integer('ckpt_step', 55000,
                             """ckpt  step.""")
 tf.app.flags.DEFINE_string('run_name', None,
                            """A name to use for wandb logging""")
@@ -66,7 +66,7 @@ tf.app.flags.DEFINE_bool('inverse_depth', False,
                          """Whether to apply inverse depth for R-MVSNet""")
 tf.app.flags.DEFINE_string('network_mode', 'normal',
                            """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
-tf.app.flags.DEFINE_string('refinement_network', 'original',
+tf.app.flags.DEFINE_string('refinement_network', 'unet',
                            """Specifies network to use for refinement. One of 'original' or 'unet'.
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
 tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
@@ -80,7 +80,7 @@ tf.app.flags.DEFINE_bool('visualize', True,
                          This is useful when developing and debugging, but should probably be turned off in production""")
 tf.app.flags.DEFINE_bool('wandb', False,
                          """Whether or not to log inference results to wandb""")
-tf.app.flags.DEFINE_bool('benchmark', False,
+tf.app.flags.DEFINE_bool('benchmark', True,
                          """If benchmark is True, the network results will be benchmarked against GT.
                          This should only be used if the input_dir contains GT depth maps""")
 FLAGS = tf.app.flags.FLAGS
@@ -235,9 +235,11 @@ def set_shapes(scaled_images, full_images, scaled_cams, full_cams):
         tf.slice(scaled_cams, [0, 0, 1, 3, 1], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
     depth_num = tf.cast(
         tf.reshape(tf.slice(scaled_cams, [0, 0, 1, 3, 2], [1, 1, 1, 1, 1]), []), 'int32')
+    depth_end = tf.reshape(
+        tf.slice(scaled_cams, [0, 0, 1, 3, 3], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
 
-    depth_end = get_depth_end(scaled_cams, depth_start,
-                              depth_num, depth_interval)
+    # depth_end = get_depth_end(scaled_cams, depth_start,
+    #                          depth_num, depth_interval)
     return depth_start, depth_end, depth_interval, depth_num
 
 
@@ -250,21 +252,6 @@ def init_inference(input_dir, output_dir, width, height):
     if FLAGS.wandb:
         mu.initialize_wandb(FLAGS, project='mvsnet-inference')
     return setup_output_dir(input_dir, output_dir)
-
-
-def benchmark_output(sess, out_depth_map, gt_depth_map, out_residual, depth_interval, out_prob_map, out_index):
-    downsample = False if FLAGS.refinement == True and FLAGS.upsample_before_refinement == True else True
-    if downsample:
-        gt_depth_map = scale_image(gt_depth_map, FLAGS.sample_scale, 'nearest')
-    loss, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
-        out_depth_map, gt_depth_map, depth_interval)
-    out_loss, out_less_one, out_less_three = sess.run(
-        [loss, less_one_accuracy, less_three_accuracy])
-    logger.info('Image {} loss = {}'.format(out_index, out_loss))
-    logger.info('Image {} less one = {}'.format(
-        out_index, out_less_one))
-    logger.info('Image {} less three = {}'.format(
-        out_index, out_less_three))
 
 
 def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
@@ -343,7 +330,7 @@ def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, output_dir=N
                 depth_map = tf.image.resize_bilinear(
                     depth_map, [full_depth_shape[1], full_depth_shape[2]])
             loss, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
-                depth_map, full_depth, depth_interval, benchmark=True, depth_start=depth_start, depth_end=depth_end)
+                depth_map, full_depth, depth_start, depth_end)
             fetches.extend(
                 [loss, less_one_accuracy, less_three_accuracy])
             try:

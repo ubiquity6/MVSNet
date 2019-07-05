@@ -59,11 +59,11 @@ def less_three_percentage(y_true, y_pred, interval):
     return tf.reduce_sum(less_three_image) / denom
 
 
-def mvsnet_regression_loss(estimated_depth_image, depth_image, depth_interval, benchmark=False, depth_start=None, depth_end=None):
+def mvsnet_regression_loss(estimated_depth_image, depth_image, depth_start, depth_end):
     """ compute loss and accuracy """
-    # If we are benchmarking, we use a fixed depth interval that is independent of the depth_num
-    if benchmark:
-        depth_interval = tf.div(depth_end-depth_start, 191.0)
+    # For loss and accuracy we use a depth_interval that is independent of the number of depth buckets
+    # so we can easily compare results for various depth_num. We divide by 191 for historical reasons.
+    depth_interval = tf.div(depth_end-depth_start, 191.0)
     # non zero mean absulote loss
     masked_mae = non_zero_mean_absolute_diff(
         depth_image, estimated_depth_image, depth_interval)

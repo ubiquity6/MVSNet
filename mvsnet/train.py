@@ -53,7 +53,7 @@ tf.app.flags.DEFINE_string('run_name', None,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 5,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 192,
+tf.app.flags.DEFINE_integer('max_d', 64,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('width', 640,
                             """Maximum image width when training.""")
@@ -74,7 +74,7 @@ tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
                            """Optimizer to use. One of 'momentum', 'rmsprop' or 'adam' """)
 tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for 3DCNNs""")
-tf.app.flags.DEFINE_string('refinement_train_mode', 'refine_only',
+tf.app.flags.DEFINE_string('refinement_train_mode', 'main_only',
                             """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
                             if 'refine_only', only the refinement network is trained, and if 'all' then the whole network is trained.
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
@@ -306,11 +306,17 @@ def get_batch(training_iterator, validation_iterator):
         tf.slice(cams, [0, 0, 1, 3, 0], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
     depth_interval = tf.reshape(
         tf.slice(cams, [0, 0, 1, 3, 1], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
-    return images, cams, depth, depth_start, depth_interval, full_depth
+    depth_end = tf.reshape(
+        tf.slice(cams, [0, 0, 1, 3, 3], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
+    return images, cams, depth, depth_start, depth_interval, full_depth, depth_end
 
-def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth, i):
+def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth, depth_end, i):
     """ Performs inference with specified network and return loss function """
     is_master_gpu = True if i == 0 else False
+    #depth_end = depth_start + \
+    #    (tf.cast(depth_num, tf.float32) - 1) * depth_interval
+    #depth_end = tf.reshape(
+    #    tf.slice(scaled_cams, [0, 0, 1, 3, 3], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
 
     # inference
     if FLAGS.regularization == '3DCNNs':
@@ -334,14 +340,14 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
                 FLAGS.refinement_network, is_master_gpu, trainable=refine_trainable, upsample_depth=FLAGS.upsample_before_refinement, refine_with_confidence=FLAGS.refine_with_confidence, stereo_image=stereo_image)
                                     # regression loss
             loss0, less_one_main, less_three_main = mvsnet_regression_loss(
-                depth_map, depth_image, depth_interval)
+                depth_map, depth_image, depth_start, depth_end)
             # If we upsampled the depth image to full resolution we need to compute loss with full_depth
             if FLAGS.upsample_before_refinement:
                 loss1, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
-                    refined_depth_map, full_depth, depth_interval)
+                    refined_depth_map, full_depth, depth_start, depth_end)
             else:
                 loss1, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
-                    refined_depth_map, depth_image, depth_interval)
+                    refined_depth_map, depth_image, depth_start, depth_end)
             if FLAGS.refinement_train_mode == 'refine_only':
                 # If we are only training the refinement network we are only computing gradients wrt the refinement network params
                 # These gradients on l0 will be zero, so no need to include l0 in the loss
@@ -355,7 +361,7 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
         else:
             # regression loss
             loss, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
-                depth_map, depth_image, depth_interval)
+                depth_map, depth_image, depth_start, depth_end)
         return loss, less_one_accuracy, less_three_accuracy
 
     elif FLAGS.regularization == 'GRU':
@@ -436,8 +442,8 @@ def train():
         for i in xrange(FLAGS.num_gpus):
             with tf.device('/gpu:%d' % i):
                 with tf.name_scope('Model_tower%d' % i) as scope:
-                    images, cams, depth, depth_start, depth_interval, full_depth = get_batch(training_iterator, validation_iterator)
-                    loss, less_one_accuracy, less_three_accuracy = get_loss(images, cams, depth, depth_start, depth_interval, full_depth, i)
+                    images, cams, depth, depth_start, depth_interval, full_depth, depth_end = get_batch(training_iterator, validation_iterator)
+                    loss, less_one_accuracy, less_three_accuracy = get_loss(images, cams, depth, depth_start, depth_interval, full_depth, depth_end,  i)
                     grads = opt.compute_gradients(loss)
                     tower_grads.append(grads)
 
