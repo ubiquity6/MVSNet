@@ -83,6 +83,9 @@ tf.app.flags.DEFINE_bool('wandb', True,
 tf.app.flags.DEFINE_bool('benchmark', True,
                          """If benchmark is True, the network results will be benchmarked against GT.
                          This should only be used if the input_dir contains GT depth maps""")
+tf.app.flags.DEFINE_bool('reuse_vars', False,
+                         """A global flag representing whether variables should be reused. This should be 
+                          set to False by default and is switched on or off by individual methods""")
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -238,8 +241,6 @@ def set_shapes(scaled_images, full_images, scaled_cams, full_cams):
     depth_end = tf.reshape(
         tf.slice(scaled_cams, [0, 0, 1, 3, 3], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
 
-    # depth_end = get_depth_end(scaled_cams, depth_start,
-    #                          depth_num, depth_interval)
     return depth_start, depth_end, depth_interval, depth_num
 
 
@@ -247,8 +248,8 @@ def init_inference(input_dir, output_dir, width, height):
     """ Performs some basic initialization before the main inference method is run """
     if width and height:
         FLAGS.width, FLAGS.height = width, height
-    logger.info('Computing depth maps with MVSNet. Using input width x height = {} x {}.\n Flags: {}'.format(
-        FLAGS.width, FLAGS.height, FLAGS))
+    logger.info('Computing depth maps with MVSNet. Using input width x height = {} x {}.'.format(
+        FLAGS.width, FLAGS.height))
     if FLAGS.wandb:
         mu.initialize_wandb(FLAGS, project='mvsnet-inference')
     return setup_output_dir(input_dir, output_dir)
@@ -372,6 +373,8 @@ def main(_):  # pylint: disable=unused-argument
     """
     run_dir = os.path.isfile(os.path.join(
         FLAGS.input_dir, 'covisibility.json'))
+    sub_dirs = [f for f in tf.gfile.ListDirectory(
+                FLAGS.input_dir) if not f.startswith('.') if not f.endswith('.txt')]
     if FLAGS.benchmark:
         losses = []
         less_ones = []
@@ -380,11 +383,12 @@ def main(_):  # pylint: disable=unused-argument
             benchmark_depth_maps(FLAGS.input_dir, losses,
                                  less_ones, less_threes)
         else:
-            for f in os.listdir(FLAGS.input_dir):
+            for f in sub_dirs:
                 data_dir = os.path.join(FLAGS.input_dir, f)
                 logger.info(
                     'Benchmarking depth maps on dir {}'.format(data_dir))
                 benchmark_depth_maps(data_dir, losses, less_ones, less_threes)
+                tf.app.flags.FLAGS.reuse_vars = True
         avg_loss = np.asarray(losses).mean()
         avg_less_one = np.asarray(less_ones).mean()
         avg_less_three = np.asarray(less_threes).mean()
@@ -400,11 +404,12 @@ def main(_):  # pylint: disable=unused-argument
         if run_dir:
             compute_depth_maps(FLAGS.input_dir)
         else:
-            for f in os.listdir(FLAGS.input_dir):
+            for f in sub_dirs:
                 data_dir = os.path.join(
                     FLAGS.input_dir, f)
                 logger.info('Computing depth maps on dir {}'.format(data_dir))
                 compute_depth_maps(data_dir)
+                tf.app.flags.FLAGS.reuse_vars = True
 
 
 if __name__ == '__main__':

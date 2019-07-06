@@ -74,7 +74,7 @@ tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
                            """Optimizer to use. One of 'momentum', 'rmsprop' or 'adam' """)
 tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for 3DCNNs""")
-tf.app.flags.DEFINE_string('refinement_train_mode', 'main_only',
+tf.app.flags.DEFINE_string('refinement_train_mode', 'refine_only',
                             """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
                             if 'refine_only', only the refinement network is trained, and if 'all' then the whole network is trained.
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
@@ -110,13 +110,16 @@ tf.app.flags.DEFINE_float('val_batch_size', 10,
                           """Number of images to run validation on when validation.""")
 tf.app.flags.DEFINE_float('train_steps_per_val', 100,
                           """Number of samples to train on before running a round of validation.""")
-tf.app.flags.DEFINE_float('dataset_fraction', 0.2,
+tf.app.flags.DEFINE_float('dataset_fraction', 1.0,
                           """Fraction of dataset to use for training. Float between 0 and 1. NOTE: For training a production model
                            you should use 1, but for experiments it may be useful to use a fraction less than 1.""")
 tf.app.flags.DEFINE_float('decay_per_10_epoch', 0.01,
                           """ The fraction by which learning rate should decay every 10 epochs""")
 tf.app.flags.DEFINE_bool('wandb', True,
                          """Whether or not to log results to wandb""")
+tf.app.flags.DEFINE_bool('reuse_vars', False,
+                         """A global flag representing whether variables should be reused. This should be 
+                          set to False by default and is switched on or off by individual methods""")
 
 FLAGS = tf.app.flags.FLAGS
 
