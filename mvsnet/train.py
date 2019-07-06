@@ -117,6 +117,9 @@ tf.app.flags.DEFINE_float('decay_per_10_epoch', 0.01,
                           """ The fraction by which learning rate should decay every 10 epochs""")
 tf.app.flags.DEFINE_bool('wandb', True,
                          """Whether or not to log results to wandb""")
+tf.app.flags.DEFINE_bool('reuse_vars', False,
+                         """A global flag representing whether variables should be reused. This should be 
+                          set to False by default and is switched on or off by individual methods""")
 
 FLAGS = tf.app.flags.FLAGS
 

@@ -253,7 +253,7 @@ def inference_mem(images, cams, depth_num, depth_start, depth_interval, network_
         tf.slice(cams, [0, 0, 0, 0, 0], [-1, 1, 2, 4, 4]), axis=1)
 
     # image feature extraction
-    reuse = not is_master_gpu
+    reuse = tf.app.flags.FLAGS.reuse_vars #not is_master_gpu
     ref_tower = UNetDS2GN({'data': ref_image}, trainable=trainable,
                           training=training, mode=network_mode, reuse=reuse)
     base_divisor = ref_tower.base_divisor
@@ -652,6 +652,8 @@ def depth_refine(init_depth_map, image, prob_map, depth_num, depth_start, depth_
             [data, stereo_image], axis=3)
     # refinement network
     reuse = not is_master_gpu
+    if tf.app.flags.FLAGS.reuse_vars:
+        reuse = True
     if network_type == 'unet':
         norm_depth_tower = RefineUNetConv({'color_image': image, 'depth_image': data},
                                         trainable=trainable, training=training, mode=network_mode, reuse=reuse)
