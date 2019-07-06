@@ -31,16 +31,16 @@ tf.app.flags.DEFINE_string('input_dir', None,
 tf.app.flags.DEFINE_string('output_dir', None,
                            """Path to data to dir to output results""")
 tf.app.flags.DEFINE_string('model_dir',
-                           'gs://mvs-training-mlengine/a_main_unet_v4_refine/models/',
+                           'gs://mvs-training-mlengine/a_main_v6_4gpu_refine_from_490000_lr_001/models/',
                            """Path to restore the model.""")
-tf.app.flags.DEFINE_integer('ckpt_step', 55000,
+tf.app.flags.DEFINE_integer('ckpt_step', 515000,
                             """ckpt  step.""")
 tf.app.flags.DEFINE_string('run_name', None,
                            """A name to use for wandb logging""")
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 4,
+tf.app.flags.DEFINE_integer('view_num', 6,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 64,
+tf.app.flags.DEFINE_integer('max_d', 192,
                             """Maximum depth step when testing.""")
 tf.app.flags.DEFINE_integer('width', 512,
                             """Maximum image width when testing.""")
@@ -66,7 +66,7 @@ tf.app.flags.DEFINE_bool('inverse_depth', False,
                          """Whether to apply inverse depth for R-MVSNet""")
 tf.app.flags.DEFINE_string('network_mode', 'normal',
                            """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
-tf.app.flags.DEFINE_string('refinement_network', 'unet',
+tf.app.flags.DEFINE_string('refinement_network', 'original',
                            """Specifies network to use for refinement. One of 'original' or 'unet'.
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
 tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
@@ -78,7 +78,7 @@ tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
 tf.app.flags.DEFINE_bool('visualize', True,
                          """If visualize is true, the inference script will write some auxiliary files for visualization and debugging purposes.
                          This is useful when developing and debugging, but should probably be turned off in production""")
-tf.app.flags.DEFINE_bool('wandb', False,
+tf.app.flags.DEFINE_bool('wandb', True,
                          """Whether or not to log inference results to wandb""")
 tf.app.flags.DEFINE_bool('benchmark', True,
                          """If benchmark is True, the network results will be benchmarked against GT.
