@@ -63,4 +63,4 @@ def initialize_wandb(args, project='mvsnet'):
         except Exception as e:
             subprocess.call([ "python", "-m", "wandb.cli", "login", wandb_key])
     wandb.init(project=project, name=args.run_name)
-    wandb.config.update(args)
+    wandb.config.update(args, allow_val_change=True)
