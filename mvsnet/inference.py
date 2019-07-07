@@ -31,20 +31,20 @@ tf.app.flags.DEFINE_string('input_dir', None,
 tf.app.flags.DEFINE_string('output_dir', None,
                            """Path to data to dir to output results""")
 tf.app.flags.DEFINE_string('model_dir',
-                           'gs://mvs-training-mlengine/a_main_v6_4gpu_refine_from_490000_lr_001/models/',
+                           None,
                            """Path to restore the model.""")
-tf.app.flags.DEFINE_integer('ckpt_step', 515000,
+tf.app.flags.DEFINE_integer('ckpt_step', None,
                             """ckpt  step.""")
 tf.app.flags.DEFINE_string('run_name', None,
                            """A name to use for wandb logging""")
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 6,
+tf.app.flags.DEFINE_integer('view_num', 8,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 192,
+tf.app.flags.DEFINE_integer('max_d', 256,
                             """Maximum depth step when testing.""")
-tf.app.flags.DEFINE_integer('width', 512,
+tf.app.flags.DEFINE_integer('width', 1024,
                             """Maximum image width when testing.""")
-tf.app.flags.DEFINE_integer('height', 384,
+tf.app.flags.DEFINE_integer('height', 768,
                             """Maximum image height when testing.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume (W and H).""")
@@ -66,10 +66,10 @@ tf.app.flags.DEFINE_bool('inverse_depth', False,
                          """Whether to apply inverse depth for R-MVSNet""")
 tf.app.flags.DEFINE_string('network_mode', 'normal',
                            """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
-tf.app.flags.DEFINE_string('refinement_network', 'original',
+tf.app.flags.DEFINE_string('refinement_network', 'unet',
                            """Specifies network to use for refinement. One of 'original' or 'unet'.
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
-tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
+tf.app.flags.DEFINE_boolean('upsample_before_refinement', False,
                             """Whether to upsample depth map to input resolution before the refinement network.""")
 tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
@@ -78,9 +78,9 @@ tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
 tf.app.flags.DEFINE_bool('visualize', True,
                          """If visualize is true, the inference script will write some auxiliary files for visualization and debugging purposes.
                          This is useful when developing and debugging, but should probably be turned off in production""")
-tf.app.flags.DEFINE_bool('wandb', True,
+tf.app.flags.DEFINE_bool('wandb', False,
                          """Whether or not to log inference results to wandb""")
-tf.app.flags.DEFINE_bool('benchmark', True,
+tf.app.flags.DEFINE_bool('benchmark', False,
                          """If benchmark is True, the network results will be benchmarked against GT.
                          This should only be used if the input_dir contains GT depth maps""")
 tf.app.flags.DEFINE_bool('reuse_vars', False,
@@ -118,6 +118,7 @@ def setup_output_dir(input_dir, output_dir):
     if output_dir is None:
         output_dir = os.path.join(input_dir, 'depths_mvsnet')
     mu.mkdir_p(output_dir)
+    logger.info('Running inference on {} and writing output to {}'.format(input_dir, output_dir))
     return output_dir
 
 
@@ -281,14 +282,14 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
             start_time = time.time()
             out_residual_depth_map = None
             fetches = [depth_map, prob_map, scaled_images,
-                       scaled_cams, full_cams, full_images, image_index]
+                       scaled_cams, full_cams, full_images, image_index, residual_depth_map]
             try:
-                out_depth_map, out_prob_map, out_images, out_cams, out_full_cams, out_full_images, out_index = sess.run(
+                out_depth_map, out_prob_map, out_images, out_cams, out_full_cams, out_full_images, out_index, out_residual_depth_map = sess.run(
                     fetches)
             except tf.errors.OutOfRangeError:
                 logger.info("all dense finished")  # ==> "End of dataset"
                 break
-            print(Notify.INFO, 'depth inference %d/%d finished. (%.3f sec/step)' % (step, sample_size, time.time() - start_time),
+            print(Notify.INFO, 'depth inference %d/%d finished. Image index %d. (%.3f sec/step)' % (step, sample_size, out_index, time.time() - start_time),
                   Notify.ENDC)
             write_output(output_dir, out_depth_map, out_prob_map, out_images,
                          out_cams, out_full_cams, out_full_images, out_index, out_residual_depth_map)

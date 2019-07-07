@@ -60,4 +60,4 @@ def initialize_wandb(args, project='mvsnet'):
     else:
         subprocess.call(["wandb", "login", wandb_key])
     wandb.init(project=project, name=args.run_name)
-    wandb.config.update(args)
+    wandb.config.update(args, allow_val_change=True)
