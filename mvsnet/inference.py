@@ -82,7 +82,8 @@ tf.app.flags.DEFINE_bool('wandb', True,
                          """Whether or not to log inference results to wandb""")
 tf.app.flags.DEFINE_bool('benchmark', True,
                          """If benchmark is True, the network results will be benchmarked against GT.
-                         This should only be used if the input_dir contains GT depth maps""")
+                         This should only be used if the input_dir contains GT depth maps. If benchmark is True, the expected input_dir format consists of multiple
+                         sessions rather than a single session. """)
 tf.app.flags.DEFINE_bool('reuse_vars', False,
                          """A global flag representing whether variables should be reused. This should be
                           set to False by default and is switched on or off by individual methods""")
