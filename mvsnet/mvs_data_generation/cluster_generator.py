@@ -86,7 +86,12 @@ class ClusterGenerator:
             # generator from needing to load all of the clusters. In fact we might just want to do lazy loading of clusters
             for s, session in enumerate(sessions[:num_sessions]):
                 session_dir = os.path.join(self.sessions_dir, session)
-                self.load_clusters(session_dir, clusters)
+                self.logger.debug('Parsing session dir {}'.format(session_dir))
+                try:
+                    self.load_clusters(session_dir, clusters)
+                except Exception as e:
+                    self.logger.debug(
+                        'Failed to load clusters for session dir {} with exception {}'.format(session_dir, e))
                 if s % 25 == 0:
                     self.logger.info(
                         'Parsed {} / {} sessions'.format(s, num_sessions))
@@ -244,7 +249,7 @@ class ClusterGenerator:
             output_cams: Numpy array of camera data that has been reformatted to match the output size of network
             image_index: The index of the reference image used for this cluster
         """
-        if self.mode == 'test':
+        if self.mode == 'test' or self.mode == 'benchmark':
             while True:
                 for c in self.iter_clusters:
                     start = time.time()
