@@ -38,13 +38,13 @@ tf.app.flags.DEFINE_integer('ckpt_step', None,
 tf.app.flags.DEFINE_string('run_name', None,
                            """A name to use for wandb logging""")
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 8,
+tf.app.flags.DEFINE_integer('view_num', 6,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 256,
+tf.app.flags.DEFINE_integer('max_d', 192,
                             """Maximum depth step when testing.""")
-tf.app.flags.DEFINE_integer('width', 1024,
+tf.app.flags.DEFINE_integer('width', 512,
                             """Maximum image width when testing.""")
-tf.app.flags.DEFINE_integer('height', 768,
+tf.app.flags.DEFINE_integer('height', 384,
                             """Maximum image height when testing.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume (W and H).""")
@@ -66,10 +66,10 @@ tf.app.flags.DEFINE_bool('inverse_depth', False,
                          """Whether to apply inverse depth for R-MVSNet""")
 tf.app.flags.DEFINE_string('network_mode', 'normal',
                            """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
-tf.app.flags.DEFINE_string('refinement_network', 'unet',
+tf.app.flags.DEFINE_string('refinement_network', 'original',
                            """Specifies network to use for refinement. One of 'original' or 'unet'.
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
-tf.app.flags.DEFINE_boolean('upsample_before_refinement', False,
+tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
                             """Whether to upsample depth map to input resolution before the refinement network.""")
 tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
@@ -78,21 +78,23 @@ tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
 tf.app.flags.DEFINE_bool('visualize', True,
                          """If visualize is true, the inference script will write some auxiliary files for visualization and debugging purposes.
                          This is useful when developing and debugging, but should probably be turned off in production""")
-tf.app.flags.DEFINE_bool('wandb', False,
+tf.app.flags.DEFINE_bool('wandb', True,
                          """Whether or not to log inference results to wandb""")
-tf.app.flags.DEFINE_bool('benchmark', False,
+tf.app.flags.DEFINE_bool('benchmark', True,
                          """If benchmark is True, the network results will be benchmarked against GT.
                          This should only be used if the input_dir contains GT depth maps""")
 tf.app.flags.DEFINE_bool('reuse_vars', False,
                          """A global flag representing whether variables should be reused. This should be 
                           set to False by default and is switched on or off by individual methods""")
+tf.app.flags.DEFINE_integer('max_clusters_per_session', 40,
+                            """The maximum number of clusters to benchmark per session. If not benchmarking this should probably be set to None""")
 FLAGS = tf.app.flags.FLAGS
 
 
 def setup_data_iterator(input_dir):
     "Configures the data generator that is used to feed batches of data for inference"
     data_gen = ClusterGenerator(input_dir, FLAGS.view_num, FLAGS.width, FLAGS.height,
-                                FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='test', benchmark=FLAGS.benchmark, output_scale=FLAGS.sample_scale)
+                                FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='test', benchmark=FLAGS.benchmark, output_scale=FLAGS.sample_scale, max_clusters_per_session=FLAGS.max_clusters_per_session)
     mvs_generator = iter(data_gen)
     sample_size = len(data_gen.train_clusters)
 
