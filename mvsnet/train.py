@@ -33,7 +33,7 @@ logger = mu.setup_logger('mvsnet-train')
 # params for datasets
 tf.app.flags.DEFINE_string('train_data_root', None,
                            """Path to dtu dataset.""")
-tf.app.flags.DEFINE_string('log_dir', None,
+tf.app.flags.DEFINE_string('logs_dir', None,
                            """Path to store the log.""")
 tf.app.flags.DEFINE_string('model_dir', None,
                            """Path to save the model.""")
@@ -89,8 +89,6 @@ tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
 tf.app.flags.DEFINE_boolean('refine_with_stereo', False,
                             """Whether or not to inject a stereo partner into refinement network""")
-tf.app.flags.DEFINE_integer('num_cost_buckets', False,
-                            """Whether or not to inject a stereo partner into refinement network""")
 # training parameters
 tf.app.flags.DEFINE_integer('num_gpus', None,
                             """Number of GPUs.""")
@@ -98,11 +96,11 @@ tf.app.flags.DEFINE_integer('batch_size', 1,
                             """Training batch size.""")
 tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
-tf.app.flags.DEFINE_float('base_lr', 0.001,
+tf.app.flags.DEFINE_float('base_lr', 0.00025,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
-tf.app.flags.DEFINE_integer('stepvalue', 70000,
+tf.app.flags.DEFINE_integer('stepvalue', 90000,
                             """Step interval to decay learning rate.""")
 tf.app.flags.DEFINE_integer('snapshot', 5000,
                             """Step interval to save the model.""")
@@ -280,7 +278,7 @@ def initialize_trainer():
 
     # Prepare validation summary 
     val_sum_file = os.path.join(
-        FLAGS.log_dir, 'validation_summary-{}.txt'.format(train_session_start))
+        FLAGS.logs_dir, 'validation_summary-{}.txt'.format(train_session_start))
     with file_io.FileIO(val_sum_file, 'w+') as f:
         header = 'train_step,val_loss,val_less_one,val_less_three\n'
         f.write(header)
@@ -318,15 +316,9 @@ def get_batch(training_iterator, validation_iterator):
 def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth, depth_end, i):
     """ Performs inference with specified network and return loss function """
     is_master_gpu = True if i == 0 else False
-    #depth_end = depth_start + \
-    #    (tf.cast(depth_num, tf.float32) - 1) * depth_interval
-    #depth_end = tf.reshape(
-    #    tf.slice(scaled_cams, [0, 0, 1, 3, 3], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
-
     # inference
     if FLAGS.regularization == '3DCNNs':
-        #main_trainable = False if FLAGS.refinement_train_mode == 'refine_only' and FLAGS.refinement==True else True
-        main_trainable = True
+        main_trainable = False if FLAGS.refinement_train_mode == 'refine_only' and FLAGS.refinement==True else True
         # initial depth map
         depth_map, prob_map = inference(
             images, cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, is_master_gpu, trainable=main_trainable, inverse_depth = FLAGS.inverse_depth)

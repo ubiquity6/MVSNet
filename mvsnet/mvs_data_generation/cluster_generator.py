@@ -132,7 +132,7 @@ class ClusterGenerator:
         """
         seed = 5  # We shuffle with the same random seed so that training stays in training
         # and validation stays in validation. We don't shuffle on inference
-        if self.mode != 'test':
+        if self.mode != 'test' and self.mode != 'benchmark':
             random.Random(seed).shuffle(self.clusters)
         num = len(self.clusters)
         val_end = int(num*self.val_split)
@@ -140,10 +140,10 @@ class ClusterGenerator:
         train_clusters = self.clusters[val_end:]
         val_clusters = self.clusters[:val_end]
         # We shuffle the train and val clusters separately, so they don't mix
-        if self.mode != 'test':
+        if self.mode != 'test' and self.mode != 'benchmark':
             random.shuffle(train_clusters)
-        random.shuffle(val_clusters)
-        if self.mode == 'test':
+            random.shuffle(val_clusters)
+        if self.mode == 'test' or self.mode == 'benchmark':
             self.logger.info(" {} clusters will be used for testing".format(
                 len(train_clusters)))
         else:
@@ -293,6 +293,6 @@ class ClusterGenerator:
                     self.logger.debug('image index: {}'.format(image_index))
 
                     if self.benchmark:
-                        yield (output_images, input_images, output_cams, full_cams, depth, image_index)
+                        yield (output_images, input_images, output_cams, full_cams, depth, image_index, c.session_dir)
                     else:
                         yield (output_images, input_images, output_cams, full_cams, image_index)
