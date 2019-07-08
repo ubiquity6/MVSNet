@@ -38,13 +38,13 @@ tf.app.flags.DEFINE_integer('ckpt_step', None,
 tf.app.flags.DEFINE_string('run_name', None,
                            """A name to use for wandb logging""")
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 8,
+tf.app.flags.DEFINE_integer('view_num', 4,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 256,
+tf.app.flags.DEFINE_integer('max_d', 32,
                             """Maximum depth step when testing.""")
-tf.app.flags.DEFINE_integer('width', 1024,
+tf.app.flags.DEFINE_integer('width', 512,
                             """Maximum image width when testing.""")
-tf.app.flags.DEFINE_integer('height', 768,
+tf.app.flags.DEFINE_integer('height', 384,
                             """Maximum image height when testing.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume (W and H).""")
@@ -91,8 +91,9 @@ FLAGS = tf.app.flags.FLAGS
 
 def setup_data_iterator(input_dir):
     "Configures the data generator that is used to feed batches of data for inference"
+    mode = 'benchmark' if FLAGS.benchmark else 'test'
     data_gen = ClusterGenerator(input_dir, FLAGS.view_num, FLAGS.width, FLAGS.height,
-                                FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode='test', benchmark=FLAGS.benchmark, output_scale=FLAGS.sample_scale)
+                                FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode=mode, benchmark=FLAGS.benchmark, output_scale=FLAGS.sample_scale)
     mvs_generator = iter(data_gen)
     sample_size = len(data_gen.train_clusters)
 
@@ -118,7 +119,8 @@ def setup_output_dir(input_dir, output_dir):
     if output_dir is None:
         output_dir = os.path.join(input_dir, 'depths_mvsnet')
     mu.mkdir_p(output_dir)
-    logger.info('Running inference on {} and writing output to {}'.format(input_dir, output_dir))
+    logger.info('Running inference on {} and writing output to {}'.format(
+        input_dir, output_dir))
     return output_dir
 
 

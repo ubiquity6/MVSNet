@@ -26,7 +26,7 @@ the case of training, validation or benchmarking.
 
 class ClusterGenerator:
     def __init__(self, sessions_dir, view_num=3, image_width=1024, image_height=768, depth_num=256,
-                 interval_scale=1, base_image_size=1, include_empty=False, mode='training', val_split=0.1, rescaling=True, output_scale=0.25, flip_cams=True, sessions_frac=1.0, benchmark=False, max_clusters_per_session = None):
+                 interval_scale=1, base_image_size=1, include_empty=False, mode='training', val_split=0.1, rescaling=True, output_scale=0.25, flip_cams=True, sessions_frac=1.0, benchmark=False, max_clusters_per_session=None):
         self.logger = setup_logger('ClusterGenerator')
         self.sessions_dir = sessions_dir
         self.view_num = view_num
@@ -49,7 +49,7 @@ class ClusterGenerator:
         # The sessions_fraction [0,1] is the fraction of all available sessions in sessions_dir
         self.sessions_frac = sessions_frac
         self.benchmark = benchmark
-        # max clusters per session is used if you don't want to train on all the clusters in a session 
+        # max clusters per session is used if you don't want to train on all the clusters in a session
         self.max_clusters_per_session = max_clusters_per_session
         self.parse_sessions()
         self.set_iter_clusters()
@@ -160,6 +160,9 @@ class ClusterGenerator:
         elif self.mode == 'validation':
             self.iter_clusters = val_clusters
         elif self.mode == 'test':
+            # If we are testing, the val_split is zero, and we test on the all clusters (ignore the naming as train)
+            self.iter_clusters = train_clusters
+        elif self.mode == 'benchmark':
             # If we are testing, the val_split is zero, and we test on the all clusters (ignore the naming as train)
             self.iter_clusters = train_clusters
         else:
