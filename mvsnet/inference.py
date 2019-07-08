@@ -313,6 +313,14 @@ def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, output_dir=N
 
     depth_map, prob_map, residual_depth_map = get_depth_and_prob_map(
         full_images, scaled_cams, depth_start, depth_interval)
+    out_residual_depth_map = None
+    full_depth_shape = tf.shape(full_depth)
+    upsample_depth = False if FLAGS.refinement == True and FLAGS.upsample_before_refinement == True else True
+    if upsample_depth:
+        depth_map = tf.image.resize_bilinear(
+            depth_map, [full_depth_shape[1], full_depth_shape[2]])
+    loss, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
+        depth_map, full_depth, depth_start, depth_end)
 
     # init option
     var_init_op = tf.local_variables_initializer()
@@ -326,28 +334,13 @@ def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, output_dir=N
         sess.run(mvs_iterator.initializer)
         for step in range(sample_size):
             start_time = time.time()
-            out_residual_depth_map = None
-            fetches = [depth_map, prob_map, scaled_images,
-                       scaled_cams, full_cams, full_images, image_index, session_dir]
-            # If the network didn't upsample output depth map to full resolution, then we upsample here so that we can benchmark
-            # the depth map against the full resolution GT depth map
-            full_depth_shape = tf.shape(full_depth)
-            upsample_depth = False if FLAGS.refinement == True and FLAGS.upsample_before_refinement == True else True
-            if upsample_depth:
-                depth_map = tf.image.resize_bilinear(
-                    depth_map, [full_depth_shape[1], full_depth_shape[2]])
-            loss, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
-                depth_map, full_depth, depth_start, depth_end)
-            fetches.extend(
-                [loss, less_one_accuracy, less_three_accuracy])
             try:
                 if FLAGS.refinement:
-                    fetches.append(residual_depth_map)
                     out_depth_map, out_prob_map, out_images, out_cams, out_full_cams, out_full_images, out_index, out_session_dir, out_loss, out_less_one, out_less_three, out_residual_depth_map = sess.run(
-                        fetches)
+                        [depth_map, prob_map, scaled_images, scaled_cams, full_cams, full_images, image_index, session_dir, loss, less_one_accuracy, less_three_accuracy, residual_depth_map])
                 else:
                     out_depth_map, out_prob_map, out_images, out_cams, out_full_cams, out_full_images, out_index, out_loss, out_less_one, out_less_three = sess.run(
-                        fetches)
+                        [depth_map, prob_map, scaled_images, scaled_cams, full_cams, full_images, image_index, session_dir, loss, less_one_accuracy, less_three_accuracy])
             except tf.errors.OutOfRangeError:
                 print("all dense finished")  # ==> "End of dataset"
                 break
