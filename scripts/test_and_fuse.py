@@ -14,15 +14,13 @@ on the file system.
 def test_and_fuse(args, dense_folder, ply_folder):
     if args.no_test is not True:
         ut.test(dense_folder, args.ckpt_step, args.model_dir)
-        return None
-    if args.test_only is not True:
-        ut.clear_old_points(dense_folder)
-        ut.fuse(dense_folder, args.fusibile_path, args.prob_threshold,
-                args.disp_threshold, args.num_consistent)
-        ply_paths = ut.get_fusion_plys(dense_folder)
-        urls = ut.handle_plys(ply_paths, dense_folder, ply_folder, args)
-        print('Sketchfab url {}'.format(urls))
-        return urls
+    ut.clear_old_points(dense_folder)
+    ut.fuse(dense_folder, args.fusibile_path, args.prob_threshold,
+            args.disp_threshold, args.num_consistent)
+    ply_paths = ut.get_fusion_plys(dense_folder)
+    urls = ut.handle_plys(ply_paths, dense_folder, ply_folder, args)
+    print('Sketchfab url {}'.format(urls))
+    return urls
 
 
 def main(args):

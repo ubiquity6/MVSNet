@@ -108,9 +108,9 @@ tf.app.flags.DEFINE_integer('snapshot', 5000,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.5,
                           """Learning rate decay rate.""")
-tf.app.flags.DEFINE_float('val_batch_size', 10,
+tf.app.flags.DEFINE_float('val_batch_size', 50,
                           """Number of images to run validation on when validation.""")
-tf.app.flags.DEFINE_float('train_steps_per_val', 100,
+tf.app.flags.DEFINE_float('train_steps_per_val', 500,
                           """Number of samples to train on before running a round of validation.""")
 tf.app.flags.DEFINE_float('dataset_fraction', 1.0,
                           """Fraction of dataset to use for training. Float between 0 and 1. NOTE: For training a production model
