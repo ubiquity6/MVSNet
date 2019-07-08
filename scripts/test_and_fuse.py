@@ -14,13 +14,15 @@ on the file system.
 def test_and_fuse(args, dense_folder, ply_folder):
     if args.no_test is not True:
         ut.test(dense_folder, args.ckpt_step, args.model_dir)
-    ut.clear_old_points(dense_folder)
-    ut.fuse(dense_folder, args.fusibile_path, args.prob_threshold,
-            args.disp_threshold, args.num_consistent)
-    ply_paths = ut.get_fusion_plys(dense_folder)
-    urls = ut.handle_plys(ply_paths, dense_folder, ply_folder, args)
-    print('Sketchfab url {}'.format(urls))
-    return urls
+        return None
+    if args.test_only is not True:
+        ut.clear_old_points(dense_folder)
+        ut.fuse(dense_folder, args.fusibile_path, args.prob_threshold,
+                args.disp_threshold, args.num_consistent)
+        ply_paths = ut.get_fusion_plys(dense_folder)
+        urls = ut.handle_plys(ply_paths, dense_folder, ply_folder, args)
+        print('Sketchfab url {}'.format(urls))
+        return urls
 
 
 def main(args):
@@ -63,5 +65,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_consistent', type=float, default='3')
     parser.add_argument('--no_test', action='store_true',
                         help='Will not run testing, but only postprocessing, if flag is set')
+    parser.add_argument('--test_only', action='store_true',
+                        help='Will only run testing, and no fusing or uploading of point clouds.')
     args = parser.parse_args()
     main(args)

@@ -74,7 +74,7 @@ tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
                            """Optimizer to use. One of 'momentum', 'rmsprop' or 'adam' """)
 tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for 3DCNNs""")
-tf.app.flags.DEFINE_string('refinement_train_mode', 'refine_only',
+tf.app.flags.DEFINE_string('refinement_train_mode', 'main_only',
                             """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
                             if 'refine_only', only the refinement network is trained, and if 'all' then the whole network is trained.
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
@@ -100,7 +100,11 @@ tf.app.flags.DEFINE_float('base_lr', 0.00005,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
+<<<<<<< HEAD
 tf.app.flags.DEFINE_integer('stepvalue', 50000,
+=======
+tf.app.flags.DEFINE_integer('stepvalue', 70000,
+>>>>>>> 275d9182056f1260aedeb24e38ebe166de6568d3
                             """Step interval to decay learning rate.""")
 tf.app.flags.DEFINE_integer('snapshot', 5000,
                             """Step interval to save the model.""")
@@ -316,15 +320,9 @@ def get_batch(training_iterator, validation_iterator):
 def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth, depth_end, i):
     """ Performs inference with specified network and return loss function """
     is_master_gpu = True if i == 0 else False
-    #depth_end = depth_start + \
-    #    (tf.cast(depth_num, tf.float32) - 1) * depth_interval
-    #depth_end = tf.reshape(
-    #    tf.slice(scaled_cams, [0, 0, 1, 3, 3], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
-
     # inference
     if FLAGS.regularization == '3DCNNs':
-        #main_trainable = False if FLAGS.refinement_train_mode == 'refine_only' and FLAGS.refinement==True else True
-        main_trainable = True
+        main_trainable = False if FLAGS.refinement_train_mode == 'refine_only' and FLAGS.refinement==True else True
         # initial depth map
         depth_map, prob_map = inference(
             images, cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, is_master_gpu, trainable=main_trainable, inverse_depth = FLAGS.inverse_depth)

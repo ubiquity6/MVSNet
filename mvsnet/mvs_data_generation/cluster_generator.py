@@ -26,7 +26,7 @@ the case of training, validation or benchmarking.
 
 class ClusterGenerator:
     def __init__(self, sessions_dir, view_num=3, image_width=1024, image_height=768, depth_num=256,
-                 interval_scale=1, base_image_size=1, include_empty=False, mode='training', val_split=0.1, rescaling=True, output_scale=0.25, flip_cams=True, sessions_frac=1.0, benchmark=False, max_clusters_per_session = None):
+                 interval_scale=1, base_image_size=1, include_empty=False, mode='training', val_split=0.1, rescaling=True, output_scale=0.25, flip_cams=True, sessions_frac=1.0, benchmark=False, max_clusters_per_session=None):
         self.logger = setup_logger('ClusterGenerator')
         self.sessions_dir = sessions_dir
         self.view_num = view_num
@@ -49,7 +49,7 @@ class ClusterGenerator:
         # The sessions_fraction [0,1] is the fraction of all available sessions in sessions_dir
         self.sessions_frac = sessions_frac
         self.benchmark = benchmark
-        # max clusters per session is used if you don't want to train on all the clusters in a session 
+        # max clusters per session is used if you don't want to train on all the clusters in a session
         self.max_clusters_per_session = max_clusters_per_session
         self.parse_sessions()
         self.set_iter_clusters()
@@ -86,7 +86,12 @@ class ClusterGenerator:
             # generator from needing to load all of the clusters. In fact we might just want to do lazy loading of clusters
             for s, session in enumerate(sessions[:num_sessions]):
                 session_dir = os.path.join(self.sessions_dir, session)
-                self.load_clusters(session_dir, clusters)
+                self.logger.debug('Parsing session dir {}'.format(session_dir))
+                try:
+                    self.load_clusters(session_dir, clusters)
+                except Exception as e:
+                    self.logger.debug(
+                        'Failed to load clusters for session dir {} with exception {}'.format(session_dir, e))
                 if s % 25 == 0:
                     self.logger.info(
                         'Parsed {} / {} sessions'.format(s, num_sessions))
@@ -160,6 +165,9 @@ class ClusterGenerator:
         elif self.mode == 'validation':
             self.iter_clusters = val_clusters
         elif self.mode == 'test':
+            # If we are testing, the val_split is zero, and we test on the all clusters (ignore the naming as train)
+            self.iter_clusters = train_clusters
+        elif self.mode == 'benchmark':
             # If we are testing, the val_split is zero, and we test on the all clusters (ignore the naming as train)
             self.iter_clusters = train_clusters
         else:
@@ -241,7 +249,7 @@ class ClusterGenerator:
             output_cams: Numpy array of camera data that has been reformatted to match the output size of network
             image_index: The index of the reference image used for this cluster
         """
-        if self.mode == 'test':
+        if self.mode == 'test' or self.mode == 'benchmark':
             while True:
                 for c in self.iter_clusters:
                     start = time.time()
