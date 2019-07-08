@@ -96,11 +96,11 @@ tf.app.flags.DEFINE_integer('batch_size', 1,
                             """Training batch size.""")
 tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
-tf.app.flags.DEFINE_float('base_lr', 0.00005,
+tf.app.flags.DEFINE_float('base_lr', 0.00025,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
-tf.app.flags.DEFINE_integer('stepvalue', 70000,
+tf.app.flags.DEFINE_integer('stepvalue', 90000,
                             """Step interval to decay learning rate.""")
 tf.app.flags.DEFINE_integer('snapshot', 5000,
                             """Step interval to save the model.""")
