@@ -83,10 +83,12 @@ tf.app.flags.DEFINE_bool('wandb', False,
 tf.app.flags.DEFINE_bool('benchmark', True,
                          """If benchmark is True, the network results will be benchmarked against GT.
                          This should only be used if the input_dir contains GT depth maps""")
+tf.app.flags.DEFINE_bool('write_output', False,
+                         """When benchmarking you can set this to False if you don't need the output""")
 tf.app.flags.DEFINE_bool('reuse_vars', False,
                          """A global flag representing whether variables should be reused. This should be
                           set to False by default and is switched on or off by individual methods""")
-tf.app.flags.DEFINE_integer('max_clusters_per_session', 20,
+tf.app.flags.DEFINE_integer('max_clusters_per_session', 2,
                             """The maximum number of clusters to benchmark per session. If not benchmarking this should probably be set to None""")
 FLAGS = tf.app.flags.FLAGS
 
@@ -357,9 +359,9 @@ def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, output_dir=N
 
             write_dir = os.path.join(str(out_session_dir[0]), 'depths_mvsnet') 
             mu.mkdir_p(write_dir)
-            print('writing output to {}'.format(write_dir))
-            write_output(write_dir, out_depth_map, out_prob_map, out_images,
-                         out_cams, out_full_cams, out_full_images, out_index, out_residual_depth_map)
+            if FLAGS.write_output:
+                write_output(write_dir, out_depth_map, out_prob_map, out_images,
+                            out_cams, out_full_cams, out_full_images, out_index, out_residual_depth_map)
             losses.append(out_loss)
             less_ones.append(out_less_one)
             less_threes.append(out_less_three)
