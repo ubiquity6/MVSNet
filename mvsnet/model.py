@@ -17,7 +17,7 @@ logger = setup_logger('mvsnet.cnn_wrapper.model')
 FLAGS = tf.app.flags.FLAGS
 
 
-def get_probability_map(cv, depth_map, depth_start, depth_interval, inverse_depth = False, num_buckets=2):
+def get_probability_map(cv, depth_map, depth_start, depth_interval, inverse_depth = False, num_buckets=4):
     """ get probability map from cost volume 
     The probability map is computed by summing the probabilities of the four depth slices int he cost volume that are closest
     to the predicted depth ~ this is a simple measure of confidence that works well for downstream tasks like fusion.

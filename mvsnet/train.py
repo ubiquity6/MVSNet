@@ -89,6 +89,8 @@ tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
 tf.app.flags.DEFINE_boolean('refine_with_stereo', False,
                             """Whether or not to inject a stereo partner into refinement network""")
+tf.app.flags.DEFINE_integer('num_cost_buckets', False,
+                            """Whether or not to inject a stereo partner into refinement network""")
 # training parameters
 tf.app.flags.DEFINE_integer('num_gpus', None,
                             """Number of GPUs.""")
