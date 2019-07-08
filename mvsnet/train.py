@@ -318,15 +318,9 @@ def get_batch(training_iterator, validation_iterator):
 def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth, depth_end, i):
     """ Performs inference with specified network and return loss function """
     is_master_gpu = True if i == 0 else False
-    #depth_end = depth_start + \
-    #    (tf.cast(depth_num, tf.float32) - 1) * depth_interval
-    #depth_end = tf.reshape(
-    #    tf.slice(scaled_cams, [0, 0, 1, 3, 3], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
-
     # inference
     if FLAGS.regularization == '3DCNNs':
-        #main_trainable = False if FLAGS.refinement_train_mode == 'refine_only' and FLAGS.refinement==True else True
-        main_trainable = True
+        main_trainable = False if FLAGS.refinement_train_mode == 'refine_only' and FLAGS.refinement==True else True
         # initial depth map
         depth_map, prob_map = inference(
             images, cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, is_master_gpu, trainable=main_trainable, inverse_depth = FLAGS.inverse_depth)
