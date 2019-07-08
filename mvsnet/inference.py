@@ -42,9 +42,9 @@ tf.app.flags.DEFINE_integer('view_num', 4,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 64,
                             """Maximum depth step when testing.""")
-tf.app.flags.DEFINE_integer('width', 640,
+tf.app.flags.DEFINE_integer('width', 512,
                             """Maximum image width when testing.""")
-tf.app.flags.DEFINE_integer('height', 480,
+tf.app.flags.DEFINE_integer('height', 384,
                             """Maximum image height when testing.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume (W and H).""")
@@ -82,12 +82,11 @@ tf.app.flags.DEFINE_bool('wandb', False,
                          """Whether or not to log inference results to wandb""")
 tf.app.flags.DEFINE_bool('benchmark', True,
                          """If benchmark is True, the network results will be benchmarked against GT.
-                         This should only be used if the input_dir contains GT depth maps. If benchmark is True, the expected input_dir format consists of multiple
-                         sessions rather than a single session. """)
+                         This should only be used if the input_dir contains GT depth maps""")
 tf.app.flags.DEFINE_bool('reuse_vars', False,
                          """A global flag representing whether variables should be reused. This should be
                           set to False by default and is switched on or off by individual methods""")
-tf.app.flags.DEFINE_integer('max_clusters_per_session', None,
+tf.app.flags.DEFINE_integer('max_clusters_per_session', 20,
                             """The maximum number of clusters to benchmark per session. If not benchmarking this should probably be set to None""")
 FLAGS = tf.app.flags.FLAGS
 
@@ -103,7 +102,7 @@ def setup_data_iterator(input_dir):
 
     if FLAGS.benchmark:
         generator_data_type=(tf.float32, tf.float32,
-                               tf.float32, tf.float32, tf.float32, tf.int32, tf.string)
+                               tf.float32, tf.float32, tf.float32, tf.int32)
     else:
         generator_data_type = (tf.float32, tf.float32,
                                tf.float32, tf.float32, tf.int32)
@@ -297,8 +296,7 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
                 break
             print(Notify.INFO, 'depth inference %d/%d finished. Image index %d. (%.3f sec/step)' % (step, sample_size, out_index, time.time() - start_time),
                   Notify.ENDC)
-
-            write_output(write_dir, out_depth_map, out_prob_map, out_images,
+            write_output(output_dir, out_depth_map, out_prob_map, out_images,
                          out_cams, out_full_cams, out_full_images, out_index, out_residual_depth_map)
 
 
@@ -308,7 +306,7 @@ def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, output_dir=N
     FLAGS.benchmark = True
     output_dir = init_inference(input_dir, output_dir, width, height)
     mvs_iterator, sample_size = setup_data_iterator(input_dir)
-    scaled_images, full_images, scaled_cams, full_cams, full_depth, image_index, session_dir = mvs_iterator.get_next()
+    scaled_images, full_images, scaled_cams, full_cams, full_depth, image_index = mvs_iterator.get_next()
 
     depth_start, depth_end, depth_interval, depth_num = set_shapes(
         scaled_images, full_images, scaled_cams, full_cams)
@@ -330,7 +328,7 @@ def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, output_dir=N
             start_time = time.time()
             out_residual_depth_map = None
             fetches = [depth_map, prob_map, scaled_images,
-                       scaled_cams, full_cams, full_images, image_index, session_dir ]
+                       scaled_cams, full_cams, full_images, image_index]
             # If the network didn't upsample output depth map to full resolution, then we upsample here so that we can benchmark
             # the depth map against the full resolution GT depth map
             full_depth_shape = tf.shape(full_depth)
@@ -345,15 +343,15 @@ def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, output_dir=N
             try:
                 if FLAGS.refinement:
                     fetches.append(residual_depth_map)
-                    out_depth_map, out_prob_map, out_images, out_cams, out_full_cams, out_full_images, out_index, out_session_dir, out_loss, out_less_one, out_less_three, out_residual_depth_map = sess.run(
+                    out_depth_map, out_prob_map, out_images, out_cams, out_full_cams, out_full_images, out_index, out_loss, out_less_one, out_less_three, out_residual_depth_map = sess.run(
                         fetches)
                 else:
-                    out_depth_map, out_prob_map, out_images, out_cams, out_full_cams, out_full_images, out_index, out_session_dir, out_loss, out_less_one, out_less_three = sess.run(
+                    out_depth_map, out_prob_map, out_images, out_cams, out_full_cams, out_full_images, out_index, out_loss, out_less_one, out_less_three = sess.run(
                         fetches)
             except tf.errors.OutOfRangeError:
                 print("all dense finished")  # ==> "End of dataset"
                 break
-            print(Notify.INFO, 'depth inference %d/%d finished. Image index %d. (%.3f sec/step)' % (step, sample_size, out_index, time.time() - start_time),
+            print(Notify.INFO, 'depth inference %d/%d finished. (%.3f sec/step)' % (step, sample_size, time.time() - start_time),
                   Notify.ENDC)
             logger.debug(
                 'Performed inference for reference image {}'.format(out_index))
@@ -363,10 +361,7 @@ def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, output_dir=N
                 out_index, out_less_one))
             logger.info('Image {} less three = {}'.format(
                 out_index, out_less_three))
-            write_dir = os.path.join(str(out_session_dir[0]), 'depths_mvsnet')
-            logger.info('Writing output to dir {}'.format(write_dir))
-            mu.mkdir_p(write_dir)
-            write_output(write_dir, out_depth_map, out_prob_map, out_images,
+            write_output(output_dir, out_depth_map, out_prob_map, out_images,
                          out_cams, out_full_cams, out_full_images, out_index, out_residual_depth_map)
             losses.append(out_loss)
             less_ones.append(out_less_one)
@@ -390,8 +385,16 @@ def main(_):  # pylint: disable=unused-argument
         losses = []
         less_ones = []
         less_threes = []
-        benchmark_depth_maps(FLAGS.input_dir, losses,
-                                less_ones, less_threes)
+        if True:
+            benchmark_depth_maps(FLAGS.input_dir, losses,
+                                 less_ones, less_threes)
+        else:
+            for f in sub_dirs:
+                data_dir = os.path.join(FLAGS.input_dir, f)
+                logger.info(
+                    'Benchmarking depth maps on dir {}'.format(data_dir))
+                benchmark_depth_maps(data_dir, losses, less_ones, less_threes)
+                tf.app.flags.FLAGS.reuse_vars = True
         avg_loss = np.asarray(losses).mean()
         avg_less_one = np.asarray(less_ones).mean()
         avg_less_three = np.asarray(less_threes).mean()
