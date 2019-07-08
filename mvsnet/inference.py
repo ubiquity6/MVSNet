@@ -38,13 +38,23 @@ tf.app.flags.DEFINE_integer('ckpt_step', None,
 tf.app.flags.DEFINE_string('run_name', None,
                            """A name to use for wandb logging""")
 # input parameters
+<<<<<<< HEAD
+tf.app.flags.DEFINE_integer('view_num', 6,
+=======
 tf.app.flags.DEFINE_integer('view_num', 4,
+>>>>>>> 275d9182056f1260aedeb24e38ebe166de6568d3
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 32,
                             """Maximum depth step when testing.""")
+<<<<<<< HEAD
+tf.app.flags.DEFINE_integer('width', 640,
+                            """Maximum image width when testing.""")
+tf.app.flags.DEFINE_integer('height', 480,
+=======
 tf.app.flags.DEFINE_integer('width', 512,
                             """Maximum image width when testing.""")
 tf.app.flags.DEFINE_integer('height', 384,
+>>>>>>> 275d9182056f1260aedeb24e38ebe166de6568d3
                             """Maximum image height when testing.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume (W and H).""")
