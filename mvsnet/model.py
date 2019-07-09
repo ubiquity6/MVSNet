@@ -17,10 +17,17 @@ logger = setup_logger('mvsnet.cnn_wrapper.model')
 FLAGS = tf.app.flags.FLAGS
 
 
-def get_probability_map(cv, depth_map, depth_start, depth_interval, inverse_depth = False):
+def get_probability_map(cv, depth_map, depth_start, depth_interval, inverse_depth = False, num_buckets=4):
     """ get probability map from cost volume 
     The probability map is computed by summing the probabilities of the four depth slices int he cost volume that are closest
-    to the predicted depth ~ this is a simple measure of confidence that works well for downstream tasks like fusion
+    to the predicted depth ~ this is a simple measure of confidence that works well for downstream tasks like fusion.
+    Args:
+        cv: Cost volume
+        depth_map: The depth map
+        depth_start: The minimum depth
+        depth_interval: The depth bucket size
+        inverse_depth: True if depth buckets are sampled uniformly in inverse depth space
+        num_buckets: Number of depth buckets of cost volume to sum to compute probability map -- we support 2 or 4
     """
 
     def _repeat_(x, num_repeats):
@@ -90,19 +97,23 @@ def get_probability_map(cv, depth_map, depth_start, depth_interval, inverse_dept
     # voxel coordinates
     voxel_coordinates_left0 = tf.stack(
         [b_coordinates, d_coordinates_left0, y_coordinates, x_coordinates], axis=1)
-    voxel_coordinates_left1 = tf.stack(
-        [b_coordinates, d_coordinates_left1, y_coordinates, x_coordinates], axis=1)
     voxel_coordinates_right0 = tf.stack(
         [b_coordinates, d_coordinates1_right0, y_coordinates, x_coordinates], axis=1)
-    voxel_coordinates_right1 = tf.stack(
-        [b_coordinates, d_coordinates1_right1, y_coordinates, x_coordinates], axis=1)
-
     # get probability image by gathering and interpolation
     prob_map_left0 = tf.gather_nd(cv, voxel_coordinates_left0)
-    prob_map_left1 = tf.gather_nd(cv, voxel_coordinates_left1)
     prob_map_right0 = tf.gather_nd(cv, voxel_coordinates_right0)
-    prob_map_right1 = tf.gather_nd(cv, voxel_coordinates_right1)
-    prob_map = prob_map_left0 + prob_map_left1 + prob_map_right0 + prob_map_right1
+    prob_map = prob_map_left0 + prob_map_right0 
+
+    if num_buckets == 4:
+        # If num_buckets = 4 then we also add the probability in another bucket to left and right
+        voxel_coordinates_right1 = tf.stack(
+            [b_coordinates, d_coordinates1_right1, y_coordinates, x_coordinates], axis=1)
+        voxel_coordinates_left1 = tf.stack(
+            [b_coordinates, d_coordinates_left1, y_coordinates, x_coordinates], axis=1)
+        prob_map_left1 = tf.gather_nd(cv, voxel_coordinates_left1)
+        prob_map_right1 = tf.gather_nd(cv, voxel_coordinates_right1)
+        prob_map += prob_map_left1 + prob_map_right1
+    
     prob_map = tf.reshape(prob_map, [batch_size, height, width, 1])
 
     return prob_map
@@ -242,7 +253,7 @@ def inference_mem(images, cams, depth_num, depth_start, depth_interval, network_
         tf.slice(cams, [0, 0, 0, 0, 0], [-1, 1, 2, 4, 4]), axis=1)
 
     # image feature extraction
-    reuse = not is_master_gpu
+    reuse = tf.app.flags.FLAGS.reuse_vars #not is_master_gpu
     ref_tower = UNetDS2GN({'data': ref_image}, trainable=trainable,
                           training=training, mode=network_mode, reuse=reuse)
     base_divisor = ref_tower.base_divisor
@@ -603,7 +614,7 @@ def inference_winner_take_all(images, cams, depth_num, depth_start, depth_end, n
     return forward_depth_map, max_prob_image / forward_exp_sum
 
 def depth_refine(init_depth_map, image, prob_map, depth_num, depth_start, depth_interval, network_mode, network_type, \
-    is_master_gpu=True, training=True, trainable=True, upsample_depth=False, refine_with_confidence=False, stereo_image=None):
+    is_master_gpu=True, training=True, trainable=True, upsample_depth=False, refine_with_confidence=False, stereo_image=None, residual_refinement=True):
     """ refine depth image with the image """
 
     # normalization parameters
@@ -641,6 +652,8 @@ def depth_refine(init_depth_map, image, prob_map, depth_num, depth_start, depth_
             [data, stereo_image], axis=3)
     # refinement network
     reuse = not is_master_gpu
+    if tf.app.flags.FLAGS.reuse_vars:
+        reuse = True
     if network_type == 'unet':
         norm_depth_tower = RefineUNetConv({'color_image': image, 'depth_image': data},
                                         trainable=trainable, training=training, mode=network_mode, reuse=reuse)
@@ -651,9 +664,11 @@ def depth_refine(init_depth_map, image, prob_map, depth_num, depth_start, depth_
         raise NotImplementedError
 
     residual_norm_depth_map = norm_depth_tower.get_output()
-    norm_refined_depth_map = tf.add_n((residual_norm_depth_map, init_norm_depth_map), name='add_residual')
-    # Renormalize the depth map to add back in the scale
-    refined_depth_map = tf.multiply(
-        norm_refined_depth_map, depth_scale) + depth_start
+    residual_depth_map = tf.multiply(residual_norm_depth_map, depth_scale)
+    # residual_refinement controls whether the refinement network predicts the residual or the depth map itself
+    if residual_refinement:
+        refined_depth_map = tf.add_n((residual_depth_map, init_depth_map), name='add_residual')
+    else:
+        refined_depth_map = residual_depth_map
 
-    return refined_depth_map
+    return refined_depth_map, residual_depth_map
