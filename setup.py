@@ -9,7 +9,7 @@ def required_packages():
     PACKAGES = [
         'progressbar2>=3.0',
         'numpy>=1.13',
-        'opencv-python>=3.2',
+        'opencv-python-headless==4.1.0.25',
         'scikit-learn>=0.18',
         'scipy>=0.18',
         'matplotlib>=1.5',
