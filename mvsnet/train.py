@@ -100,7 +100,7 @@ tf.app.flags.DEFINE_float('base_lr', 0.001,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
-tf.app.flags.DEFINE_integer('stepvalue', 75000,
+tf.app.flags.DEFINE_integer('stepvalue', 60000,
                             """Step interval to decay learning rate.""")
 tf.app.flags.DEFINE_integer('snapshot', 5000,
                             """Step interval to save the model.""")
