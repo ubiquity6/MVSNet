@@ -53,7 +53,7 @@ tf.app.flags.DEFINE_string('run_name', None,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 3,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 128,
+tf.app.flags.DEFINE_integer('max_d', 32,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('width', 512,
                             """Maximum image width when training.""")
@@ -96,7 +96,7 @@ tf.app.flags.DEFINE_integer('batch_size', 1,
                             """Training batch size.""")
 tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
-tf.app.flags.DEFINE_float('base_lr', 0.0000001,
+tf.app.flags.DEFINE_float('base_lr', 0.001,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
@@ -441,7 +441,7 @@ def train():
                 with tf.name_scope('Model_tower%d' % i) as scope:
                     images, cams, depth, depth_start, depth_interval, full_depth, depth_end = get_batch(training_iterator, validation_iterator)
                     loss, less_one_accuracy, less_three_accuracy = get_loss(images, cams, depth, depth_start, depth_interval, full_depth, depth_end,  i)
-                    grads = opt.compute_gradients(loss)
+                    grads = opt.compute_gradients(-less_one_accuracy)
                     tower_grads.append(grads)
 
         grads = average_gradients(tower_grads)
