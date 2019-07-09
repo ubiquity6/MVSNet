@@ -60,13 +60,13 @@ tf.app.flags.DEFINE_bool('adaptive_scaling', True,
 # network architecture
 tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method, including '3DCNNs' and 'GRU'""")
-tf.app.flags.DEFINE_boolean('refinement', False,
+tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for MVSNet""")
 tf.app.flags.DEFINE_bool('inverse_depth', False,
                          """Whether to apply inverse depth for R-MVSNet""")
 tf.app.flags.DEFINE_string('network_mode', 'normal',
                            """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
-tf.app.flags.DEFINE_string('refinement_network', 'unet',
+tf.app.flags.DEFINE_string('refinement_network', 'original',
                            """Specifies network to use for refinement. One of 'original' or 'unet'.
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
 tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
