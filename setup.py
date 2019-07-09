@@ -16,6 +16,7 @@ def required_packages():
         'Pillow==3.1.2',
         'imageio==2.5.0',
         'wandb==0.8.4',
+        'tensorflow==1.12.0',
     ]
     return PACKAGES
 
