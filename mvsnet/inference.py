@@ -38,13 +38,13 @@ tf.app.flags.DEFINE_integer('ckpt_step', None,
 tf.app.flags.DEFINE_string('run_name', None,
                            """A name to use for wandb logging""")
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 8,
+tf.app.flags.DEFINE_integer('view_num', 4,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 256,
                             """Maximum depth step when testing.""")
-tf.app.flags.DEFINE_integer('width', 1024,
+tf.app.flags.DEFINE_integer('width', 512,
                             """Maximum image width when testing.""")
-tf.app.flags.DEFINE_integer('height', 768,
+tf.app.flags.DEFINE_integer('height', 384,
                             """Maximum image height when testing.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume (W and H).""")
@@ -69,7 +69,7 @@ tf.app.flags.DEFINE_string('network_mode', 'normal',
 tf.app.flags.DEFINE_string('refinement_network', 'unet',
                            """Specifies network to use for refinement. One of 'original' or 'unet'.
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
-tf.app.flags.DEFINE_boolean('upsample_before_refinement', False,
+tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
                             """Whether to upsample depth map to input resolution before the refinement network.""")
 tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
@@ -88,7 +88,7 @@ tf.app.flags.DEFINE_bool('write_output', False,
 tf.app.flags.DEFINE_bool('reuse_vars', False,
                          """A global flag representing whether variables should be reused. This should be
                           set to False by default and is switched on or off by individual methods""")
-tf.app.flags.DEFINE_integer('max_clusters_per_session', 4,
+tf.app.flags.DEFINE_integer('max_clusters_per_session', 10,
                             """The maximum number of clusters to benchmark per session. If not benchmarking this should probably be set to None""")
 FLAGS = tf.app.flags.FLAGS
 
