@@ -80,15 +80,15 @@ tf.app.flags.DEFINE_bool('visualize', True,
                          This is useful when developing and debugging, but should probably be turned off in production""")
 tf.app.flags.DEFINE_bool('wandb', False,
                          """Whether or not to log inference results to wandb""")
-tf.app.flags.DEFINE_bool('benchmark', False,
+tf.app.flags.DEFINE_bool('benchmark', True,
                          """If benchmark is True, the network results will be benchmarked against GT.
                          This should only be used if the input_dir contains GT depth maps""")
-tf.app.flags.DEFINE_bool('write_output', True,
+tf.app.flags.DEFINE_bool('write_output', False,
                          """When benchmarking you can set this to False if you don't need the output""")
 tf.app.flags.DEFINE_bool('reuse_vars', False,
                          """A global flag representing whether variables should be reused. This should be
                           set to False by default and is switched on or off by individual methods""")
-tf.app.flags.DEFINE_integer('max_clusters_per_session', None,
+tf.app.flags.DEFINE_integer('max_clusters_per_session', 4,
                             """The maximum number of clusters to benchmark per session. If not benchmarking this should probably be set to None""")
 FLAGS = tf.app.flags.FLAGS
 
