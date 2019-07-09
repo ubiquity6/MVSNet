@@ -13,10 +13,10 @@ def required_packages():
         'scikit-learn==0.18',
         'scipy==0.18',
         'matplotlib==1.5',
+        'tensorflow==1.12.0',
         'Pillow==3.1.2',
         'imageio==2.5.0',
         'wandb==0.8.4',
-        'tensorflow==1.12.0',
     ]
     return PACKAGES
 
