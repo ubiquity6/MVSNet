@@ -60,13 +60,13 @@ tf.app.flags.DEFINE_bool('adaptive_scaling', True,
 # network architecture
 tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method, including '3DCNNs' and 'GRU'""")
-tf.app.flags.DEFINE_boolean('refinement', True,
+tf.app.flags.DEFINE_boolean('refinement', None,
                             """Whether to apply depth map refinement for MVSNet""")
 tf.app.flags.DEFINE_bool('inverse_depth', False,
                          """Whether to apply inverse depth for R-MVSNet""")
 tf.app.flags.DEFINE_string('network_mode', 'normal',
                            """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
-tf.app.flags.DEFINE_string('refinement_network', 'unet',
+tf.app.flags.DEFINE_string('refinement_network', None,
                            """Specifies network to use for refinement. One of 'original' or 'unet'.
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
 tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
@@ -88,7 +88,7 @@ tf.app.flags.DEFINE_bool('write_output', False,
 tf.app.flags.DEFINE_bool('reuse_vars', False,
                          """A global flag representing whether variables should be reused. This should be
                           set to False by default and is switched on or off by individual methods""")
-tf.app.flags.DEFINE_integer('max_clusters_per_session', 2,
+tf.app.flags.DEFINE_integer('max_clusters_per_session', 4,
                             """The maximum number of clusters to benchmark per session. If not benchmarking this should probably be set to None""")
 FLAGS = tf.app.flags.FLAGS
 
