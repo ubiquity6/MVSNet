@@ -14,7 +14,7 @@ def required_packages():
         'scipy==0.18',
         'matplotlib==1.5',
         'tensorflow==1.12.0',
-        'Pillow==3.1.2',
+        'Pillow==6.1.0',
         'imageio==2.5.0',
         'wandb==0.8.4',
     ]
