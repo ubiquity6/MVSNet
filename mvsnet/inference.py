@@ -38,13 +38,13 @@ tf.app.flags.DEFINE_integer('ckpt_step', None,
 tf.app.flags.DEFINE_string('run_name', None,
                            """A name to use for wandb logging""")
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 4,
+tf.app.flags.DEFINE_integer('view_num', 8,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 32,
+tf.app.flags.DEFINE_integer('max_d', 312,
                             """Maximum depth step when testing.""")
-tf.app.flags.DEFINE_integer('width', 512,
+tf.app.flags.DEFINE_integer('width', 1024,
                             """Maximum image width when testing.""")
-tf.app.flags.DEFINE_integer('height', 384,
+tf.app.flags.DEFINE_integer('height', 768,
                             """Maximum image height when testing.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume (W and H).""")
@@ -69,7 +69,7 @@ tf.app.flags.DEFINE_string('network_mode', 'normal',
 tf.app.flags.DEFINE_string('refinement_network', 'unet',
                            """Specifies network to use for refinement. One of 'original' or 'unet'.
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
-tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
+tf.app.flags.DEFINE_boolean('upsample_before_refinement', False,
                             """Whether to upsample depth map to input resolution before the refinement network.""")
 tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
