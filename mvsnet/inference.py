@@ -40,7 +40,7 @@ tf.app.flags.DEFINE_string('run_name', None,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 4,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 256,
+tf.app.flags.DEFINE_integer('max_d', 32,
                             """Maximum depth step when testing.""")
 tf.app.flags.DEFINE_integer('width', 512,
                             """Maximum image width when testing.""")
@@ -83,7 +83,7 @@ tf.app.flags.DEFINE_bool('wandb', False,
 tf.app.flags.DEFINE_bool('benchmark', True,
                          """If benchmark is True, the network results will be benchmarked against GT.
                          This should only be used if the input_dir contains GT depth maps""")
-tf.app.flags.DEFINE_bool('write_output', False,
+tf.app.flags.DEFINE_bool('write_output', True,
                          """When benchmarking you can set this to False if you don't need the output""")
 tf.app.flags.DEFINE_bool('reuse_vars', False,
                          """A global flag representing whether variables should be reused. This should be
