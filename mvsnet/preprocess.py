@@ -208,7 +208,7 @@ def write_reference_image(image, file_path):
         wandb.log({"reference_images": wandb.Image(
             image, caption=file_path)})
 
-def write_residual_depth_map(image, file_path, exp=0.35):
+def write_residual_depth_map(image, file_path, exp=0.5):
     """ Writes an inverted depth map for visualization purposes
     args:
         image: Depth image to write
