@@ -3,6 +3,7 @@ from mvsnet.mvs_data_generation.utils import mask_depth_image, scale_camera, sca
 from mvsnet.utils import setup_logger, ml_engine
 import imageio
 import logging
+import random
 import json
 import os
 import scipy
@@ -79,9 +80,10 @@ class Cluster:
             camera_data = json.load(c)
 
         depth_interval = ((self.max_depth - self.min_depth) /
-                          self.depth_num) * self.interval_scale
+                          (self.depth_num - 1)) * self.interval_scale
 
         cam = np.zeros((2, 4, 4))
+        #rand = (1.0 + random.uniform(-.0025, .0025))
         cam[0] = self.pose_matrix(camera_data)
         cam[0, 0:3, 3] *= 1000  # convert translation vector from meters to mmm
         cam[1, 0:3, 0:3] = self.intrinsics_matrix(camera_data)

@@ -19,6 +19,7 @@ def test_and_fuse(args, dense_folder, ply_folder):
             args.disp_threshold, args.num_consistent)
     ply_paths = ut.get_fusion_plys(dense_folder)
     urls = ut.handle_plys(ply_paths, dense_folder, ply_folder, args)
+    print('Sketchfab url {}'.format(urls))
     return urls
 
 
@@ -37,8 +38,11 @@ def main(args):
     else:
         for d in os.listdir(args.test_folder_root):
             dense_folder = os.path.join(args.test_folder_root, d)
-            urls = test_and_fuse(args, dense_folder, ply_folder)
-            all_urls.append(urls)
+            try:
+                urls = test_and_fuse(args, dense_folder, ply_folder)
+                all_urls.append(urls)
+            except Exception as e:
+                print('Failed to test and fuse on dense folder {}'.format(dense_folder))
     print('Models uploaded to:', all_urls)
 
 
@@ -49,7 +53,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_dir', type=str,
                         help="The directory of saved model -- see test.py")
     parser.add_argument('--test_folder_root', type=str,
-                        default='../data/7scenes/test/', help="The directory where the sessions to be tested are located")
+                        default='../data/atlas', help="The directory where the sessions to be tested are located")
     parser.add_argument('--fusibile_path', type=str,
                         default='/home/chrisheinrich/fusibile/fusibile', help="The path to the compiled fusibile executable")
     parser.add_argument('--prob_threshold', type=float, default='0.8')
@@ -59,5 +63,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_consistent', type=float, default='3')
     parser.add_argument('--no_test', action='store_true',
                         help='Will not run testing, but only postprocessing, if flag is set')
+    parser.add_argument('--test_only', action='store_true',
+                        help='Will only run testing, and no fusing or uploading of point clouds.')
     args = parser.parse_args()
     main(args)

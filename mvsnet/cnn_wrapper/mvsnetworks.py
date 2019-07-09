@@ -174,13 +174,23 @@ class RefineNet(Network):
          .conv_bn(3, base_filter, 1, name='refine_conv2')
          .conv(3, 1, 1, relu=False, name='refine_conv3'))
 
-        # (CH) I am experimenting with adding the residual to the 
-        # original depth estimate, rather than adding to normalized depth estimate
-        # followed by the denormalizing scaling. I think this is a good idea because the previous
-        # way of doing things constrained the output of refine_conv3 to only take on very small values
-        # which would lead to small gradients
-        #(self.feed('refine_conv3', 'depth_image')
-        # .add(name='refined_depth_image'))
+
+class RefineNetConv(Network):
+    """network for depth map refinement using original image. Same as previous network except
+       there is no batch normalization used"""
+
+    def setup(self):
+        base_filter = 32
+        base_filter = max(1, int(base_filter / self.base_divisor))
+
+        (self.feed('color_image', 'depth_image')
+         .concat(axis=3, name='concat_image'))
+
+        (self.feed('concat_image')
+         .conv(3, base_filter, 1, name='refine_conv0')
+         .conv(3, base_filter, 1, name='refine_conv1')
+         .conv(3, base_filter, 1, name='refine_conv2')
+         .conv(3, 1, 1, relu=False, name='refine_conv3'))
 
 
 class RefineUNet(Network):
@@ -245,4 +255,70 @@ class RefineUNet(Network):
          # end of UNet
          .conv_gn(3, base_filter, 1, center=True, scale=True, name='2dconv8_2_refine')
          .conv_gn(3, base_filter * 4, 1, center=True, scale=True, name='2dconv8_3_refine')
+         .conv(3, 1, 1, relu=False, name='2dconv8_4_refine'))
+
+
+class RefineUNetConv(Network):
+    """Refinement network with 2D U-Net architecture and group normalization.
+        Has the same input / output interface as the RefineNet above, but with a different body. Same as above network
+        except with no batch norm"""
+
+    def setup(self):
+        base_filter = 8
+        base_filter = max(1, int(base_filter / self.base_divisor))
+        logger.info('2D Unet with base filter {}'.format(base_filter))
+        (self.feed('color_image', 'depth_image')
+         .concat(axis=3, name='concat_image'))
+
+        (self.feed('concat_image')
+         .conv(3, base_filter * 2, 2, name='2dconv1_0_refine')
+         .conv(3, base_filter * 4, 2, name='2dconv2_0_refine')
+         .conv(3, base_filter * 8, 2, name='2dconv3_0_refine')
+         .conv(3, base_filter * 16, 2, name='2dconv4_0_refine'))
+
+        (self.feed('concat_image')
+         .conv(3, base_filter, 1, name='2dconv0_1_refine')
+         .conv(3, base_filter, 1, name='2dconv0_2_refine'))
+
+        (self.feed('2dconv1_0_refine')
+         .conv(3, base_filter * 2, 1, name='2dconv1_1_refine')
+         .conv(3, base_filter * 2, 1, name='2dconv1_2_refine'))
+
+        (self.feed('2dconv2_0_refine')
+         .conv(3, base_filter * 4, 1, name='2dconv2_1_refine')
+         .conv(3, base_filter * 4, 1, name='2dconv2_2_refine'))
+
+        (self.feed('2dconv3_0_refine')
+         .conv(3, base_filter * 8, 1, name='2dconv3_1_refine')
+         .conv(3, base_filter * 8, 1, name='2dconv3_2_refine'))
+
+        (self.feed('2dconv4_0_refine')
+         .conv(3, base_filter * 16, 1, name='2dconv4_1_refine')
+         .conv(3, base_filter * 16, 1, name='2dconv4_2_refine')
+         .deconv(3, base_filter * 8, 2,  name='2dconv5_0_refine'))
+
+        (self.feed('2dconv5_0_refine', '2dconv3_2_refine')
+         .concat(axis=-1, name='2dconcat5_0_refine')
+         .conv(3, base_filter * 8, 1, name='2dconv5_1_refine')
+         .conv(3, base_filter * 8, 1, name='2dconv5_2_refine')
+         .deconv(3, base_filter * 4, 2, name='2dconv6_0_refine'))
+
+        (self.feed('2dconv6_0_refine', '2dconv2_2_refine')
+         .concat(axis=-1, name='2dconcat6_0_refine')
+         .conv(3, base_filter * 4, 1, name='2dconv6_1_refine')
+         .conv(3, base_filter * 4, 1, name='2dconv6_2_refine')
+         .deconv(3, base_filter * 2, 2, name='2dconv7_0_refine'))
+
+        (self.feed('2dconv7_0_refine', '2dconv1_2_refine')
+         .concat(axis=-1, name='2dconcat7_0_refine')
+         .conv(3, base_filter * 2, 1, name='2dconv7_1_refine')
+         .conv(3, base_filter * 2, 1, name='2dconv7_2_refine')
+         .deconv(3, base_filter, 2, name='2dconv8_0_refine'))
+
+        (self.feed('2dconv8_0_refine', '2dconv0_2_refine')
+         .concat(axis=-1, name='2dconcat8_0_refine')
+         .conv(3, base_filter, 1, name='2dconv8_1_refine')
+         # end of UNet
+         .conv(3, base_filter, 1, name='2dconv8_2_refine')
+         .conv(3, base_filter * 4, 1, name='2dconv8_3_refine')
          .conv(3, 1, 1, relu=False, name='2dconv8_4_refine'))

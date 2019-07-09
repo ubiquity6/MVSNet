@@ -14,12 +14,19 @@ logging.basicConfig()
 
 """
 Copyright 2019, Chris Heinrich, Ubiquity6.
+
+The ClusterGenerator object serves up batches of data to be used for training a multi view stereo network. 
+
+The data returned consists of multiple input images and their associated camera information, along with GT depth maps in 
+the case of training, validation or benchmarking.
+
+
 """
 
 
 class ClusterGenerator:
     def __init__(self, sessions_dir, view_num=3, image_width=1024, image_height=768, depth_num=256,
-                 interval_scale=1, base_image_size=1, include_empty=False, mode='training', val_split=0.1, rescaling=True, output_scale=0.25, flip_cams=True):
+                 interval_scale=1, base_image_size=1, include_empty=False, mode='training', val_split=0.1, rescaling=True, output_scale=0.25, flip_cams=True, sessions_frac=1.0, benchmark=False, max_clusters_per_session=None):
         self.logger = setup_logger('ClusterGenerator')
         self.sessions_dir = sessions_dir
         self.view_num = view_num
@@ -40,7 +47,10 @@ class ClusterGenerator:
         self.output_scale = output_scale
         self.flip_cams = flip_cams
         # The sessions_fraction [0,1] is the fraction of all available sessions in sessions_dir
-        self.sessions_frac = 1.0
+        self.sessions_frac = sessions_frac
+        self.benchmark = benchmark
+        # max clusters per session is used if you don't want to train on all the clusters in a session
+        self.max_clusters_per_session = max_clusters_per_session
         self.parse_sessions()
         self.set_iter_clusters()
 
@@ -76,7 +86,12 @@ class ClusterGenerator:
             # generator from needing to load all of the clusters. In fact we might just want to do lazy loading of clusters
             for s, session in enumerate(sessions[:num_sessions]):
                 session_dir = os.path.join(self.sessions_dir, session)
-                self.load_clusters(session_dir, clusters)
+                self.logger.debug('Parsing session dir {}'.format(session_dir))
+                try:
+                    self.load_clusters(session_dir, clusters)
+                except Exception as e:
+                    self.logger.debug(
+                        'Failed to load clusters for session dir {} with exception {}'.format(session_dir, e))
                 if s % 25 == 0:
                     self.logger.info(
                         'Parsed {} / {} sessions'.format(s, num_sessions))
@@ -88,14 +103,20 @@ class ClusterGenerator:
     def load_clusters(self, session_dir, clusters):
         with file_io.FileIO(os.path.join(session_dir, 'covisibility.json'), mode='r') as f:
             data = json.load(f)
+        clusters_added = 0
+        max_clusters = len(data)
+        if self.max_clusters_per_session is not None:
+            max_clusters = self.max_clusters_per_session
+
         for d in data:
             if not self.include_empty and not data[d]['views']:
                 # Skip if there are no covisible views and we don't include empty
                 pass
-            else:
+            elif clusters_added < max_clusters:
                 cluster = Cluster(session_dir, int(d), data[d]['views'], data[d]['min_depth'],
                                   data[d]['max_depth'], self.view_num, self.image_width, self.image_height, self.depth_num, self.interval_scale)
                 clusters.append(cluster)
+                clusters_added += 1
 
     def get_clusters(self):
         """ Gets mvs clusters for training and validation. It shuffles the clusters
@@ -110,17 +131,19 @@ class ClusterGenerator:
             val_clusters: A list of clusters to use for validation
         """
         seed = 5  # We shuffle with the same random seed so that training stays in training
-        # and validation stays in validation
-        random.Random(seed).shuffle(self.clusters)
+        # and validation stays in validation. We don't shuffle on inference
+        if self.mode != 'test' and self.mode != 'benchmark':
+            random.Random(seed).shuffle(self.clusters)
         num = len(self.clusters)
         val_end = int(num*self.val_split)
         # Partition all clusters into a training and validation set
         train_clusters = self.clusters[val_end:]
         val_clusters = self.clusters[:val_end]
         # We shuffle the train and val clusters separately, so they don't mix
-        random.shuffle(train_clusters)
-        random.shuffle(val_clusters)
-        if self.mode == 'test':
+        if self.mode != 'test' and self.mode != 'benchmark':
+            random.shuffle(train_clusters)
+            random.shuffle(val_clusters)
+        if self.mode == 'test' or self.mode == 'benchmark':
             self.logger.info(" {} clusters will be used for testing".format(
                 len(train_clusters)))
         else:
@@ -142,6 +165,9 @@ class ClusterGenerator:
         elif self.mode == 'validation':
             self.iter_clusters = val_clusters
         elif self.mode == 'test':
+            # If we are testing, the val_split is zero, and we test on the all clusters (ignore the naming as train)
+            self.iter_clusters = train_clusters
+        elif self.mode == 'benchmark':
             # If we are testing, the val_split is zero, and we test on the all clusters (ignore the naming as train)
             self.iter_clusters = train_clusters
         else:
@@ -223,17 +249,27 @@ class ClusterGenerator:
             output_cams: Numpy array of camera data that has been reformatted to match the output size of network
             image_index: The index of the reference image used for this cluster
         """
-        if self.mode == 'test':
+        if self.mode == 'test' or self.mode == 'benchmark':
             while True:
                 for c in self.iter_clusters:
                     start = time.time()
                     images = c.images()
                     cams = c.cameras()
                     # Crop, scale and center images
-                    images, cams = ut.scale_mvs_input(
-                        images, cams, scale=c.rescale)
-                    cropped_images, cropped_cams = ut.crop_mvs_input(
-                        images, cams, self.image_width, self.image_height, self.base_image_size)
+                    if self.benchmark:
+                        # We also need to retrieve GT depth data if we are benchmarking
+                        depth = c.masked_reference_depth()
+                        images, cams, depth = ut.scale_mvs_input(
+                            images, cams, depth, c.rescale)
+                        cropped_images, cropped_cams, depth = ut.crop_mvs_input(
+                            images, cams, self.image_width, self.image_height, self.base_image_size, depth)
+                        depth = ut.reshape_depth(depth)
+
+                    else:
+                        images, cams = ut.scale_mvs_input(
+                            images, cams, scale=c.rescale)
+                        cropped_images, cropped_cams = ut.crop_mvs_input(
+                            images, cams, self.image_width, self.image_height, self.base_image_size)
                     # Full cams are scaled to input image resolution
                     full_cams = np.stack(cropped_cams, axis=0)
                     # Scaled for input size
@@ -255,9 +291,8 @@ class ClusterGenerator:
                     self.logger.debug(
                         'output cams shape: {}'.format(output_cams.shape))
                     self.logger.debug('image index: {}'.format(image_index))
-                    self.logger.debug(
-                        'first full cam: {}'.format(full_cams[0]))
-                    self.logger.debug(
-                        'first cam: {}'.format(cams[0]))
 
-                    yield (output_images, input_images, output_cams, full_cams, image_index)
+                    if self.benchmark:
+                        yield (output_images, input_images, output_cams, full_cams, depth, image_index, c.session_dir)
+                    else:
+                        yield (output_images, input_images, output_cams, full_cams, image_index)
