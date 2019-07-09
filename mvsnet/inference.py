@@ -60,7 +60,7 @@ tf.app.flags.DEFINE_bool('adaptive_scaling', True,
 # network architecture
 tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method, including '3DCNNs' and 'GRU'""")
-tf.app.flags.DEFINE_boolean('refinement', True,
+tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for MVSNet""")
 tf.app.flags.DEFINE_bool('inverse_depth', False,
                          """Whether to apply inverse depth for R-MVSNet""")
@@ -327,6 +327,7 @@ def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, output_dir=N
     # init option
     var_init_op = tf.local_variables_initializer()
     init_op, config = mu.init_session()
+    out_residual_depth_map = None
 
     with tf.Session(config=config) as sess:
         # initialization
@@ -341,7 +342,7 @@ def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, output_dir=N
                     out_depth_map, out_prob_map, out_images, out_cams, out_full_cams, out_full_images, out_index, out_session_dir, out_loss, out_less_one, out_less_three, out_residual_depth_map = sess.run(
                         [depth_map, prob_map, scaled_images, scaled_cams, full_cams, full_images, image_index, session_dir, loss, less_one_accuracy, less_three_accuracy, residual_depth_map])
                 else:
-                    out_depth_map, out_prob_map, out_images, out_cams, out_full_cams, out_full_images, out_index, out_loss, out_less_one, out_less_three = sess.run(
+                    out_depth_map, out_prob_map, out_images, out_cams, out_full_cams, out_full_images, out_index, out_session_dir, out_loss, out_less_one, out_less_three = sess.run(
                         [depth_map, prob_map, scaled_images, scaled_cams, full_cams, full_images, image_index, session_dir, loss, less_one_accuracy, less_three_accuracy])
             except tf.errors.OutOfRangeError:
                 print("all dense finished")  # ==> "End of dataset"
