@@ -8,7 +8,7 @@ VERSION='0.1.0'
 def required_packages():
     PACKAGES = [
         'progressbar2==3.0.1',
-        'numpy==1.13',
+        'numpy==1.13.3',
         'opencv-python-headless==4.1.0.25',
         'scikit-learn==0.18',
         'scipy==0.18',
