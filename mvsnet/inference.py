@@ -31,20 +31,20 @@ tf.app.flags.DEFINE_string('input_dir', None,
 tf.app.flags.DEFINE_string('output_dir', None,
                            """Path to data to dir to output results""")
 tf.app.flags.DEFINE_string('model_dir',
-                           None,
+                           'gs://mvs-training-mlengine/trained-models/06-04-2019/',
                            """Path to restore the model.""")
-tf.app.flags.DEFINE_integer('ckpt_step', None,
+tf.app.flags.DEFINE_integer('ckpt_step', 1350000,
                             """ckpt  step.""")
 tf.app.flags.DEFINE_string('run_name', None,
                            """A name to use for wandb logging""")
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 6,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 192,
+tf.app.flags.DEFINE_integer('max_d', 256,
                             """Maximum depth step when testing.""")
-tf.app.flags.DEFINE_integer('width', 512,
+tf.app.flags.DEFINE_integer('width', 1024,
                             """Maximum image width when testing.""")
-tf.app.flags.DEFINE_integer('height', 384,
+tf.app.flags.DEFINE_integer('height', 768,
                             """Maximum image height when testing.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume (W and H).""")
@@ -60,22 +60,22 @@ tf.app.flags.DEFINE_bool('adaptive_scaling', True,
 # network architecture
 tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method, including '3DCNNs' and 'GRU'""")
-tf.app.flags.DEFINE_boolean('refinement', None,
+tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for MVSNet""")
 tf.app.flags.DEFINE_bool('inverse_depth', False,
                          """Whether to apply inverse depth for R-MVSNet""")
 tf.app.flags.DEFINE_string('network_mode', 'normal',
                            """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
-tf.app.flags.DEFINE_string('refinement_network', None,
+tf.app.flags.DEFINE_string('refinement_network', 'original',
                            """Specifies network to use for refinement. One of 'original' or 'unet'.
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
-tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
+tf.app.flags.DEFINE_boolean('upsample_before_refinement', False,
                             """Whether to upsample depth map to input resolution before the refinement network.""")
-tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
+tf.app.flags.DEFINE_boolean('refine_with_confidence', False,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
 
 # Parameters for writing and benchmarking output
-tf.app.flags.DEFINE_bool('visualize', True,
+tf.app.flags.DEFINE_bool('visualize', False,
                          """If visualize is true, the inference script will write some auxiliary files for visualization and debugging purposes.
                          This is useful when developing and debugging, but should probably be turned off in production""")
 tf.app.flags.DEFINE_bool('wandb', False,
