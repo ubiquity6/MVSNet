@@ -38,13 +38,13 @@ tf.app.flags.DEFINE_integer('ckpt_step', None,
 tf.app.flags.DEFINE_string('run_name', None,
                            """A name to use for wandb logging""")
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 4,
+tf.app.flags.DEFINE_integer('view_num', 8,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 256,
                             """Maximum depth step when testing.""")
-tf.app.flags.DEFINE_integer('width', 512,
+tf.app.flags.DEFINE_integer('width', 1024,
                             """Maximum image width when testing.""")
-tf.app.flags.DEFINE_integer('height', 384,
+tf.app.flags.DEFINE_integer('height', 768,
                             """Maximum image height when testing.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume (W and H).""")
@@ -60,13 +60,13 @@ tf.app.flags.DEFINE_bool('adaptive_scaling', True,
 # network architecture
 tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method, including '3DCNNs' and 'GRU'""")
-tf.app.flags.DEFINE_boolean('refinement', False,
+tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for MVSNet""")
 tf.app.flags.DEFINE_bool('inverse_depth', False,
                          """Whether to apply inverse depth for R-MVSNet""")
-tf.app.flags.DEFINE_string('network_mode', 'lite',
+tf.app.flags.DEFINE_string('network_mode', 'normal',
                            """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
-tf.app.flags.DEFINE_string('refinement_network', 'unet',
+tf.app.flags.DEFINE_string('refinement_network', 'original',
                            """Specifies network to use for refinement. One of 'original' or 'unet'.
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
 tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
@@ -80,15 +80,15 @@ tf.app.flags.DEFINE_bool('visualize', True,
                          This is useful when developing and debugging, but should probably be turned off in production""")
 tf.app.flags.DEFINE_bool('wandb', False,
                          """Whether or not to log inference results to wandb""")
-tf.app.flags.DEFINE_bool('benchmark', True,
+tf.app.flags.DEFINE_bool('benchmark', False,
                          """If benchmark is True, the network results will be benchmarked against GT.
                          This should only be used if the input_dir contains GT depth maps""")
-tf.app.flags.DEFINE_bool('write_output', False,
+tf.app.flags.DEFINE_bool('write_output', True,
                          """When benchmarking you can set this to False if you don't need the output""")
 tf.app.flags.DEFINE_bool('reuse_vars', False,
                          """A global flag representing whether variables should be reused. This should be
                           set to False by default and is switched on or off by individual methods""")
-tf.app.flags.DEFINE_integer('max_clusters_per_session', 10,
+tf.app.flags.DEFINE_integer('max_clusters_per_session', None,
                             """The maximum number of clusters to benchmark per session. If not benchmarking this should probably be set to None""")
 FLAGS = tf.app.flags.FLAGS
 
