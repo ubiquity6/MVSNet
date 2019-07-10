@@ -3,7 +3,7 @@ from setuptools import find_packages
 
 # Package Metadata
 NAME='MVSNet'
-VERSION='0.1.0'
+VERSION='0.1.1'
 
 def required_packages():
     PACKAGES = [
