@@ -31,7 +31,7 @@ def non_zero_mean_absolute_diff(y_true, y_pred, interval, denom_exponent=1):
     return masked_mae
 
 
-def experimental_loss(y_true, y_pred, interval, denom_exponent=0.25):
+def non_zero_mean_absolute_diff_experimental(y_true, y_pred, interval, denom_exponent=0.25):
     """ non zero mean absolute loss for one batch """
     with tf.name_scope('MAE'):
         denom_exponent = tf.constant(denom_exponent, dtype=tf.float32)
@@ -85,7 +85,7 @@ def mvsnet_regression_loss(estimated_depth_image, depth_image, depth_start, dept
     depth_interval = tf.div(depth_end-depth_start, 191.0)
     # non zero mean absulote loss
     if experimental_loss:
-        masked_mae = experimental_loss(
+        masked_mae = non_zero_mean_absolute_diff_experimental(
             depth_image, estimated_depth_image, depth_interval)
     else:
         masked_mae = non_zero_mean_absolute_diff(
