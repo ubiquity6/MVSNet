@@ -77,6 +77,10 @@ class Network(object):
             self.base_divisor = 2
         if mode == 'ultralite':
             self.base_divisor = 4
+        if mode == 'fat':
+            self.base_divisor = 0.5
+        if mode == 'ultrafat':
+            self.base_divisor = 0.25
         if inputs is not None:
             # The current list of terminal nodes
             self.terminals = []
