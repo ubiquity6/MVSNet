@@ -53,7 +53,7 @@ tf.app.flags.DEFINE_string('run_name', None,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 3,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 32,
+tf.app.flags.DEFINE_integer('max_d', 128,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('width', 512,
                             """Maximum image width when training.""")
@@ -72,7 +72,7 @@ tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method.""")
 tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
                            """Optimizer to use. One of 'momentum', 'rmsprop' or 'adam' """)
-tf.app.flags.DEFINE_boolean('refinement', True,
+tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for 3DCNNs""")
 tf.app.flags.DEFINE_string('refinement_train_mode', 'refine_only',
                             """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
@@ -96,7 +96,7 @@ tf.app.flags.DEFINE_integer('batch_size', 1,
                             """Training batch size.""")
 tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
-tf.app.flags.DEFINE_float('base_lr', 0.001,
+tf.app.flags.DEFINE_float('base_lr', 0.0001,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
@@ -110,7 +110,7 @@ tf.app.flags.DEFINE_float('val_batch_size', 50,
                           """Number of images to run validation on when validation.""")
 tf.app.flags.DEFINE_float('train_steps_per_val', 500,
                           """Number of samples to train on before running a round of validation.""")
-tf.app.flags.DEFINE_float('dataset_fraction', 1.0,
+tf.app.flags.DEFINE_float('dataset_fraction', 0.11,
                           """Fraction of dataset to use for training. Float between 0 and 1. NOTE: For training a production model
                            you should use 1, but for experiments it may be useful to use a fraction less than 1.""")
 tf.app.flags.DEFINE_float('decay_per_10_epoch', 0.01,
@@ -441,9 +441,10 @@ def train():
                 with tf.name_scope('Model_tower%d' % i) as scope:
                     images, cams, depth, depth_start, depth_interval, full_depth, depth_end = get_batch(training_iterator, validation_iterator)
                     loss, less_one_accuracy, less_three_accuracy = get_loss(images, cams, depth, depth_start, depth_interval, full_depth, depth_end,  i)
-                    grads = opt.compute_gradients(-less_one_accuracy)
+                    grads = opt.compute_gradients(loss)
                     tower_grads.append(grads)
 
+        #grads = tower_grads[0] #average_gradients(tower_grads)
         grads = average_gradients(tower_grads)
         train_opt = opt.apply_gradients(grads, global_step=global_step)
         saver = tf.train.Saver(tf.global_variables(), max_to_keep=None)

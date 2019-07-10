@@ -12,7 +12,7 @@ import numpy as np
 FLAGS = tf.app.flags.FLAGS
 
 
-def non_zero_mean_absolute_diff(y_true, y_pred, interval, denom_exponent=1):
+def non_zero_mean_absolute_diff(y_true, y_pred, interval, denom_exponent=0.5):
     """ non zero mean absolute loss for one batch """
     with tf.name_scope('MAE'):
         denom_exponent = tf.constant(denom_exponent, dtype=tf.float32)
@@ -23,11 +23,11 @@ def non_zero_mean_absolute_diff(y_true, y_pred, interval, denom_exponent=1):
         # scaling loss by alpha ensures that loss is of order 1
         alpha = tf.math.pow(tf.reduce_mean(denom), denom_exponent - 1)
         denom = tf.math.pow(denom, denom_exponent)
-        masked_abs_error = tf.abs(
-            mask_true * (y_true - y_pred))            # 4D
-        masked_mae = tf.reduce_sum(masked_abs_error, axis=[1, 2, 3])
-        masked_mae = tf.reduce_sum(
-            (masked_mae / interval) / denom) * alpha       # 1
+        masked_abs_error = tf.abs((y_true - y_pred))
+        masked_abs_error = tf.div(masked_abs_error, interval)            # 4D
+        masked_sqrt_error = tf.math.pow(masked_abs_error, 0.5)*mask_true
+        masked_mae = tf.reduce_sum(masked_sqrt_error, axis=[1, 2, 3])
+        masked_mae = tf.reduce_sum((masked_mae / denom)) * alpha       # 1
     return masked_mae
 
 
@@ -38,7 +38,7 @@ def less_one_percentage(y_true, y_pred, interval):
         mask_true = tf.cast(tf.not_equal(y_true, 0.0), dtype='float32')
         denom = tf.abs(tf.reduce_sum(mask_true)) + 1e-6
         interval_image = tf.tile(tf.reshape(interval, [shape[0], 1, 1, 1]), [
-                                 1, shape[1], shape[2], 1])
+            1, shape[1], shape[2], 1])
         abs_diff_image = tf.abs(y_true - y_pred) / interval_image
         less_one_image = mask_true * \
             tf.cast(tf.less_equal(abs_diff_image, 1.0), dtype='float32')
@@ -52,7 +52,7 @@ def less_three_percentage(y_true, y_pred, interval):
         mask_true = tf.cast(tf.not_equal(y_true, 0.0), dtype='float32')
         denom = tf.abs(tf.reduce_sum(mask_true)) + 1e-6
         interval_image = tf.tile(tf.reshape(interval, [shape[0], 1, 1, 1]), [
-                                 1, shape[1], shape[2], 1])
+            1, shape[1], shape[2], 1])
         abs_diff_image = tf.abs(y_true - y_pred) / interval_image
         less_three_image = mask_true * \
             tf.cast(tf.less_equal(abs_diff_image, 3.0), dtype='float32')
@@ -88,10 +88,10 @@ def mvsnet_classification_loss(prob_volume, gt_depth_image, depth_num, depth_sta
     depth_end = depth_start + \
         (tf.cast(depth_num, tf.float32) - 1) * depth_interval
     start_mat = tf.tile(tf.reshape(depth_start, [shape[0], 1, 1, 1]), [
-                        1, shape[1], shape[2], 1])
+        1, shape[1], shape[2], 1])
 
     interval_mat = tf.tile(tf.reshape(depth_interval, [shape[0], 1, 1, 1]), [
-                           1, shape[1], shape[2], 1])
+        1, shape[1], shape[2], 1])
     gt_index_image = tf.div(gt_depth_image - start_mat, interval_mat)
     gt_index_image = tf.multiply(mask_true, gt_index_image)
     gt_index_image = tf.cast(tf.round(gt_index_image), dtype='int32')
