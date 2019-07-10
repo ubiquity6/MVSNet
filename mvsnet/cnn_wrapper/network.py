@@ -67,7 +67,8 @@ class Network(object):
         # Seed for randomness
         self.seed = seed
         # Add regularizer for parameters.
-        self.regularizer = tf.contrib.layers.l2_regularizer(1.0) if regularize else None
+        self.regularizer = tf.contrib.layers.l2_regularizer(
+            1.0) if regularize else None
         # The epsilon paramater in BN layer.
         self.bn_epsilon = epsilon
         self.extra_args = kwargs
@@ -202,7 +203,8 @@ class Network(object):
             if not separable:
                 return tf.layers.conv3d(input_tensor, **kwargs)
             else:
-                raise NotImplementedError('No official implementation for separable_conv3d')
+                raise NotImplementedError(
+                    'No official implementation for separable_conv3d')
         else:
             raise ValueError('Improper input rank for layer: ' + name)
 
@@ -240,7 +242,7 @@ class Network(object):
         else:
             G = min(group, C)
 
-        # normalization 
+        # normalization
         x = tf.reshape(x, [N, G, C // G, H, W])
         mean, var = tf.nn.moments(x, [2, 3, 4], keep_dims=True)
         x = (x - mean) / tf.sqrt(var + self.bn_epsilon)
@@ -248,11 +250,13 @@ class Network(object):
         # per channel scale and bias (gamma and beta)
         with tf.variable_scope(name + '/gn', reuse=self.reuse):
             if scale:
-                gamma = tf.get_variable('gamma', [C], dtype=tf.float32, initializer=tf.ones_initializer())
+                gamma = tf.get_variable(
+                    'gamma', [C], dtype=tf.float32, initializer=tf.ones_initializer())
             else:
                 gamma = tf.constant(1.0, shape=[C])
             if center:
-                beta = tf.get_variable('beta', [C], dtype=tf.float32, initializer=tf.zeros_initializer())
+                beta = tf.get_variable(
+                    'beta', [C], dtype=tf.float32, initializer=tf.zeros_initializer())
             else:
                 beta = tf.constant(0.0, shape=[C])
         gamma = tf.reshape(gamma, [1, C, 1, 1])
@@ -370,7 +374,7 @@ class Network(object):
         else:
             G = min(group, C)
 
-        # normalization 
+        # normalization
         x = tf.reshape(x, [N, G, C // G, H, W])
         mean, var = tf.nn.moments(x, [2, 3, 4], keep_dims=True)
         x = (x - mean) / tf.sqrt(var + self.bn_epsilon)
@@ -378,11 +382,13 @@ class Network(object):
         # per channel scale and bias (gamma and beta)
         with tf.variable_scope(name + '/gn', reuse=self.reuse):
             if scale:
-                gamma = tf.get_variable('gamma', [C], dtype=tf.float32, initializer=tf.ones_initializer())
+                gamma = tf.get_variable(
+                    'gamma', [C], dtype=tf.float32, initializer=tf.ones_initializer())
             else:
                 gamma = tf.constant(1.0, shape=[C])
             if center:
-                beta = tf.get_variable('beta', [C], dtype=tf.float32, initializer=tf.zeros_initializer())
+                beta = tf.get_variable(
+                    'beta', [C], dtype=tf.float32, initializer=tf.zeros_initializer())
             else:
                 beta = tf.constant(0.0, shape=[C])
         gamma = tf.reshape(gamma, [1, C, 1, 1])
