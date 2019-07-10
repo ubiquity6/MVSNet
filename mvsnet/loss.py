@@ -31,7 +31,7 @@ def non_zero_mean_absolute_diff(y_true, y_pred, interval, denom_exponent=1):
     return masked_mae
 
 
-def experimental_loss(y_true, y_pred, interval, denom_exponent=0.5):
+def experimental_loss(y_true, y_pred, interval, denom_exponent=0.25):
     """ non zero mean absolute loss for one batch """
     with tf.name_scope('MAE'):
         denom_exponent = tf.constant(denom_exponent, dtype=tf.float32)
@@ -42,9 +42,9 @@ def experimental_loss(y_true, y_pred, interval, denom_exponent=0.5):
         # scaling loss by alpha ensures that loss is of order 1
         alpha = tf.math.pow(tf.reduce_mean(denom), denom_exponent - 1)
         denom = tf.math.pow(denom, denom_exponent)
-        masked_abs_error = tf.abs((y_true - y_pred))
+        masked_abs_error = tf.abs((y_true - y_pred) + 1e-6)
         masked_abs_error = tf.div(masked_abs_error, interval)            # 4D
-        masked_sqrt_error = tf.math.pow(masked_abs_error, 0.5)*mask_true
+        masked_sqrt_error = tf.math.pow(masked_abs_error, 0.25)*mask_true
         masked_mae = tf.reduce_sum(masked_sqrt_error, axis=[1, 2, 3])
         masked_mae = tf.reduce_sum((masked_mae / denom)) * alpha       # 1
     return masked_mae

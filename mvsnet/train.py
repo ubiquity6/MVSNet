@@ -96,7 +96,7 @@ tf.app.flags.DEFINE_integer('batch_size', 1,
                             """Training batch size.""")
 tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
-tf.app.flags.DEFINE_float('base_lr', 0.0001,
+tf.app.flags.DEFINE_float('base_lr', 0.001,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
@@ -110,7 +110,7 @@ tf.app.flags.DEFINE_float('val_batch_size', 50,
                           """Number of images to run validation on when validation.""")
 tf.app.flags.DEFINE_float('train_steps_per_val', 500,
                           """Number of samples to train on before running a round of validation.""")
-tf.app.flags.DEFINE_float('dataset_fraction', 0.11,
+tf.app.flags.DEFINE_float('dataset_fraction', 0.2,
                           """Fraction of dataset to use for training. Float between 0 and 1. NOTE: For training a production model
                            you should use 1, but for experiments it may be useful to use a fraction less than 1.""")
 tf.app.flags.DEFINE_float('decay_per_10_epoch', 0.01,
