@@ -463,6 +463,9 @@ def train():
                 step = 0
                 sess.run(training_iterator.initializer)
                 sess.run(validation_iterator.initializer)
+                out_losses = []
+                out_less_ones = []
+                out_less_threes = []
 
                 for i in range(training_sample_size):
                     training_status = True
@@ -476,12 +479,25 @@ def train():
                         break
                     duration = time.time() - start_time
 
+                    out_losses.append(out_loss)
+                    out_less_ones.apppend(out_less_one)
+                    out_less_threes.append(out_less_three)
+
                     # print info
                     if step % FLAGS.display == 0:
                         print(Notify.INFO,
                               'epoch, %d, step %d, total_step %d, loss = %.4f, (< 1px) = %.4f, (< 3px) = %.4f (%.3f sec/step)' %
                               (epoch, step, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
-                        wandb.log({'loss':out_loss,'less_one':out_less_one,'less_three':out_less_three,'time_per_step':duration},step=total_step)
+
+                    # We log to wandb every 100 steps so that its less noisy
+                    if step % 100 == 0:
+                        l = np.mean(np.asarray(out_losses))
+                        l1 = np.mean(np.asarray(out_less_ones))
+                        l3 = np.mean(np.asarray(out_less_threes))
+                        wandb.log({'loss': l,'less_one': l1,'less_three': l3,'time_per_step': duration},step=total_step)
+                        out_losses = []
+                        out_less_ones = []
+                        out_less_threes = []
 
                     save_model(sess, saver, total_step, step)
                     step += FLAGS.batch_size * FLAGS.num_gpus
