@@ -12,7 +12,26 @@ import numpy as np
 FLAGS = tf.app.flags.FLAGS
 
 
-def non_zero_mean_absolute_diff(y_true, y_pred, interval, denom_exponent=0.5):
+def non_zero_mean_absolute_diff(y_true, y_pred, interval, denom_exponent=1):
+    """ non zero mean absolute loss for one batch """
+    with tf.name_scope('MAE'):
+        denom_exponent = tf.constant(denom_exponent, dtype=tf.float32)
+        shape = tf.shape(y_pred)
+        interval = tf.reshape(interval, [shape[0]])
+        mask_true = tf.cast(tf.not_equal(y_true, 0.0), dtype='float32')
+        denom = tf.abs(tf.reduce_sum(mask_true, axis=[1, 2, 3])) + 1e-6
+        # scaling loss by alpha ensures that loss is of order 1
+        alpha = tf.math.pow(tf.reduce_mean(denom), denom_exponent - 1)
+        denom = tf.math.pow(denom, denom_exponent)
+        masked_abs_error = tf.abs(
+            mask_true * (y_true - y_pred))            # 4D
+        masked_mae = tf.reduce_sum(masked_abs_error, axis=[1, 2, 3])
+        masked_mae = tf.reduce_sum(
+            (masked_mae / interval) / denom) * alpha       # 1
+    return masked_mae
+
+
+def experimental_loss(y_true, y_pred, interval, denom_exponent=0.5):
     """ non zero mean absolute loss for one batch """
     with tf.name_scope('MAE'):
         denom_exponent = tf.constant(denom_exponent, dtype=tf.float32)
@@ -59,14 +78,18 @@ def less_three_percentage(y_true, y_pred, interval):
     return tf.reduce_sum(less_three_image) / denom
 
 
-def mvsnet_regression_loss(estimated_depth_image, depth_image, depth_start, depth_end):
+def mvsnet_regression_loss(estimated_depth_image, depth_image, depth_start, depth_end, experimental_loss=True):
     """ compute loss and accuracy """
     # For loss and accuracy we use a depth_interval that is independent of the number of depth buckets
     # so we can easily compare results for various depth_num. We divide by 191 for historical reasons.
     depth_interval = tf.div(depth_end-depth_start, 191.0)
     # non zero mean absulote loss
-    masked_mae = non_zero_mean_absolute_diff(
-        depth_image, estimated_depth_image, depth_interval)
+    if experimental_loss:
+        masked_mae = experimental_loss(
+            depth_image, estimated_depth_image, depth_interval)
+    else:
+        masked_mae = non_zero_mean_absolute_diff(
+            depth_image, estimated_depth_image, depth_interval)
     # less one accuracy
     less_one_accuracy = less_one_percentage(
         depth_image, estimated_depth_image, depth_interval)

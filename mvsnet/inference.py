@@ -322,7 +322,7 @@ def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, output_dir=N
         depth_map = tf.image.resize_bilinear(
             depth_map, [full_depth_shape[1], full_depth_shape[2]])
     loss, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
-        depth_map, full_depth, depth_start, depth_end)
+        depth_map, full_depth, depth_start, depth_end, experimental_loss=False)
 
     # init option
     var_init_op = tf.local_variables_initializer()
