@@ -88,7 +88,7 @@ tf.app.flags.DEFINE_bool('write_output', True,
 tf.app.flags.DEFINE_bool('reuse_vars', False,
                          """A global flag representing whether variables should be reused. This should be
                           set to False by default and is switched on or off by individual methods""")
-tf.app.flags.DEFINE_integer('max_clusters_per_session', 10,
+tf.app.flags.DEFINE_integer('max_clusters_per_session', None,
                             """The maximum number of clusters to benchmark per session. If not benchmarking this should probably be set to None""")
 FLAGS = tf.app.flags.FLAGS
 
