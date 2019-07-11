@@ -95,7 +95,7 @@ FLAGS = tf.app.flags.FLAGS
 
 def setup_data_iterator(input_dir):
     "Configures the data generator that is used to feed batches of data for inference"
-    mode = 'benchmark' if FLAGS.benchmark else 'inference'
+    mode = 'test' if FLAGS.benchmark else 'inference'
     data_gen = ClusterGenerator(input_dir, FLAGS.view_num, FLAGS.width, FLAGS.height, FLAGS.max_d, FLAGS.interval_scale, \
                 FLAGS.base_image_size, mode = mode, val_split = 0.0, output_scale = FLAGS.sample_scale, max_clusters_per_session = FLAGS.max_clusters_per_session)
     mvs_generator=iter(data_gen)

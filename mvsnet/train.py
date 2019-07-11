@@ -480,7 +480,7 @@ def train():
                         l = np.mean(np.asarray(out_losses))
                         l1 = np.mean(np.asarray(out_less_ones))
                         l3 = np.mean(np.asarray(out_less_threes))
-                        wandb.log({'loss': l,'less_one': l1,'less_three': l3,'time_per_step': duration},step=total_step)
+                        wandb.log({'loss': l,'less_one': l1,'less_three': l3,'time_per_step': duration}, step=total_step)
                         out_losses = []
                         out_less_ones = []
                         out_less_threes = []

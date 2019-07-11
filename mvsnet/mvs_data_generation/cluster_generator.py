@@ -59,7 +59,7 @@ class ClusterGenerator:
             self.sessions_dir = os.path.join(self.data_dir, 'train')
         elif self.mode == 'val':
             self.sessions_dir = os.path.join(self.data_dir, 'val')
-        elif self.mode == 'benchmark':
+        elif self.mode == 'test':
             self.sessions_dir = os.path.join(self.data_dir, 'test')
         elif self.mode == 'inference':
             self.sessions_dir = self.data_dir
@@ -207,14 +207,14 @@ class ClusterGenerator:
             output_cams: Numpy array of camera data that has been reformatted to match the output size of network
             image_index: The index of the reference image used for this cluster
         """
-        if self.mode == 'inference' or self.mode == 'benchmark':
+        if self.mode == 'inference' or self.mode == 'test':
             while True:
                 for c in self.clusters:
                     start = time.time()
                     images = c.images()
                     cams = c.cameras()
                     # Crop, scale and center images
-                    if self.mode == 'benchmark':
+                    if self.mode == 'test':
                         # We also need to retrieve GT depth data if we are benchmarking
                         depth = c.masked_reference_depth()
                         images, cams, depth = ut.scale_mvs_input(
@@ -250,7 +250,7 @@ class ClusterGenerator:
                         'output cams shape: {}'.format(output_cams.shape))
                     self.logger.debug('image index: {}'.format(image_index))
 
-                    if self.mode == 'benchmark':
+                    if self.mode == 'test':
                         yield (output_images, input_images, output_cams, full_cams, depth, image_index, c.session_dir)
                     else:
                         yield (output_images, input_images, output_cams, full_cams, image_index)
