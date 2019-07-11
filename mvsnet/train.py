@@ -185,7 +185,7 @@ def generator(n, mode):
         flip_cams = True
     gen = ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.width, FLAGS.height,
                                 FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode=mode, flip_cams=flip_cams, sessions_frac = FLAGS.dataset_fraction)
-    logger.info('Initializing generator with mode {}'.format(mode))
+    logger.info('Initializing generator with mode: {}'.format(mode))
     if mode == 'train':
         global training_sample_size
         training_sample_size = len(gen.clusters)
@@ -240,16 +240,7 @@ def setup_optimizer():
         opt: The tf.optimizer object to use
         global_step: a TF Variable representing the total number of iterations on this model 
         """
-    global training_sample_size
-    # We initialize a dummy generator so we can get the training_sample_size
-    dummy_gen = ClusterGenerator(FLAGS.train_data_root, mode='train', sessions_frac=FLAGS.dataset_fraction)
-    training_sample_size = len(dummy_gen.clusters)
 
-    if FLAGS.stepvalue is None:
-        # With this stepvalue, the lr will decay by a factor of decay_per_10_epoch every 10 epochs
-        decay_per_10_epoch = FLAGS.decay_per_10_epoch
-        FLAGS.stepvalue = int(
-            10 * np.log(FLAGS.gamma) * training_sample_size / np.log(decay_per_10_epoch))
     global_step = tf.Variable(0, trainable=False, name='global_step')
     lr_op = tf.train.exponential_decay(FLAGS.base_lr, global_step=global_step,
                                         decay_steps=FLAGS.stepvalue, decay_rate=FLAGS.gamma, name='lr')
@@ -453,8 +444,12 @@ def train():
                 out_losses = []
                 out_less_ones = []
                 out_less_threes = []
+                # We run this once before the for-loop because this initializes the generator and thus
+                # sets the training_sample_size parameter
+                out_opt, out_loss, out_less_one, out_less_three = sess.run(
+                    [train_opt, loss, less_one_accuracy, less_three_accuracy])
 
-                for i in range(training_sample_size):
+                for i in range(1, training_sample_size):
                     # run one batch
                     start_time = time.time()
                     try:
