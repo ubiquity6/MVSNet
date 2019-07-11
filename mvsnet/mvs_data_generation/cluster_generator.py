@@ -25,10 +25,12 @@ the case of training, validation or benchmarking.
 
 
 class ClusterGenerator:
-    def __init__(self, sessions_dir, view_num=3, image_width=1024, image_height=768, depth_num=256,
-                 interval_scale=1, base_image_size=1, include_empty=False, mode='training', val_split=0.1, rescaling=True, output_scale=0.25, flip_cams=True, sessions_frac=1.0, benchmark=False, max_clusters_per_session=None):
+    def __init__(self, data_dir, view_num=3, image_width=1024, image_height=768, depth_num=256,
+                 interval_scale=1, base_image_size=1, include_empty=False, mode='train', rescaling=True, output_scale=0.25, flip_cams=True, sessions_frac=1.0, max_clusters_per_session=None):
         self.logger = setup_logger('ClusterGenerator')
-        self.sessions_dir = sessions_dir
+        self.data_dir = data_dir
+        self.mode = mode
+        self.set_sessions_dir()
         self.view_num = view_num
         self.image_width = image_width
         self.image_height = image_height
@@ -40,26 +42,36 @@ class ClusterGenerator:
         self.base_image_size = base_image_size
         # Whether or not to include clusters w/ zero covisible views
         self.include_empty = include_empty
-        self.mode = mode  # One of 'training' or 'validation'
-        self.val_split = val_split  # Fraction of clusters to use for validation
         self.rescaling = rescaling
         # Factor by which output is scaled relative to input
         self.output_scale = output_scale
         self.flip_cams = flip_cams
         # The sessions_fraction [0,1] is the fraction of all available sessions in sessions_dir
         self.sessions_frac = sessions_frac
-        self.benchmark = benchmark
         # max clusters per session is used if you don't want to train on all the clusters in a session
         self.max_clusters_per_session = max_clusters_per_session
         self.parse_sessions()
-        self.set_iter_clusters()
+
+    def set_sessions_dir(self):
+        """ Sets which directory to use for creating clusters, depending on the mode of the data generator. If we are running inference then we 
+        we expect the data_dir to be a single session, rather than a dir containing multiple sessions """
+        if self.mode == 'train':
+            self.sessions_dir = os.path.join(self.data_dir, 'train')
+        elif self.mode == 'val':
+            self.sessions_dir = os.path.join(self.data_dir, 'val')
+        elif self.mode == 'benchmark':
+            self.sessions_dir = os.path.join(self.data_dir, 'test')
+        elif self.mode == 'inference':
+            self.sessions_dir = self.data_dir
+        self.logger.debug(
+            'Initializing cluster generator with sessions_dir {}'.format(self.sessions_dir))
 
     def parse_sessions(self):
         """ 
         Parses a directory of mvs training sessions and returns a 
         list of dictionaries describing visibility clusters from all sessions. If running
-        in 'training' or 'validation' mode then self.sessions_dir is expected to include multiple subdirectories
-        with individual sessions. If running in 'test' mode then self.sessions_dir is expected to include a single
+        in 'train' or 'val' mode then self.sessions_dir is expected to include multiple subdirectories
+        with individual sessions. If running in 'inference' mode then self.sessions_dir is expected to include a single
         session, which is what will be used for computing depth  maps.
 
         Returns:
@@ -67,9 +79,9 @@ class ClusterGenerator:
         """
         # TODO: Cache the session data afters its been parsed into clusters so that we don't have to
         # do this everytime since it takes a long time when we have many many sessions
-
         clusters = []
-        if self.mode == 'test':
+        if self.mode == 'inference':
+            # If we are running inference then we only load clusters from one directory
             self.load_clusters(self.sessions_dir, clusters)
         else:
             sessions = [f for f in tf.gfile.ListDirectory(
@@ -78,12 +90,9 @@ class ClusterGenerator:
             total_sessions = len(sessions)
             self.logger.info(
                 'There are {} total sessions'.format(total_sessions))
-            seed = 5  # We shuffle with the same random seed for reproducibility
-            random.Random(seed).shuffle(sessions)
             num_sessions = int(total_sessions * self.sessions_frac)
-            self.logger.info('{} sessions will be used '.format(num_sessions))
-            # TODO: Implement the train / val split at the session level rather than at the cluster level. This will also prevent the val
-            # generator from needing to load all of the clusters. In fact we might just want to do lazy loading of clusters
+            self.logger.info('{} sessions will be used to {}'.format(
+                num_sessions, self.mode))
             for s, session in enumerate(sessions[:num_sessions]):
                 session_dir = os.path.join(self.sessions_dir, session)
                 self.logger.debug('Parsing session dir {}'.format(session_dir))
@@ -92,15 +101,19 @@ class ClusterGenerator:
                 except Exception as e:
                     self.logger.debug(
                         'Failed to load clusters for session dir {} with exception {}'.format(session_dir, e))
-                if s % 25 == 0:
+                if s % 50 == 0:
                     self.logger.info(
                         'Parsed {} / {} sessions'.format(s, num_sessions))
 
-        self.logger.info(" There are {} clusters".format(len(clusters)))
+        if self.mode == 'train' or self.mode == 'val':
+            random.shuffle(clusters)
+        self.logger.info('{} clusters will be used to {}'.format(
+            len(clusters), self.mode))
         self.clusters = clusters
         return clusters
 
     def load_clusters(self, session_dir, clusters):
+        """ Loads all visibility clusters in a directory """
         with file_io.FileIO(os.path.join(session_dir, 'covisibility.json'), mode='r') as f:
             data = json.load(f)
         clusters_added = 0
@@ -118,63 +131,6 @@ class ClusterGenerator:
                 clusters.append(cluster)
                 clusters_added += 1
 
-    def get_clusters(self):
-        """ Gets mvs clusters for training and validation. It shuffles the clusters
-        from their original order, but does so deterministically.
-
-        Args:
-            sessions_dir: The location of mvs-training sessions
-            include_empty: Whether or not to include clusters w/o covisible views
-            val_split: The fraction of clusters to use for training
-        Returns:
-            train_clusters: A list of clusters to use for training
-            val_clusters: A list of clusters to use for validation
-        """
-        seed = 5  # We shuffle with the same random seed so that training stays in training
-        # and validation stays in validation. We don't shuffle on inference
-        if self.mode != 'test' and self.mode != 'benchmark':
-            random.Random(seed).shuffle(self.clusters)
-        num = len(self.clusters)
-        val_end = int(num*self.val_split)
-        # Partition all clusters into a training and validation set
-        train_clusters = self.clusters[val_end:]
-        val_clusters = self.clusters[:val_end]
-        # We shuffle the train and val clusters separately, so they don't mix
-        if self.mode != 'test' and self.mode != 'benchmark':
-            random.shuffle(train_clusters)
-            random.shuffle(val_clusters)
-        if self.mode == 'test' or self.mode == 'benchmark':
-            self.logger.info(" {} clusters will be used for testing".format(
-                len(train_clusters)))
-        else:
-            self.logger.info(" {} clusters will be used for training".format(
-                len(train_clusters)))
-            self.logger.info(" {} clusters will be used for validation".format(
-                len(val_clusters)))
-        self.train_clusters = train_clusters
-        self.val_clusters = val_clusters
-        return train_clusters, val_clusters
-
-    def set_iter_clusters(self):
-        """ Sets the clusters that will be returned by the iterator (train or val) """
-        if self.mode == 'test':
-            self.val_split = 0.0  # If we are testing, then we don't need a validation set
-        train_clusters, val_clusters = self.get_clusters()
-        if self.mode == 'training':
-            self.iter_clusters = train_clusters
-        elif self.mode == 'validation':
-            self.iter_clusters = val_clusters
-        elif self.mode == 'test':
-            # If we are testing, the val_split is zero, and we test on the all clusters (ignore the naming as train)
-            self.iter_clusters = train_clusters
-        elif self.mode == 'benchmark':
-            # If we are testing, the val_split is zero, and we test on the all clusters (ignore the naming as train)
-            self.iter_clusters = train_clusters
-        else:
-            self.logger.error(
-                "Mode {} is unsupported. Please use 'training' or 'validation' or 'test'".format(self.mode))
-            exit(1)
-
     def __iter__(self):
         """ Iterator for returning batches of data in the form that MVSNet expects when training or validation
         Yields:
@@ -183,9 +139,9 @@ class ClusterGenerator:
             depth: Ground truth depth map. This is masked, rescaled and reshaped
         """
 
-        if self.mode == 'training' or self.mode == 'validation':
+        if self.mode == 'train' or self.mode == 'val':
             while True:
-                for c in self.iter_clusters:
+                for c in self.clusters:
                     # We wrap this in a try/except block because we don't want to end execution of the program
                     # just because a cluster or two may have bad data
                     try:
@@ -230,6 +186,8 @@ class ClusterGenerator:
                             'Reference index: {}'.format(c.ref_index))
                         self.logger.debug('Cluster indices: {}. Session dir: {}'.format(
                             c.indices, c.session_dir))
+                        self.logger.debug('Cluster generator mode: {}.'.format(
+                            self.mode))
                         yield (images, cams, rescaled_depth, depth)
 
                         if self.flip_cams:
@@ -249,14 +207,14 @@ class ClusterGenerator:
             output_cams: Numpy array of camera data that has been reformatted to match the output size of network
             image_index: The index of the reference image used for this cluster
         """
-        if self.mode == 'test' or self.mode == 'benchmark':
+        if self.mode == 'inference' or self.mode == 'benchmark':
             while True:
-                for c in self.iter_clusters:
+                for c in self.clusters:
                     start = time.time()
                     images = c.images()
                     cams = c.cameras()
                     # Crop, scale and center images
-                    if self.benchmark:
+                    if self.mode == 'benchmark':
                         # We also need to retrieve GT depth data if we are benchmarking
                         depth = c.masked_reference_depth()
                         images, cams, depth = ut.scale_mvs_input(
@@ -292,7 +250,7 @@ class ClusterGenerator:
                         'output cams shape: {}'.format(output_cams.shape))
                     self.logger.debug('image index: {}'.format(image_index))
 
-                    if self.benchmark:
+                    if self.mode == 'benchmark':
                         yield (output_images, input_images, output_cams, full_cams, depth, image_index, c.session_dir)
                     else:
                         yield (output_images, input_images, output_cams, full_cams, image_index)

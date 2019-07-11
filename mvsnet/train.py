@@ -106,7 +106,7 @@ tf.app.flags.DEFINE_integer('snapshot', 5000,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.5,
                           """Learning rate decay rate.""")
-tf.app.flags.DEFINE_float('val_batch_size', 50,
+tf.app.flags.DEFINE_float('val_batch_size', 100,
                           """Number of images to run validation on when validation.""")
 tf.app.flags.DEFINE_float('train_steps_per_val', 500,
                           """Number of samples to train on before running a round of validation.""")
@@ -186,9 +186,9 @@ def generator(n, mode):
     gen = ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.width, FLAGS.height,
                                 FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode=mode, flip_cams=flip_cams, sessions_frac = FLAGS.dataset_fraction)
     logger.info('Initializing generator with mode {}'.format(mode))
-    if mode == 'training':
+    if mode == 'train':
         global training_sample_size
-        training_sample_size = len(gen.train_clusters)
+        training_sample_size = len(gen.clusters)
         if FLAGS.regularization == 'GRU':
             training_sample_size = training_sample_size * 2
         
@@ -200,7 +200,7 @@ def training_dataset(n):
     """
     generator_data_type = (tf.float32, tf.float32, tf.float32, tf.float32)
     training_set = tf.data.Dataset.from_generator(
-        lambda: generator(n, mode='training'), generator_data_type)
+        lambda: generator(n, mode='train'), generator_data_type)
     training_set = training_set.batch(FLAGS.batch_size)
     training_set = training_set.prefetch(buffer_size=1)
     return training_set
@@ -211,7 +211,7 @@ def validation_dataset(n):
     """
     generator_data_type = (tf.float32, tf.float32, tf.float32, tf.float32)
     validation_set = tf.data.Dataset.from_generator(
-        lambda: generator(n, mode='validation'), generator_data_type)
+        lambda: generator(n, mode='val'), generator_data_type)
     validation_set = validation_set.batch(FLAGS.batch_size)
     validation_set = validation_set.prefetch(buffer_size=1)
     return validation_set
@@ -242,8 +242,8 @@ def setup_optimizer():
         """
     global training_sample_size
     # We initialize a dummy generator so we can get the training_sample_size
-    dummy_gen = ClusterGenerator(FLAGS.train_data_root, mode='training', sessions_frac=FLAGS.dataset_fraction)
-    training_sample_size = len(dummy_gen.train_clusters)
+    dummy_gen = ClusterGenerator(FLAGS.train_data_root, mode='train', sessions_frac=FLAGS.dataset_fraction)
+    training_sample_size = len(dummy_gen.clusters)
 
     if FLAGS.stepvalue is None:
         # With this stepvalue, the lr will decay by a factor of decay_per_10_epoch every 10 epochs
@@ -298,6 +298,8 @@ def get_batch(training_iterator, validation_iterator):
         images, cams, depth, full_depth = training_iterator.get_next()
     else:
         images, cams, depth, full_depth = validation_iterator.get_next()
+
+    logger.info('Training status: {}'.format(training_status))
 
     images.set_shape(tf.TensorShape(
         [None, FLAGS.view_num, None, None, 3]))
@@ -413,12 +415,14 @@ def validate(sess, val_sum_file, loss, less_one_accuracy, less_three_accuracy, e
     print(Notify.INFO, '\n VAL STEP COMPLETED. Average loss: {}, Average less one: {}, Average less three: {}\n'.format(
         l, l1, l3))
     wandb.log({'val_loss':l,'val_less_one':l1,'val_less_three':l3}, step=total_step)
+    print(' *** Training status {} ***', training_status)
 
     with file_io.FileIO(val_sum_file, 'a+') as f:
         f.write('{},{},{},{}\n'.format(
             total_step, l, l1, l3))
     print(
         Notify.INFO, 'Validation output summary saved to: {}'.format(val_sum_file))
+    training_status = True
 
 
 
@@ -444,7 +448,6 @@ def train():
                     grads = opt.compute_gradients(loss)
                     tower_grads.append(grads)
 
-        #grads = tower_grads[0] #average_gradients(tower_grads)
         grads = average_gradients(tower_grads)
         train_opt = opt.apply_gradients(grads, global_step=global_step)
         saver = tf.train.Saver(tf.global_variables(), max_to_keep=None)
@@ -468,7 +471,6 @@ def train():
                 out_less_threes = []
 
                 for i in range(training_sample_size):
-                    training_status = True
                     # run one batch
                     start_time = time.time()
                     try:
@@ -480,7 +482,7 @@ def train():
                     duration = time.time() - start_time
 
                     out_losses.append(out_loss)
-                    out_less_ones.apppend(out_less_one)
+                    out_less_ones.append(out_less_one)
                     out_less_threes.append(out_less_three)
 
                     # print info
@@ -489,8 +491,8 @@ def train():
                               'epoch, %d, step %d, total_step %d, loss = %.4f, (< 1px) = %.4f, (< 3px) = %.4f (%.3f sec/step)' %
                               (epoch, step, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
 
-                    # We log to wandb every 100 steps so that its less noisy
-                    if step % 100 == 0:
+                    # We log more early on, then less later
+                    if (step < 1000 and step % 10 == 0) or (step % 100 == 0):
                         l = np.mean(np.asarray(out_losses))
                         l1 = np.mean(np.asarray(out_less_ones))
                         l3 = np.mean(np.asarray(out_less_threes))

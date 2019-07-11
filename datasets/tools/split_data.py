@@ -54,9 +54,9 @@ if __name__ == '__main__':
                         help="Diretory where data is")
     parser.add_argument('--train', type=float, default=0.9,
                         help="Fraction of data to use for training")
-    parser.add_argument('--val', type=str, default=0.05,
+    parser.add_argument('--val', type=str, default=0.075,
                         help="Fraction of data to use for validation")
-    parser.add_argument('--test', type=str, default=0.05,
+    parser.add_argument('--test', type=str, default=0.025,
                         help="Diretory where data is")
     args = parser.parse_args()
     assert (args.train + args.val +
