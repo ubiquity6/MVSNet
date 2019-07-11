@@ -38,7 +38,7 @@ tf.app.flags.DEFINE_integer('ckpt_step', 1350000,
 tf.app.flags.DEFINE_string('run_name', None,
                            """A name to use for wandb logging""")
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 6,
+tf.app.flags.DEFINE_integer('view_num', 4,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 256,
                             """Maximum depth step when testing.""")
@@ -83,7 +83,7 @@ tf.app.flags.DEFINE_bool('wandb', False,
 tf.app.flags.DEFINE_bool('benchmark', False,
                          """If benchmark is True, the network results will be benchmarked against GT.
                          This should only be used if the input_dir contains GT depth maps""")
-tf.app.flags.DEFINE_bool('write_output', False,
+tf.app.flags.DEFINE_bool('write_output', True,
                          """When benchmarking you can set this to False if you don't need the output""")
 tf.app.flags.DEFINE_bool('reuse_vars', False,
                          """A global flag representing whether variables should be reused. This should be
@@ -322,7 +322,7 @@ def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, output_dir=N
         depth_map = tf.image.resize_bilinear(
             depth_map, [full_depth_shape[1], full_depth_shape[2]])
     loss, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
-        depth_map, full_depth, depth_start, depth_end)
+        depth_map, full_depth, depth_start, depth_end, experimental_loss=False)
 
     # init option
     var_init_op = tf.local_variables_initializer()

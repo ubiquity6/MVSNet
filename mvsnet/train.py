@@ -96,11 +96,11 @@ tf.app.flags.DEFINE_integer('batch_size', 1,
                             """Training batch size.""")
 tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
-tf.app.flags.DEFINE_float('base_lr', 0.00025,
+tf.app.flags.DEFINE_float('base_lr', 0.001,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
-tf.app.flags.DEFINE_integer('stepvalue', 90000,
+tf.app.flags.DEFINE_integer('stepvalue', 60000,
                             """Step interval to decay learning rate.""")
 tf.app.flags.DEFINE_integer('snapshot', 5000,
                             """Step interval to save the model.""")
@@ -110,7 +110,7 @@ tf.app.flags.DEFINE_float('val_batch_size', 50,
                           """Number of images to run validation on when validation.""")
 tf.app.flags.DEFINE_float('train_steps_per_val', 500,
                           """Number of samples to train on before running a round of validation.""")
-tf.app.flags.DEFINE_float('dataset_fraction', 1.0,
+tf.app.flags.DEFINE_float('dataset_fraction', 0.2,
                           """Fraction of dataset to use for training. Float between 0 and 1. NOTE: For training a production model
                            you should use 1, but for experiments it may be useful to use a fraction less than 1.""")
 tf.app.flags.DEFINE_float('decay_per_10_epoch', 0.01,
@@ -444,6 +444,7 @@ def train():
                     grads = opt.compute_gradients(loss)
                     tower_grads.append(grads)
 
+        #grads = tower_grads[0] #average_gradients(tower_grads)
         grads = average_gradients(tower_grads)
         train_opt = opt.apply_gradients(grads, global_step=global_step)
         saver = tf.train.Saver(tf.global_variables(), max_to_keep=None)
@@ -462,6 +463,9 @@ def train():
                 step = 0
                 sess.run(training_iterator.initializer)
                 sess.run(validation_iterator.initializer)
+                out_losses = []
+                out_less_ones = []
+                out_less_threes = []
 
                 for i in range(training_sample_size):
                     training_status = True
@@ -475,12 +479,25 @@ def train():
                         break
                     duration = time.time() - start_time
 
+                    out_losses.append(out_loss)
+                    out_less_ones.apppend(out_less_one)
+                    out_less_threes.append(out_less_three)
+
                     # print info
                     if step % FLAGS.display == 0:
                         print(Notify.INFO,
                               'epoch, %d, step %d, total_step %d, loss = %.4f, (< 1px) = %.4f, (< 3px) = %.4f (%.3f sec/step)' %
                               (epoch, step, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
-                        wandb.log({'loss':out_loss,'less_one':out_less_one,'less_three':out_less_three,'time_per_step':duration},step=total_step)
+
+                    # We log to wandb every 100 steps so that its less noisy
+                    if step % 100 == 0:
+                        l = np.mean(np.asarray(out_losses))
+                        l1 = np.mean(np.asarray(out_less_ones))
+                        l3 = np.mean(np.asarray(out_less_threes))
+                        wandb.log({'loss': l,'less_one': l1,'less_three': l3,'time_per_step': duration},step=total_step)
+                        out_losses = []
+                        out_less_ones = []
+                        out_less_threes = []
 
                     save_model(sess, saver, total_step, step)
                     step += FLAGS.batch_size * FLAGS.num_gpus
