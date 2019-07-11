@@ -276,15 +276,8 @@ def initialize_trainer():
     logger.info("Flags: {}".format(FLAGS))
     mu.initialize_wandb(FLAGS)
 
-    # Prepare validation summary 
-    val_sum_file = os.path.join(
-        FLAGS.logs_dir, 'validation_summary-{}.txt'.format(train_session_start))
-    with file_io.FileIO(val_sum_file, 'w+') as f:
-        header = 'train_step,val_loss,val_less_one,val_less_three\n'
-        f.write(header)
-    return val_sum_file
 
-def get_batch(training_iterator, validation_iterator):
+def get_batch(iterator):
     """ Gets a batch of data for training or validation, and reshapes for input to network 
     Returns:
         images: Input images at full resolution
@@ -294,12 +287,7 @@ def get_batch(training_iterator, validation_iterator):
         depth_interval: The distance between depth buckets
         full_depth: The depth image at full resolution
         """
-    if training_status:
-        images, cams, depth, full_depth = training_iterator.get_next()
-    else:
-        images, cams, depth, full_depth = validation_iterator.get_next()
-
-    logger.info('Training status: {}'.format(training_status))
+    images, cams, depth, full_depth = iterator.get_next()
 
     images.set_shape(tf.TensorShape(
         [None, FLAGS.view_num, None, None, 3]))
@@ -315,9 +303,9 @@ def get_batch(training_iterator, validation_iterator):
         tf.slice(cams, [0, 0, 1, 3, 3], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
     return images, cams, depth, depth_start, depth_interval, full_depth, depth_end
 
-def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth, depth_end, i):
+def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth, depth_end, i, validate=False):
     """ Performs inference with specified network and return loss function """
-    is_master_gpu = True if i == 0 else False
+    is_master_gpu = True if i == 0 and validate == False else False
     # inference
     if FLAGS.regularization == '3DCNNs':
         main_trainable = False if FLAGS.refinement_train_mode == 'refine_only' and FLAGS.refinement==True else True
@@ -384,8 +372,7 @@ def save_model(sess, saver, total_step, step):
                 ckpt_path, Notify.ENDC)
         saver.save(sess, ckpt_path, global_step=total_step)
 
-def validate(sess, val_sum_file, loss, less_one_accuracy, less_three_accuracy, epoch, total_step):
-    training_status = False
+def validate(sess, loss, less_one_accuracy, less_three_accuracy, epoch, total_step):
     val_loss = []
     val_less_one = []
     val_less_three = []
@@ -415,20 +402,11 @@ def validate(sess, val_sum_file, loss, less_one_accuracy, less_three_accuracy, e
     print(Notify.INFO, '\n VAL STEP COMPLETED. Average loss: {}, Average less one: {}, Average less three: {}\n'.format(
         l, l1, l3))
     wandb.log({'val_loss':l,'val_less_one':l1,'val_less_three':l3}, step=total_step)
-    print(' *** Training status {} ***', training_status)
-
-    with file_io.FileIO(val_sum_file, 'a+') as f:
-        f.write('{},{},{},{}\n'.format(
-            total_step, l, l1, l3))
-    print(
-        Notify.INFO, 'Validation output summary saved to: {}'.format(val_sum_file))
-    training_status = True
-
 
 
 def train():
     """ Executes the main training loop for multiple epochs """
-    val_sum_file = initialize_trainer()
+    initialize_trainer()
 
     with tf.Graph().as_default(), tf.device('/cpu:0'):
 
@@ -437,16 +415,22 @@ def train():
         validation_iterator = parallel_iterator('validation')
         opt, global_step = setup_optimizer()    
 
-        global training_status
-        training_status = True  # This is set to true when training, false when validating
         tower_grads = [] # to keep track of the gradients across all towers.
         for i in xrange(FLAGS.num_gpus):
             with tf.device('/gpu:%d' % i):
                 with tf.name_scope('Model_tower%d' % i) as scope:
-                    images, cams, depth, depth_start, depth_interval, full_depth, depth_end = get_batch(training_iterator, validation_iterator)
+                    images, cams, depth, depth_start, depth_interval, full_depth, depth_end = get_batch(training_iterator)
                     loss, less_one_accuracy, less_three_accuracy = get_loss(images, cams, depth, depth_start, depth_interval, full_depth, depth_end,  i)
                     grads = opt.compute_gradients(loss)
                     tower_grads.append(grads)
+
+        for i in xrange(FLAGS.num_gpus):
+            with tf.device('/gpu:%d' % i):
+                with tf.name_scope('Model_tower%d' % i) as scope:
+                    val_images, val_cams, val_depth, val_depth_start, val_depth_interval, val_full_depth, val_depth_end = get_batch(
+                        validation_iterator)
+                    val_loss, val_less_one_accuracy, val_less_three_accuracy = get_loss(
+                        val_images, val_cams, val_depth, val_depth_start, val_depth_interval, val_full_depth, val_depth_end,  i, validate=True)
 
         grads = average_gradients(tower_grads)
         train_opt = opt.apply_gradients(grads, global_step=global_step)
@@ -507,7 +491,7 @@ def train():
 
                     # Validate model against validation set of data
                     if i % FLAGS.train_steps_per_val == 0:
-                        validate(sess, val_sum_file, loss, less_one_accuracy, less_three_accuracy, epoch, total_step)
+                        validate(sess, val_loss, val_less_one_accuracy, val_less_three_accuracy, epoch, total_step)
 
 
 def main(argv=None):  # pylint: disable=unused-argument

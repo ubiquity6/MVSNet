@@ -186,7 +186,7 @@ class ClusterGenerator:
                             'Reference index: {}'.format(c.ref_index))
                         self.logger.debug('Cluster indices: {}. Session dir: {}'.format(
                             c.indices, c.session_dir))
-                        self.logger.debug('Cluster generator mode: {}.'.format(
+                        self.logger.debug('Cluster generator mode: {} '.format(
                             self.mode))
                         yield (images, cams, rescaled_depth, depth)
 
