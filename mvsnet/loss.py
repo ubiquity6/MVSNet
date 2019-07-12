@@ -13,7 +13,9 @@ FLAGS = tf.app.flags.FLAGS
 
 
 def non_zero_mean_absolute_diff(y_true, y_pred, interval, denom_exponent=1):
-    """ non zero mean absolute loss for one batch """
+    """ non zero mean absolute loss for one batch
+
+     """
     with tf.name_scope('MAE'):
         denom_exponent = tf.constant(denom_exponent, dtype=tf.float32)
         shape = tf.shape(y_pred)

@@ -110,7 +110,7 @@ tf.app.flags.DEFINE_float('val_batch_size', 100,
                           """Number of images to run validation on when validation.""")
 tf.app.flags.DEFINE_float('train_steps_per_val', 500,
                           """Number of samples to train on before running a round of validation.""")
-tf.app.flags.DEFINE_float('dataset_fraction', 0.2,
+tf.app.flags.DEFINE_float('dataset_fraction', 0.01,
                           """Fraction of dataset to use for training. Float between 0 and 1. NOTE: For training a production model
                            you should use 1, but for experiments it may be useful to use a fraction less than 1.""")
 tf.app.flags.DEFINE_float('decay_per_10_epoch', 0.01,

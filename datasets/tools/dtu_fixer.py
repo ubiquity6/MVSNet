@@ -52,7 +52,7 @@ def fix_depths(data_dir):
                 with open(camera_path, 'w') as g:
                     json.dump(camera_data, g)
             if n % 20 == 0:
-                print('Fixed {} sessions'.format(i))
+                print('Fixed {} sessions'.format(n))
             n += 1
 
 
