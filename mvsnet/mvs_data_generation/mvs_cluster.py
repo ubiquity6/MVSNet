@@ -94,9 +94,6 @@ class Cluster:
         return cam
 
     def intrinsics_matrix(self, camera_data, focal_rescale=1.0):
-        # dtu magic focal_rescale = 1.171875
-        # if 'dtu_scan_' in self.session_dir:
-        #    focal_rescale = 1.171875
         mat = np.zeros((3, 3))
         intrin = camera_data["intrinsics"]
         mat[0, 0], mat[1, 1] = intrin["fx"] * \
