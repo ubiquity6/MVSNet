@@ -267,7 +267,6 @@ def initialize_trainer():
     train_session_start = time.time()
     logger.info("Training starting at time: {}".format(train_session_start))
     logger.info("Tensorflow version: {}".format(tf.__version__))
-    logger.info("Flags: {}".format(FLAGS))
     mu.initialize_wandb(FLAGS)
 
 

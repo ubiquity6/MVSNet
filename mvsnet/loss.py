@@ -17,11 +17,20 @@ def masked_loss(y_true, y_pred, interval, alpha, beta):
 
     This function parameterizes a loss of the general form:
 
-    Loss = N * |y_true-y_pred|^alpha / y_true^beta
+    Loss = N * (|y_true-y_pred| + noise(y_true))^alpha / y_true^beta
 
     where alpha and beta are scalars, and N is a normalization constant which depends on 
-    alpha, beta and y_true. Additionally the numerator and denominator are multipled by a mask to mask out
+    alpha, beta and y_true. noise(y_true) is the expected noise of the measurement of y_true, and helps to prevent overfitting to noise
+    in the depth map. 
+    Additionally the numerator and denominator are multipled by a mask to mask out
     invalid pixels in the label. This was omitted above for notational simplicity.
+
+    See this paper for a description and analysis of the noise model of the kinect sensor
+    -- https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3304120/
+
+    One key takeaway is that the random error in kinect depth maps increases quadratically with distance and 
+    reaches a maximum of 4cm at the maximum range of 5 meters
+
 
      """
 
@@ -32,7 +41,8 @@ def masked_loss(y_true, y_pred, interval, alpha, beta):
         denominator = tf.abs(tf.reduce_sum(mask_true, axis=[1, 2, 3])) + 1e-6
         if beta != 1.0:
             denominator = tf.math.pow(denominator, beta)
-        numerator = tf.abs((y_true - y_pred) + 1e-6)
+        epsilon = 2.0
+        numerator = tf.abs(y_true - y_pred)
         if alpha != 1.0:
             numerator = tf.math.pow(
                 numerator, alpha)
