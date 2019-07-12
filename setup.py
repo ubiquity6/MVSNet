@@ -18,6 +18,7 @@ def required_packages():
         'Pillow==6.1.0',
         'imageio==2.5.0',
         'wandb==0.8.4',
+        'click==0.7',
     ]
     return PACKAGES
 
