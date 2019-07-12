@@ -33,8 +33,6 @@ logger = mu.setup_logger('mvsnet-train')
 # params for datasets
 tf.app.flags.DEFINE_string('train_data_root', None,
                            """Path to dtu dataset.""")
-tf.app.flags.DEFINE_string('logs_dir', None,
-                           """Path to store the log.""")
 tf.app.flags.DEFINE_string('model_dir', None,
                            """Path to save the model.""")
 tf.app.flags.DEFINE_string('model_load_dir', None,
