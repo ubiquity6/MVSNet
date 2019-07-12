@@ -91,8 +91,8 @@ class ClusterGenerator:
             self.logger.info(
                 'There are {} total sessions'.format(total_sessions))
             num_sessions = int(total_sessions * self.sessions_frac)
-            self.logger.info('{} sessions will be used to {}'.format(
-                num_sessions, self.mode))
+            self.logger.info('{} sessions will be used to {} because you set the fraction of sessions to use to {}'.format(
+                num_sessions, self.mode, self.sessions_frac))
             for s, session in enumerate(sessions[:num_sessions]):
                 session_dir = os.path.join(self.sessions_dir, session)
                 self.logger.debug('Parsing session dir {}'.format(session_dir))
