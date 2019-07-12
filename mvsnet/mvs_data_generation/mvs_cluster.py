@@ -83,7 +83,6 @@ class Cluster:
                           (self.depth_num - 1)) * self.interval_scale
 
         cam = np.zeros((2, 4, 4))
-        #rand = (1.0 + random.uniform(-.0025, .0025))
         cam[0] = self.pose_matrix(camera_data)
         cam[0, 0:3, 3] *= 1000  # convert translation vector from meters to mmm
         cam[1, 0:3, 0:3] = self.intrinsics_matrix(camera_data)

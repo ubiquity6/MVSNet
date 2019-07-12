@@ -70,7 +70,7 @@ tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method.""")
 tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
                            """Optimizer to use. One of 'momentum', 'rmsprop' or 'adam' """)
-tf.app.flags.DEFINE_boolean('refinement', True,
+tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for 3DCNNs""")
 tf.app.flags.DEFINE_string('refinement_train_mode', 'main_only',
                             """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
@@ -118,7 +118,7 @@ tf.app.flags.DEFINE_bool('wandb', True,
 tf.app.flags.DEFINE_bool('reuse_vars', False,
                          """A global flag representing whether variables should be reused. This should be 
                           set to False by default and is switched on or off by individual methods""")
-tf.app.flags.DEFINE_float('alpha', 0.2,
+tf.app.flags.DEFINE_float('alpha', 0.25,
                           """ The exponent to use in the numerator of the loss function. Canonical value is 1.0""")
 tf.app.flags.DEFINE_float('beta', 1.0,
                           """ The exponent to use in the denominator of the loss function. Canonical value is 1.0""")
