@@ -20,7 +20,6 @@ The ClusterGenerator object serves up batches of data to be used for training a 
 The data returned consists of multiple input images and their associated camera information, along with GT depth maps in 
 the case of training, validation or benchmarking.
 
-
 """
 
 
