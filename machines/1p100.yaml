@@ -2,3 +2,25 @@ trainingInput:
   scaleTier: CUSTOM
   # Configure a master worker with 1 p100
   masterType: standard_p100
+  hyperparameters:
+    goal: MAXIMIZE
+    hyperparameterMetricTag: val_less_one
+    maxTrials: 30
+    maxParallelTrials: 1
+    enableTrialEarlyStopping: True
+    params:
+    - parameterName: base_lr
+      type: DOUBLE
+      minValue: .0001
+      maxValue: .01
+      scaleType: UNIT_LOG_SCALE
+    - parameterName: stepvalue
+      type: INTEGER
+      minValue: 50000
+      maxValue: 200000
+      scaleType: UNIT_LINEAR_SCALE
+    - parameterName: alpha
+      type: DOUBLE
+      minValue: .01
+      maxValue: 2.0
+      scaleType: UNIT_LOG_SCALE
