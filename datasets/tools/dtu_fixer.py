@@ -37,7 +37,7 @@ def fix_depths(data_dir):
                 depth_path = os.path.join(depths_dir, depths[j])
                 img = cv2.imread(depth_path, cv2.IMREAD_ANYDEPTH)
                 res = cv2.resize(img, dsize=(640, 512),
-                                 interpolation=cv2.INTER_LINEAR)
+                                 interpolation=cv2.INTER_NEAREST)
                 cv2.imwrite(depth_path, res)
             cameras_dir = os.path.join(sdir, 'cameras')
             cameras = os.listdir(cameras_dir)
