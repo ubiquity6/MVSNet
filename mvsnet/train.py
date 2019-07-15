@@ -26,6 +26,7 @@ import wandb
 import tensorflow as tf
 import subprocess
 from tensorflow.python.lib.io import file_io
+from tensorflow.core.framework.summary_pb2 import Summary
 
 
 logger = mu.setup_logger('mvsnet-train')
@@ -37,7 +38,7 @@ tf.app.flags.DEFINE_string('model_dir', None,
                            """Path to save the model.""")
 tf.app.flags.DEFINE_string('model_load_dir', None,
                            """Path to load the saved model. If not specified, model will be loaded from model_dir""")
-tf.app.flags.DEFINE_string('job-dir', None,
+tf.app.flags.DEFINE_string('job_dir', None,
                            """Path to save job artifacts""")
 tf.app.flags.DEFINE_boolean('train_dtu', True,
                             """Whether to train.""")
@@ -424,6 +425,11 @@ def train():
                         validation_iterator)
                     val_loss, val_less_one_accuracy, val_less_three_accuracy = get_loss(
                         val_images, val_cams, val_depth, val_depth_start, val_depth_interval, val_full_depth, val_depth_end,  i, validate=True)
+        
+        # Add validation metrics to tf summary
+        summary = Summary(value=[Summary.Value(tag='val_less_one', simple_value=val_less_one_accuracy)])
+        eval_path = os.path.join(FLAGS.job_dir, 'val_less_one')
+        summary_writer = tf.summary.FileWriter(eval_path)
 
         grads = average_gradients(tower_grads)
         train_opt = opt.apply_gradients(grads, global_step=global_step)
