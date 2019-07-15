@@ -1,7 +1,6 @@
 import logging
 import tensorflow as tf
 import os
-import wandb
 import subprocess
 
 """
@@ -62,5 +61,7 @@ def initialize_wandb(args, project='mvsnet'):
             subprocess.call(["wandb", "login", wandb_key])
         except Exception as e:
             subprocess.call([ "python", "-m", "wandb.cli", "login", wandb_key])
+    # inline import for external use of inference
+    import wandb
     wandb.init(project=project, name=args.run_name)
     wandb.config.update(args, allow_val_change=True)
