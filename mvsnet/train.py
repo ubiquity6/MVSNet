@@ -52,7 +52,7 @@ tf.app.flags.DEFINE_string('run_name', None,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 3,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 128,
+tf.app.flags.DEFINE_integer('max_d', 16,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('width', 512,
                             """Maximum image width when training.""")
@@ -105,9 +105,9 @@ tf.app.flags.DEFINE_integer('snapshot', 5000,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.5,
                           """Learning rate decay rate.""")
-tf.app.flags.DEFINE_float('val_batch_size', 100,
+tf.app.flags.DEFINE_float('val_batch_size', 10,
                           """Number of images to run validation on when validation.""")
-tf.app.flags.DEFINE_float('train_steps_per_val', 500,
+tf.app.flags.DEFINE_float('train_steps_per_val', 2,
                           """Number of samples to train on before running a round of validation.""")
 tf.app.flags.DEFINE_float('dataset_fraction', 1.0,
                           """Fraction of dataset to use for training. Float between 0 and 1. NOTE: For training a production model
@@ -366,7 +366,7 @@ def save_model(sess, saver, total_step, step):
                 ckpt_path, Notify.ENDC)
         saver.save(sess, ckpt_path, global_step=total_step)
 
-def validate(sess, loss, less_one_accuracy, less_three_accuracy, epoch, total_step):
+def validate(sess, loss, less_one_accuracy, less_three_accuracy, epoch, total_step, summary_writer):
     val_loss = []
     val_less_one = []
     val_less_three = []
@@ -396,6 +396,10 @@ def validate(sess, loss, less_one_accuracy, less_three_accuracy, epoch, total_st
     print(Notify.INFO, '\n VAL STEP COMPLETED. Average loss: {}, Average less one: {}, Average less three: {}\n'.format(
         l, l1, l3))
     wandb.log({'val_loss':l,'val_less_one':l1,'val_less_three':l3}, step=total_step)
+    summary = Summary(value=[Summary.Value(
+        tag='val_less_one', simple_value=out_less_one)])
+    summary_writer.add_summary(summary)
+    summary_writer.flush()
 
 
 def train():
@@ -427,7 +431,6 @@ def train():
                         val_images, val_cams, val_depth, val_depth_start, val_depth_interval, val_full_depth, val_depth_end,  i, validate=True)
         
         # Add validation metrics to tf summary
-        summary = Summary(value=[Summary.Value(tag='val_less_one', simple_value=val_less_one_accuracy)])
         eval_path = os.path.join(FLAGS.job_dir, 'val_less_one')
         summary_writer = tf.summary.FileWriter(eval_path)
 
@@ -494,7 +497,7 @@ def train():
 
                     # Validate model against validation set of data
                     if i % FLAGS.train_steps_per_val == 0:
-                        validate(sess, val_loss, val_less_one_accuracy, val_less_three_accuracy, epoch, total_step)
+                        validate(sess, val_loss, val_less_one_accuracy, val_less_three_accuracy, epoch, total_step, summary_writer)
 
 
 def main(argv=None):  # pylint: disable=unused-argument
