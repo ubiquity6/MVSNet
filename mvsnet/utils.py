@@ -1,7 +1,6 @@
 import logging
 import tensorflow as tf
 import os
-import wandb
 import subprocess
 
 """
@@ -54,6 +53,7 @@ def ml_engine():
 
 
 def initialize_wandb(args, project='mvsnet'):
+    import wandb
     wandb_key = "08b2fe7c6c5d56f49b9c2dee8f24ca14c0679509"
     if ml_engine():
         subprocess.call(["/root/.local/bin/wandb", "login", wandb_key])
