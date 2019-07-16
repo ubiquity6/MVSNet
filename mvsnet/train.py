@@ -22,7 +22,7 @@ import argparse
 from random import randint
 import cv2
 import numpy as np
-import wandb
+# import wandb
 import tensorflow as tf
 import subprocess
 from tensorflow.python.lib.io import file_io

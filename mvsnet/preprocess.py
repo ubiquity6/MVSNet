@@ -22,7 +22,7 @@ import scipy.io
 import urllib
 from tensorflow.python.lib.io import file_io
 from mvsnet.utils import setup_logger
-import wandb
+# import wandb
 logger = setup_logger('image-processing')
 FLAGS = tf.app.flags.FLAGS
 
