@@ -25,7 +25,8 @@ def required_packages_ml_engine():
         'scipy>=0.18',
         'matplotlib>=1.5',
         'Pillow>=3.1.2',
-        'imageio'
+        'imageio',
+        'wandb',
     ]
     return PACKAGES
 
