@@ -38,7 +38,7 @@ tf.app.flags.DEFINE_string('model_dir', None,
                            """Path to save the model.""")
 tf.app.flags.DEFINE_string('model_load_dir', None,
                            """Path to load the saved model. If not specified, model will be loaded from model_dir""")
-tf.app.flags.DEFINE_string('job_dir', None,
+tf.app.flags.DEFINE_string('job-dir', None,
                            """Path to save job artifacts""")
 tf.app.flags.DEFINE_boolean('train_dtu', True,
                             """Whether to train.""")
@@ -52,7 +52,7 @@ tf.app.flags.DEFINE_string('run_name', None,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 3,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 16,
+tf.app.flags.DEFINE_integer('max_d', 128,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('width', 512,
                             """Maximum image width when training.""")
@@ -95,21 +95,21 @@ tf.app.flags.DEFINE_integer('batch_size', 1,
                             """Training batch size.""")
 tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
-tf.app.flags.DEFINE_float('base_lr', 0.001,
+tf.app.flags.DEFINE_float('base_lr', None,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
-tf.app.flags.DEFINE_integer('stepvalue', 70000,
+tf.app.flags.DEFINE_integer('stepvalue', None,
                             """Step interval to decay learning rate.""")
 tf.app.flags.DEFINE_integer('snapshot', 5000,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.5,
                           """Learning rate decay rate.""")
-tf.app.flags.DEFINE_float('val_batch_size', 10,
+tf.app.flags.DEFINE_float('val_batch_size', 100,
                           """Number of images to run validation on when validation.""")
-tf.app.flags.DEFINE_float('train_steps_per_val', 2,
+tf.app.flags.DEFINE_float('train_steps_per_val', 500,
                           """Number of samples to train on before running a round of validation.""")
-tf.app.flags.DEFINE_float('dataset_fraction', 1.0,
+tf.app.flags.DEFINE_float('dataset_fraction', 0.01,
                           """Fraction of dataset to use for training. Float between 0 and 1. NOTE: For training a production model
                            you should use 1, but for experiments it may be useful to use a fraction less than 1.""")
 tf.app.flags.DEFINE_float('decay_per_10_epoch', 0.01,
@@ -119,7 +119,7 @@ tf.app.flags.DEFINE_bool('wandb', True,
 tf.app.flags.DEFINE_bool('reuse_vars', False,
                          """A global flag representing whether variables should be reused. This should be 
                           set to False by default and is switched on or off by individual methods""")
-tf.app.flags.DEFINE_float('alpha', 0.25,
+tf.app.flags.DEFINE_float('alpha', None,
                           """ The exponent to use in the numerator of the loss function. Canonical value is 1.0""")
 tf.app.flags.DEFINE_float('beta', 1.0,
                           """ The exponent to use in the denominator of the loss function. Canonical value is 1.0""")
@@ -431,7 +431,7 @@ def train():
                         val_images, val_cams, val_depth, val_depth_start, val_depth_interval, val_full_depth, val_depth_end,  i, validate=True)
         
         # Add validation metrics to tf summary
-        eval_path = os.path.join(FLAGS.job_dir, 'val_less_one')
+        eval_path = os.path.join(FLAGS.model_dir, 'checkpoints', 'val_less_one')
         summary_writer = tf.summary.FileWriter(eval_path)
 
         grads = average_gradients(tower_grads)
