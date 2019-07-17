@@ -25,6 +25,7 @@ from mvsnet.utils import setup_logger
 logger = setup_logger('image-processing')
 FLAGS = tf.app.flags.FLAGS
 
+# simple hack to avoid having to import wandb for inference
 def import_wandb_idempotent():
   if 'wandb' not in sys.modules:
     global wandb
