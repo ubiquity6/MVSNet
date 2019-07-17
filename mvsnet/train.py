@@ -112,7 +112,7 @@ tf.app.flags.DEFINE_float('train_steps_per_val', 500,
 tf.app.flags.DEFINE_float('dataset_fraction', 0.01,
                           """Fraction of dataset to use for training. Float between 0 and 1. NOTE: For training a production model
                            you should use 1, but for experiments it may be useful to use a fraction less than 1.""")
-tf.app.flags.DEFINE_float('decay_per_10_epoch', 0.01,
+tf.app.flags.DEFINE_float('decay_per_10_epoch', 1.0,
                           """ The fraction by which learning rate should decay every 10 epochs""")
 tf.app.flags.DEFINE_bool('wandb', True,
                          """Whether or not to log results to wandb""")
