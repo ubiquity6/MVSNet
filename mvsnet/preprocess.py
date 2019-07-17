@@ -27,6 +27,7 @@ FLAGS = tf.app.flags.FLAGS
 
 def import_wandb_idempotent():
   if 'wandb' not in sys.modules:
+    global wandb
     import wandb
 
 def center_image(img):
