@@ -51,7 +51,7 @@ tf.app.flags.DEFINE_string('run_name', None,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 3,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 16,
+tf.app.flags.DEFINE_integer('max_d', 128,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('width', 512,
                             """Maximum image width when training.""")
@@ -78,12 +78,12 @@ tf.app.flags.DEFINE_string('refinement_train_mode', 'refine_only',
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
 tf.app.flags.DEFINE_string('network_mode', 'normal',
                             """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
-tf.app.flags.DEFINE_string('refinement_network', 'unet',
+tf.app.flags.DEFINE_string('refinement_network', 'original',
                             """Specifies network to use for refinement. One of 'original' or 'unet'. 
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
 tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
                             """Whether to upsample depth map to input resolution before the refinement network""")
-tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
+tf.app.flags.DEFINE_boolean('refine_with_confidence', False,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
 tf.app.flags.DEFINE_boolean('refine_with_stereo', False,
                             """Whether or not to inject a stereo partner into refinement network""")
@@ -98,7 +98,7 @@ tf.app.flags.DEFINE_float('base_lr', 0.001,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
-tf.app.flags.DEFINE_integer('stepvalue', 70000,
+tf.app.flags.DEFINE_integer('stepvalue', 40000,
                             """Step interval to decay learning rate.""")
 tf.app.flags.DEFINE_integer('snapshot', 5000,
                             """Step interval to save the model.""")
