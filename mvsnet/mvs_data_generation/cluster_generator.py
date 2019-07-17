@@ -86,6 +86,9 @@ class ClusterGenerator:
             sessions = [f for f in tf.gfile.ListDirectory(
                 self.sessions_dir) if not f.startswith('.') if not f.endswith('.txt')]
             sessions = sorted(sessions)
+            # We shuffle so that if sessions_frac < 1 we aren't biased towards one part of the alphabet
+            seed = 5
+            random.Random(seed).shuffle(sessions)
             total_sessions = len(sessions)
             self.logger.info(
                 'There are {} total sessions'.format(total_sessions))
