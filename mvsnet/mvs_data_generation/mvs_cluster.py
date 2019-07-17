@@ -27,7 +27,7 @@ Copyright 2019, Chris Heinrich, Ubiquity6.
 class Cluster:
     def __init__(self, session_dir, ref_index, views, min_depth, max_depth, view_num,
                  image_width=1024, image_height=768, depth_num=256, interval_scale=1.0):
-        self.logger = setup_logger('Cluster')
+        self.logger = setup_logger('MVSCluster')
         self.session_dir = session_dir
         self.ref_index = int(ref_index)
         self.views = views
@@ -41,6 +41,24 @@ class Cluster:
         self.interval_scale = interval_scale
         self.set_indices()
         self.rescale = 1.0
+
+    def to_json(self):
+        data = {}
+        data['session_dir'] = self.session_dir
+        data['ref_index'] = self.ref_index
+        data['views'] = self.views
+        data['min_depth'] = self.min_depth
+        data['max_depth'] = self.max_depth
+        data['view_num'] = self.view_num
+        data['image_width'] = self.image_width
+        data['image_height'] = self.image_height
+        data['depth_num'] = self.depth_num
+        data['interval_scale'] = self.interval_scale
+        return data
+
+    def from_json(data):
+        return Cluster(data['session_dir'], data['ref_index'], data['views'], data['min_depth'], data['max_depth'], data['view_num'],
+                       data['image_width'], data['image_height'], data['depth_num'], data['interval_scale'])
 
     def image_path(self, index):
         return os.path.join(self.session_dir, 'images', '{}.jpg'.format(index))

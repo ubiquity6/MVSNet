@@ -26,7 +26,8 @@ the case of training, validation or benchmarking.
 
 class ClusterGenerator:
     def __init__(self, data_dir, view_num=3, image_width=1024, image_height=768, depth_num=256,
-                 interval_scale=1, base_image_size=1, include_empty=False, mode='train', rescaling=True, output_scale=0.25, flip_cams=True, sessions_frac=1.0, max_clusters_per_session=None, clear_cache=False):
+                 interval_scale=1, base_image_size=1, include_empty=False, mode='train', rescaling=True,
+                 output_scale=0.25, flip_cams=True, sessions_frac=1.0, max_clusters_per_session=None, clear_cache=False):
         self.logger = setup_logger('ClusterGenerator')
         self.data_dir = data_dir
         self.mode = mode
@@ -85,10 +86,13 @@ class ClusterGenerator:
         cache_exists = os.path.isfile(cache_path)
         clusters = []
         if cache_exists and self.clear_cache is False:
-            # load clusters from cache if they exist
+            # load pickled clusters from cache
             self.logger.info(
                 'Loading pickled cluster objects from {}'.format(cache_path))
-            clusters = pickle.loads(open(cache_path, 'rb'))
+            json_clusters = pickle.load(open(cache_path, 'rb'))
+            for data in json_clusters:
+                clusters.append(Cluster(data['session_dir'], data['ref_index'], data['views'], data['min_depth'], data['max_depth'], data['view_num'],
+                                        data['image_width'], data['image_height'], data['depth_num'], data['interval_scale']))
 
         else:
             if self.mode == 'inference':
@@ -116,10 +120,7 @@ class ClusterGenerator:
                     if s % 50 == 0:
                         self.logger.info(
                             'Parsed {} / {} sessions'.format(s, num_sessions))
-
-            self.logger.info(
-                'Pickling cluster objects to {}'.format(cache_path))
-            pickle.dumps(clusters, open(cache_path, 'wb'))
+            self.cache_clusters(clusters, cache_path)
 
         if self.mode == 'train' or self.mode == 'val':
             random.shuffle(clusters)
@@ -127,6 +128,14 @@ class ClusterGenerator:
             len(clusters), self.mode))
         self.clusters = clusters
         return clusters
+
+    def cache_clusters(self, clusters, path):
+        self.logger.info(
+            'Pickling cluster objects to {}'.format(path))
+        json_clusters = []
+        for c in clusters:
+            json_clusters.append(c.to_json())
+        pickle.dump(json_clusters, open(path, 'wb'), - 1)
 
     def load_clusters(self, session_dir, clusters):
         """ Loads all visibility clusters in a directory """
