@@ -33,8 +33,6 @@ logger = mu.setup_logger('mvsnet-train')
 # params for datasets
 tf.app.flags.DEFINE_string('train_data_root', None,
                            """Path to dtu dataset.""")
-tf.app.flags.DEFINE_string('logs_dir', None,
-                           """Path to store the log.""")
 tf.app.flags.DEFINE_string('model_dir', None,
                            """Path to save the model.""")
 tf.app.flags.DEFINE_string('model_load_dir', None,
@@ -72,7 +70,7 @@ tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method.""")
 tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
                            """Optimizer to use. One of 'momentum', 'rmsprop' or 'adam' """)
-tf.app.flags.DEFINE_boolean('refinement', True,
+tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for 3DCNNs""")
 tf.app.flags.DEFINE_string('refinement_train_mode', 'main_only',
                             """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
@@ -96,17 +94,17 @@ tf.app.flags.DEFINE_integer('batch_size', 1,
                             """Training batch size.""")
 tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
-tf.app.flags.DEFINE_float('base_lr', 0.00025,
+tf.app.flags.DEFINE_float('base_lr', 0.001,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
-tf.app.flags.DEFINE_integer('stepvalue', 90000,
+tf.app.flags.DEFINE_integer('stepvalue', 70000,
                             """Step interval to decay learning rate.""")
 tf.app.flags.DEFINE_integer('snapshot', 5000,
                             """Step interval to save the model.""")
 tf.app.flags.DEFINE_float('gamma', 0.5,
                           """Learning rate decay rate.""")
-tf.app.flags.DEFINE_float('val_batch_size', 50,
+tf.app.flags.DEFINE_float('val_batch_size', 100,
                           """Number of images to run validation on when validation.""")
 tf.app.flags.DEFINE_float('train_steps_per_val', 500,
                           """Number of samples to train on before running a round of validation.""")
@@ -120,6 +118,11 @@ tf.app.flags.DEFINE_bool('wandb', True,
 tf.app.flags.DEFINE_bool('reuse_vars', False,
                          """A global flag representing whether variables should be reused. This should be 
                           set to False by default and is switched on or off by individual methods""")
+tf.app.flags.DEFINE_float('alpha', 0.25,
+                          """ The exponent to use in the numerator of the loss function. Canonical value is 1.0""")
+tf.app.flags.DEFINE_float('beta', 1.0,
+                          """ The exponent to use in the denominator of the loss function. Canonical value is 1.0""")
+                        
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -185,10 +188,10 @@ def generator(n, mode):
         flip_cams = True
     gen = ClusterGenerator(FLAGS.train_data_root, FLAGS.view_num, FLAGS.width, FLAGS.height,
                                 FLAGS.max_d, FLAGS.interval_scale, FLAGS.base_image_size, mode=mode, flip_cams=flip_cams, sessions_frac = FLAGS.dataset_fraction)
-    logger.info('Initializing generator with mode {}'.format(mode))
-    if mode == 'training':
+    logger.info('Initializing generator with mode: {}'.format(mode))
+    if mode == 'train':
         global training_sample_size
-        training_sample_size = len(gen.train_clusters)
+        training_sample_size = len(gen.clusters)
         if FLAGS.regularization == 'GRU':
             training_sample_size = training_sample_size * 2
         
@@ -200,7 +203,7 @@ def training_dataset(n):
     """
     generator_data_type = (tf.float32, tf.float32, tf.float32, tf.float32)
     training_set = tf.data.Dataset.from_generator(
-        lambda: generator(n, mode='training'), generator_data_type)
+        lambda: generator(n, mode='train'), generator_data_type)
     training_set = training_set.batch(FLAGS.batch_size)
     training_set = training_set.prefetch(buffer_size=1)
     return training_set
@@ -211,7 +214,7 @@ def validation_dataset(n):
     """
     generator_data_type = (tf.float32, tf.float32, tf.float32, tf.float32)
     validation_set = tf.data.Dataset.from_generator(
-        lambda: generator(n, mode='validation'), generator_data_type)
+        lambda: generator(n, mode='val'), generator_data_type)
     validation_set = validation_set.batch(FLAGS.batch_size)
     validation_set = validation_set.prefetch(buffer_size=1)
     return validation_set
@@ -240,16 +243,7 @@ def setup_optimizer():
         opt: The tf.optimizer object to use
         global_step: a TF Variable representing the total number of iterations on this model 
         """
-    global training_sample_size
-    # We initialize a dummy generator so we can get the training_sample_size
-    dummy_gen = ClusterGenerator(FLAGS.train_data_root, mode='training', sessions_frac=FLAGS.dataset_fraction)
-    training_sample_size = len(dummy_gen.train_clusters)
 
-    if FLAGS.stepvalue is None:
-        # With this stepvalue, the lr will decay by a factor of decay_per_10_epoch every 10 epochs
-        decay_per_10_epoch = FLAGS.decay_per_10_epoch
-        FLAGS.stepvalue = int(
-            10 * np.log(FLAGS.gamma) * training_sample_size / np.log(decay_per_10_epoch))
     global_step = tf.Variable(0, trainable=False, name='global_step')
     lr_op = tf.train.exponential_decay(FLAGS.base_lr, global_step=global_step,
                                         decay_steps=FLAGS.stepvalue, decay_rate=FLAGS.gamma, name='lr')
@@ -273,18 +267,10 @@ def initialize_trainer():
     train_session_start = time.time()
     logger.info("Training starting at time: {}".format(train_session_start))
     logger.info("Tensorflow version: {}".format(tf.__version__))
-    logger.info("Flags: {}".format(FLAGS))
     mu.initialize_wandb(FLAGS)
 
-    # Prepare validation summary 
-    val_sum_file = os.path.join(
-        FLAGS.logs_dir, 'validation_summary-{}.txt'.format(train_session_start))
-    with file_io.FileIO(val_sum_file, 'w+') as f:
-        header = 'train_step,val_loss,val_less_one,val_less_three\n'
-        f.write(header)
-    return val_sum_file
 
-def get_batch(training_iterator, validation_iterator):
+def get_batch(iterator):
     """ Gets a batch of data for training or validation, and reshapes for input to network 
     Returns:
         images: Input images at full resolution
@@ -294,10 +280,7 @@ def get_batch(training_iterator, validation_iterator):
         depth_interval: The distance between depth buckets
         full_depth: The depth image at full resolution
         """
-    if training_status:
-        images, cams, depth, full_depth = training_iterator.get_next()
-    else:
-        images, cams, depth, full_depth = validation_iterator.get_next()
+    images, cams, depth, full_depth = iterator.get_next()
 
     images.set_shape(tf.TensorShape(
         [None, FLAGS.view_num, None, None, 3]))
@@ -313,9 +296,9 @@ def get_batch(training_iterator, validation_iterator):
         tf.slice(cams, [0, 0, 1, 3, 3], [FLAGS.batch_size, 1, 1, 1, 1]), [FLAGS.batch_size])
     return images, cams, depth, depth_start, depth_interval, full_depth, depth_end
 
-def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth, depth_end, i):
+def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth, depth_end, i, validate=False):
     """ Performs inference with specified network and return loss function """
-    is_master_gpu = True if i == 0 else False
+    is_master_gpu = True if i == 0 and validate == False else False
     # inference
     if FLAGS.regularization == '3DCNNs':
         main_trainable = False if FLAGS.refinement_train_mode == 'refine_only' and FLAGS.refinement==True else True
@@ -337,14 +320,14 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
                 FLAGS.refinement_network, is_master_gpu, trainable=refine_trainable, upsample_depth=FLAGS.upsample_before_refinement, refine_with_confidence=FLAGS.refine_with_confidence, stereo_image=stereo_image)
                                     # regression loss
             loss0, less_one_main, less_three_main = mvsnet_regression_loss(
-                depth_map, depth_image, depth_start, depth_end)
+                depth_map, depth_image, depth_start, depth_end, alpha=FLAGS.alpha, beta=FLAGS.beta)
             # If we upsampled the depth image to full resolution we need to compute loss with full_depth
             if FLAGS.upsample_before_refinement:
                 loss1, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
-                    refined_depth_map, full_depth, depth_start, depth_end)
+                    refined_depth_map, full_depth, depth_start, depth_end, alpha=FLAGS.alpha, beta=FLAGS.beta)
             else:
                 loss1, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
-                    refined_depth_map, depth_image, depth_start, depth_end)
+                    refined_depth_map, depth_image, depth_start, depth_end, alpha=FLAGS.alpha, beta=FLAGS.beta)
             if FLAGS.refinement_train_mode == 'refine_only':
                 # If we are only training the refinement network we are only computing gradients wrt the refinement network params
                 # These gradients on l0 will be zero, so no need to include l0 in the loss
@@ -358,7 +341,7 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
         else:
             # regression loss
             loss, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
-                depth_map, depth_image, depth_start, depth_end)
+                depth_map, depth_image, depth_start, depth_end, alpha=FLAGS.alpha, beta=FLAGS.beta)
         return loss, less_one_accuracy, less_three_accuracy
 
     elif FLAGS.regularization == 'GRU':
@@ -382,8 +365,7 @@ def save_model(sess, saver, total_step, step):
                 ckpt_path, Notify.ENDC)
         saver.save(sess, ckpt_path, global_step=total_step)
 
-def validate(sess, val_sum_file, loss, less_one_accuracy, less_three_accuracy, epoch, total_step):
-    training_status = False
+def validate(sess, loss, less_one_accuracy, less_three_accuracy, epoch, total_step):
     val_loss = []
     val_less_one = []
     val_less_three = []
@@ -414,17 +396,10 @@ def validate(sess, val_sum_file, loss, less_one_accuracy, less_three_accuracy, e
         l, l1, l3))
     wandb.log({'val_loss':l,'val_less_one':l1,'val_less_three':l3}, step=total_step)
 
-    with file_io.FileIO(val_sum_file, 'a+') as f:
-        f.write('{},{},{},{}\n'.format(
-            total_step, l, l1, l3))
-    print(
-        Notify.INFO, 'Validation output summary saved to: {}'.format(val_sum_file))
-
-
 
 def train():
     """ Executes the main training loop for multiple epochs """
-    val_sum_file = initialize_trainer()
+    initialize_trainer()
 
     with tf.Graph().as_default(), tf.device('/cpu:0'):
 
@@ -433,16 +408,22 @@ def train():
         validation_iterator = parallel_iterator('validation')
         opt, global_step = setup_optimizer()    
 
-        global training_status
-        training_status = True  # This is set to true when training, false when validating
         tower_grads = [] # to keep track of the gradients across all towers.
         for i in xrange(FLAGS.num_gpus):
             with tf.device('/gpu:%d' % i):
                 with tf.name_scope('Model_tower%d' % i) as scope:
-                    images, cams, depth, depth_start, depth_interval, full_depth, depth_end = get_batch(training_iterator, validation_iterator)
+                    images, cams, depth, depth_start, depth_interval, full_depth, depth_end = get_batch(training_iterator)
                     loss, less_one_accuracy, less_three_accuracy = get_loss(images, cams, depth, depth_start, depth_interval, full_depth, depth_end,  i)
                     grads = opt.compute_gradients(loss)
                     tower_grads.append(grads)
+
+        for i in xrange(FLAGS.num_gpus):
+            with tf.device('/gpu:%d' % i):
+                with tf.name_scope('Model_tower%d' % i) as scope:
+                    val_images, val_cams, val_depth, val_depth_start, val_depth_interval, val_full_depth, val_depth_end = get_batch(
+                        validation_iterator)
+                    val_loss, val_less_one_accuracy, val_less_three_accuracy = get_loss(
+                        val_images, val_cams, val_depth, val_depth_start, val_depth_interval, val_full_depth, val_depth_end,  i, validate=True)
 
         grads = average_gradients(tower_grads)
         train_opt = opt.apply_gradients(grads, global_step=global_step)
@@ -462,9 +443,15 @@ def train():
                 step = 0
                 sess.run(training_iterator.initializer)
                 sess.run(validation_iterator.initializer)
+                out_losses = []
+                out_less_ones = []
+                out_less_threes = []
+                # We run this once before the for-loop because this initializes the generator and thus
+                # sets the training_sample_size parameter
+                out_opt, out_loss, out_less_one, out_less_three = sess.run(
+                    [train_opt, loss, less_one_accuracy, less_three_accuracy])
 
-                for i in range(training_sample_size):
-                    training_status = True
+                for i in range(1, training_sample_size):
                     # run one batch
                     start_time = time.time()
                     try:
@@ -475,12 +462,25 @@ def train():
                         break
                     duration = time.time() - start_time
 
+                    out_losses.append(out_loss)
+                    out_less_ones.append(out_less_one)
+                    out_less_threes.append(out_less_three)
+
                     # print info
                     if step % FLAGS.display == 0:
                         print(Notify.INFO,
                               'epoch, %d, step %d, total_step %d, loss = %.4f, (< 1px) = %.4f, (< 3px) = %.4f (%.3f sec/step)' %
                               (epoch, step, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
-                        wandb.log({'loss':out_loss,'less_one':out_less_one,'less_three':out_less_three,'time_per_step':duration},step=total_step)
+
+                    # We do some averaging to smooth out the loss signal
+                    if (step % 50 == 0):
+                        l = np.mean(np.asarray(out_losses))
+                        l1 = np.mean(np.asarray(out_less_ones))
+                        l3 = np.mean(np.asarray(out_less_threes))
+                        wandb.log({'loss': l,'less_one': l1,'less_three': l3,'time_per_step': duration}, step=total_step)
+                        out_losses = []
+                        out_less_ones = []
+                        out_less_threes = []
 
                     save_model(sess, saver, total_step, step)
                     step += FLAGS.batch_size * FLAGS.num_gpus
@@ -488,7 +488,7 @@ def train():
 
                     # Validate model against validation set of data
                     if i % FLAGS.train_steps_per_val == 0:
-                        validate(sess, val_sum_file, loss, less_one_accuracy, less_three_accuracy, epoch, total_step)
+                        validate(sess, val_loss, val_less_one_accuracy, val_less_three_accuracy, epoch, total_step)
 
 
 def main(argv=None):  # pylint: disable=unused-argument

@@ -7,12 +7,15 @@ from __future__ import print_function
 import os
 import time
 import sys
+import wandb
 import tensorflow as tf
+import numpy as np
 from mvsnet.cnn_wrapper.common import Notify
+from mvsnet.loss import mvsnet_regression_loss
 import mvsnet.utils as mu
 import mvsnet.predictlib as pl
 
-logger = mu.setup_logger('mvsnet-inference')
+logger = mu.setup_logger('mvsnet-test')
 sys.path.append("../")
 
 # dataset parameters
@@ -25,10 +28,12 @@ tf.app.flags.DEFINE_string('model_dir',
                            """Path to restore the model.""")
 tf.app.flags.DEFINE_integer('ckpt_step', 1350000,
                             """ckpt  step.""")
+tf.app.flags.DEFINE_string('run_name', None,
+                           """A name to use for wandb logging""")
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 6,
+tf.app.flags.DEFINE_integer('view_num', 4,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 256,
+tf.app.flags.DEFINE_integer('max_d', 16,
                             """Maximum depth step when testing.""")
 tf.app.flags.DEFINE_integer('width', 1024,
                             """Maximum image width when testing.""")
@@ -66,7 +71,7 @@ tf.app.flags.DEFINE_boolean('refine_with_confidence', False,
 tf.app.flags.DEFINE_bool('visualize', False,
                          """If visualize is true, the inference script will write some auxiliary files for visualization and debugging purposes.
                          This is useful when developing and debugging, but should probably be turned off in production""")
-tf.app.flags.DEFINE_bool('benchmark', False,
+tf.app.flags.DEFINE_bool('benchmark', True,
                          """If benchmark is True, the network results will be benchmarked against GT.
                          This should only be used if the input_dir contains GT depth maps""")
 tf.app.flags.DEFINE_bool('write_output', True,
@@ -79,21 +84,32 @@ tf.app.flags.DEFINE_integer('max_clusters_per_session', None,
 FLAGS = tf.app.flags.FLAGS
 
 
-def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
-    """ Performs inference using trained MVSNet model on data located in input_dir and writes data to disk"""
+def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, output_dir=None, width=None, height=None):
+    """ Performs inference using trained MVSNet model on data located in input_dir. This method is similar to compute_depth_maps, however it benchmarks the resulting 
+    data against GT depths. This is useful for benchmarking models and should only be run on input data with GT depth maps  """
     output_dir = pl.init_inference(input_dir, output_dir, width, height)
     mvs_iterator, sample_size = pl.setup_data_iterator(input_dir)
-    scaled_images, full_images, scaled_cams, full_cams, image_index = mvs_iterator.get_next()
+    scaled_images, full_images, scaled_cams, full_cams, full_depth, image_index, session_dir = mvs_iterator.get_next()
 
     depth_start, depth_end, depth_interval, depth_num = pl.set_shapes(
         scaled_images, full_images, scaled_cams, full_cams)
 
     depth_map, prob_map, residual_depth_map = pl.get_depth_and_prob_map(
         full_images, scaled_cams, depth_start, depth_interval)
+    out_residual_depth_map = None
+    full_depth_shape = tf.shape(full_depth)
+    upsample_depth = False if FLAGS.refinement == True and FLAGS.upsample_before_refinement == True else True
+    if upsample_depth:
+        depth_map = tf.image.resize_bilinear(
+            depth_map, [full_depth_shape[1], full_depth_shape[2]])
+    loss, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
+        depth_map, full_depth, depth_start, depth_end)
 
     # init option
     var_init_op = tf.local_variables_initializer()
     init_op, config = mu.init_session()
+    out_residual_depth_map = None
+
     with tf.Session(config=config) as sess:
         # initialization
         sess.run(var_init_op)
@@ -102,19 +118,38 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
         sess.run(mvs_iterator.initializer)
         for step in range(sample_size):
             start_time = time.time()
-            out_residual_depth_map = None
-            fetches = [depth_map, prob_map, scaled_images,
-                       scaled_cams, full_cams, full_images, image_index, residual_depth_map]
             try:
-                out_depth_map, out_prob_map, out_images, out_cams, out_full_cams, out_full_images, out_index, out_residual_depth_map = sess.run(
-                    fetches)
+                if FLAGS.refinement:
+                    out_depth_map, out_prob_map, out_images, out_cams, out_full_cams, out_full_images, out_index, out_session_dir, out_loss, out_less_one, out_less_three, out_residual_depth_map = sess.run(
+                        [depth_map, prob_map, scaled_images, scaled_cams, full_cams, full_images, image_index, session_dir, loss, less_one_accuracy, less_three_accuracy, residual_depth_map])
+                else:
+                    out_depth_map, out_prob_map, out_images, out_cams, out_full_cams, out_full_images, out_index, out_session_dir, out_loss, out_less_one, out_less_three = sess.run(
+                        [depth_map, prob_map, scaled_images, scaled_cams, full_cams, full_images, image_index, session_dir, loss, less_one_accuracy, less_three_accuracy])
             except tf.errors.OutOfRangeError:
-                logger.info("all dense finished")  # ==> "End of dataset"
+                print("all dense finished")  # ==> "End of dataset"
                 break
             print(Notify.INFO, 'depth inference %d/%d finished. Image index %d. (%.3f sec/step)' % (step, sample_size, out_index, time.time() - start_time),
                   Notify.ENDC)
-            pl.write_output(output_dir, out_depth_map, out_prob_map, out_images,
-                            out_cams, out_full_cams, out_full_images, out_index, out_residual_depth_map)
+            logger.debug(
+                'Performed inference for reference image {}'.format(out_index))
+            logger.info('Image {} loss = {}'.format(
+                out_index, out_loss))
+            logger.info('Image {} less one = {}'.format(
+                out_index, out_less_one))
+            logger.info('Image {} less three = {}'.format(
+                out_index, out_less_three))
+
+            write_dir = os.path.join(str(out_session_dir[0]), 'depths_mvsnet')
+            mu.mkdir_p(write_dir)
+            if FLAGS.write_output:
+                pl.write_output(write_dir, out_depth_map, out_prob_map, out_images,
+                             out_cams, out_full_cams, out_full_images, out_index, out_residual_depth_map)
+            losses.append(out_loss)
+            less_ones.append(out_less_one)
+            less_threes.append(out_less_three)
+            if FLAGS.wandb:
+                wandb.log(
+                    {'loss': out_loss, 'less_three': out_less_three, 'less_one': out_less_one})
 
 
 def main(_):  # pylint: disable=unused-argument
@@ -123,21 +158,22 @@ def main(_):  # pylint: disable=unused-argument
     Acceptable input for the input_dir are (1) a single test folder, or (2) a folder containing multiple
     test folders. We check to see which one it is
     """
-    run_dir = os.path.isfile(os.path.join(
-        FLAGS.input_dir, 'covisibility.json'))
-    sub_dirs = [f for f in tf.gfile.ListDirectory(
-                FLAGS.input_dir) if not f.startswith('.') if not f.endswith('.txt')]
-    if run_dir:
-        compute_depth_maps(FLAGS.input_dir)
-    else:
-        for f in sub_dirs:
-            data_dir = os.path.join(
-                FLAGS.input_dir, f)
-            logger.info('Computing depth maps on dir {}'.format(data_dir))
-            compute_depth_maps(data_dir)
-            # By setting reuse_vars = True this ensures that the second time compute_depth_maps
-            # is run that the computational graph is not re-initialized
-            tf.app.flags.FLAGS.reuse_vars = True
+    losses = []
+    less_ones = []
+    less_threes = []
+    benchmark_depth_maps(FLAGS.input_dir, losses,
+                         less_ones, less_threes)
+    avg_loss = np.asarray(losses).mean()
+    avg_less_one = np.asarray(less_ones).mean()
+    avg_less_three = np.asarray(less_threes).mean()
+    logger.info(' ** Average Loss = {}'.format(avg_loss))
+    logger.info(
+        ' ** Average Less one = {}'.format(avg_less_one))
+    logger.info(
+        ' ** Average Less three = {}'.format(avg_less_three))
+    if FLAGS.wandb:
+        wandb.log(
+            {'avg_loss': avg_loss, 'avg_less_three': avg_less_three, 'avg_less_one': avg_less_one})
 
 
 if __name__ == '__main__':

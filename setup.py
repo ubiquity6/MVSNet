@@ -3,7 +3,7 @@ from setuptools import find_packages
 
 # Package Metadata
 NAME='MVSNet'
-VERSION='0.1.1'
+VERSION='0.1.2'
 
 def required_packages():
     PACKAGES = [
@@ -14,9 +14,11 @@ def required_packages():
         'scipy==0.18',
         'matplotlib==1.5',
         'tensorflow==1.12.0',
+        'funcsigs==1.0.2',
         'Pillow==6.1.0',
         'imageio==2.5.0',
         'wandb==0.8.4',
+        'Click==0.7',
     ]
     return PACKAGES
 
