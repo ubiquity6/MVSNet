@@ -82,12 +82,15 @@ class ClusterGenerator:
         """
         cache_path = os.path.join(self.sessions_dir, 'clusters.pickle')
         cache_exists = os.path.isfile(cache_path)
+        # os.path.isfile(cache_path)
+        cache_exists = file_io.file_exists(cache_path)
         clusters = []
         if cache_exists and self.clear_cache is False and self.mode != 'inference':
             # load pickled clusters from cache
             self.logger.info(
                 'Loading pickled cluster objects from {}'.format(cache_path))
-            json_clusters = pickle.load(open(cache_path, 'rb'))
+            #json_clusters = pickle.load(open(cache_path, 'rb'))
+            json_clusters = pickle.load(file_io.FileIO(cache_path, 'rb'))
             for data in json_clusters:
                 clusters.append(Cluster(data['session_dir'], data['ref_index'], data['views'], data['min_depth'], data['max_depth'], data['view_num'],
                                         data['image_width'], data['image_height'], data['depth_num'], data['interval_scale']))
@@ -133,7 +136,8 @@ class ClusterGenerator:
         json_clusters = []
         for c in clusters:
             json_clusters.append(c.to_json())
-        pickle.dump(json_clusters, open(path, 'wb'), - 1)
+        #pickle.dump(json_clusters, open(path, 'wb'), - 1)
+        pickle.dump(json_clusters, file_io.FileIO(path, mode='wb'), -1)
 
     def load_clusters(self, session_dir, clusters):
         """ Loads all visibility clusters in a directory """
