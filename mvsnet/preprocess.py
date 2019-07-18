@@ -22,9 +22,14 @@ import scipy.io
 import urllib
 from tensorflow.python.lib.io import file_io
 from mvsnet.utils import setup_logger
-import wandb
 logger = setup_logger('image-processing')
 FLAGS = tf.app.flags.FLAGS
+
+# simple hack to avoid having to import wandb for inference
+def import_wandb_idempotent():
+  if 'wandb' not in sys.modules:
+    global wandb
+    import wandb
 
 def center_image(img):
     """ normalize image input """
@@ -191,6 +196,7 @@ def write_inverse_depth_map(image, file_path, exp=2):
     inv_depth = np.clip(inv_depth, 0, max_int).astype(np.uint16)
     imageio.imsave(file_path, inv_depth)
     if FLAGS.wandb:
+        import_wandb_idempotent()
         if 'unrefined' in file_path:
             wandb.log({"inverse_depths_unrefined": wandb.Image(
                 (inv_depth.astype(np.float32)*(255.0/65535.0)), caption=file_path)})
@@ -205,6 +211,7 @@ def write_reference_image(image, file_path):
     image_file = file_io.FileIO(file_path, mode='w')
     scipy.misc.imsave(image_file, image)
     if FLAGS.wandb:
+        import_wandb_idempotent()
         wandb.log({"reference_images": wandb.Image(
             image, caption=file_path)})
 
@@ -238,6 +245,7 @@ def write_residual_depth_map(image, file_path, exp=0.5):
     residual_color[:, :, 2] = (0.3*(residual_plus+residual_minus)).astype(np.uint8)
     imageio.imsave(file_path, residual_color)
     if FLAGS.wandb:
+        import_wandb_idempotent()
         wandb.log({"residual_depths": wandb.Image(
             residual_color, caption=file_path)})
 
@@ -253,6 +261,7 @@ def write_depth_map(file_path, image, visualization = True):
 def write_confidence_map(file_path, image):
     # we convert probabilities in range [0,1] to ints in range [0, 2^16-1]
     if FLAGS.wandb:
+        import_wandb_idempotent()
         wandb.log({"confidence_maps": wandb.Image(
             (image*255), caption=file_path)})
     scale_factor = 65535

@@ -80,12 +80,10 @@ class ClusterGenerator:
         Returns:
             clusters: A list of Cluster objects. See mvs_cluster.py for their declaration.
         """
-        # TODO: Cache the session data afters its been parsed into clusters so that we don't have to
-        # do this everytime since it takes a long time when we have many many sessions
         cache_path = os.path.join(self.sessions_dir, 'clusters.pickle')
         cache_exists = os.path.isfile(cache_path)
         clusters = []
-        if cache_exists and self.clear_cache is False:
+        if cache_exists and self.clear_cache is False and self.mode != 'inference':
             # load pickled clusters from cache
             self.logger.info(
                 'Loading pickled cluster objects from {}'.format(cache_path))
@@ -120,7 +118,7 @@ class ClusterGenerator:
                     if s % 50 == 0:
                         self.logger.info(
                             'Parsed {} / {} sessions'.format(s, num_sessions))
-            self.cache_clusters(clusters, cache_path)
+                self.cache_clusters(clusters, cache_path)
 
         if self.mode == 'train' or self.mode == 'val':
             random.shuffle(clusters)

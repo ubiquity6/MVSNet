@@ -26,6 +26,7 @@ import wandb
 import tensorflow as tf
 import subprocess
 from tensorflow.python.lib.io import file_io
+from tensorflow.core.framework.summary_pb2 import Summary
 
 
 logger = mu.setup_logger('mvsnet-train')
@@ -94,7 +95,7 @@ tf.app.flags.DEFINE_integer('batch_size', 1,
                             """Training batch size.""")
 tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
-tf.app.flags.DEFINE_float('base_lr', 0.001,
+tf.app.flags.DEFINE_float('base_lr', None,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
@@ -108,17 +109,17 @@ tf.app.flags.DEFINE_float('val_batch_size', 100,
                           """Number of images to run validation on when validation.""")
 tf.app.flags.DEFINE_float('train_steps_per_val', 500,
                           """Number of samples to train on before running a round of validation.""")
-tf.app.flags.DEFINE_float('dataset_fraction', 1.0,
+tf.app.flags.DEFINE_float('dataset_fraction', 0.01,
                           """Fraction of dataset to use for training. Float between 0 and 1. NOTE: For training a production model
                            you should use 1, but for experiments it may be useful to use a fraction less than 1.""")
-tf.app.flags.DEFINE_float('decay_per_10_epoch', 0.01,
+tf.app.flags.DEFINE_float('decay_per_10_epoch', 1.0,
                           """ The fraction by which learning rate should decay every 10 epochs""")
 tf.app.flags.DEFINE_bool('wandb', True,
                          """Whether or not to log results to wandb""")
 tf.app.flags.DEFINE_bool('reuse_vars', False,
                          """A global flag representing whether variables should be reused. This should be 
                           set to False by default and is switched on or off by individual methods""")
-tf.app.flags.DEFINE_float('alpha', 0.25,
+tf.app.flags.DEFINE_float('alpha', None,
                           """ The exponent to use in the numerator of the loss function. Canonical value is 1.0""")
 tf.app.flags.DEFINE_float('beta', 1.0,
                           """ The exponent to use in the denominator of the loss function. Canonical value is 1.0""")
@@ -365,7 +366,7 @@ def save_model(sess, saver, total_step, step):
                 ckpt_path, Notify.ENDC)
         saver.save(sess, ckpt_path, global_step=total_step)
 
-def validate(sess, loss, less_one_accuracy, less_three_accuracy, epoch, total_step):
+def validate(sess, loss, less_one_accuracy, less_three_accuracy, epoch, total_step, summary_writer):
     val_loss = []
     val_less_one = []
     val_less_three = []
@@ -395,6 +396,10 @@ def validate(sess, loss, less_one_accuracy, less_three_accuracy, epoch, total_st
     print(Notify.INFO, '\n VAL STEP COMPLETED. Average loss: {}, Average less one: {}, Average less three: {}\n'.format(
         l, l1, l3))
     wandb.log({'val_loss':l,'val_less_one':l1,'val_less_three':l3}, step=total_step)
+    summary = Summary(value=[Summary.Value(
+        tag='val_less_one', simple_value=out_less_one)])
+    summary_writer.add_summary(summary)
+    summary_writer.flush()
 
 
 def train():
@@ -424,6 +429,10 @@ def train():
                         validation_iterator)
                     val_loss, val_less_one_accuracy, val_less_three_accuracy, val_denom = get_loss(
                         val_images, val_cams, val_depth, val_depth_start, val_depth_interval, val_full_depth, val_depth_end,  i, validate=True)
+        
+        # Add validation metrics to tf summary
+        eval_path = os.path.join(FLAGS.model_dir, 'checkpoints', 'val_less_one')
+        summary_writer = tf.summary.FileWriter(eval_path)
 
         grads = average_gradients(tower_grads)
         train_opt = opt.apply_gradients(grads, global_step=global_step)
@@ -489,7 +498,7 @@ def train():
 
                     # Validate model against validation set of data
                     if i % FLAGS.train_steps_per_val == 0:
-                        validate(sess, val_loss, val_less_one_accuracy, val_less_three_accuracy, epoch, total_step)
+                        validate(sess, val_loss, val_less_one_accuracy, val_less_three_accuracy, epoch, total_step, summary_writer)
 
 
 def main(argv=None):  # pylint: disable=unused-argument
