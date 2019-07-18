@@ -319,14 +319,14 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
             refined_depth_map, residual_depth_map = depth_refine(depth_map, ref_image, prob_map, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, \
                 FLAGS.refinement_network, is_master_gpu, trainable=refine_trainable, upsample_depth=FLAGS.upsample_before_refinement, refine_with_confidence=FLAGS.refine_with_confidence, stereo_image=stereo_image)
                                     # regression loss
-            loss0, less_one_main, less_three_main = mvsnet_regression_loss(
+            loss0, less_one_main, less_three_main, denom = mvsnet_regression_loss(
                 depth_map, depth_image, depth_start, depth_end, alpha=FLAGS.alpha, beta=FLAGS.beta)
             # If we upsampled the depth image to full resolution we need to compute loss with full_depth
             if FLAGS.upsample_before_refinement:
-                loss1, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
+                loss1, less_one_accuracy, less_three_accuracy, denom = mvsnet_regression_loss(
                     refined_depth_map, full_depth, depth_start, depth_end, alpha=FLAGS.alpha, beta=FLAGS.beta)
             else:
-                loss1, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
+                loss1, less_one_accuracy, less_three_accuracy, denom = mvsnet_regression_loss(
                     refined_depth_map, depth_image, depth_start, depth_end, alpha=FLAGS.alpha, beta=FLAGS.beta)
             if FLAGS.refinement_train_mode == 'refine_only':
                 # If we are only training the refinement network we are only computing gradients wrt the refinement network params
