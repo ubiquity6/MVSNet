@@ -6,6 +6,7 @@ import random
 import numpy as np
 import imageio
 import time
+import pickle
 import json
 import logging
 import tensorflow as tf
@@ -25,7 +26,8 @@ the case of training, validation or benchmarking.
 
 class ClusterGenerator:
     def __init__(self, data_dir, view_num=3, image_width=1024, image_height=768, depth_num=256,
-                 interval_scale=1, base_image_size=1, include_empty=False, mode='train', rescaling=True, output_scale=0.25, flip_cams=True, sessions_frac=1.0, max_clusters_per_session=None):
+                 interval_scale=1, base_image_size=1, include_empty=False, mode='train', rescaling=True,
+                 output_scale=0.25, flip_cams=True, sessions_frac=1.0, max_clusters_per_session=None, clear_cache=False):
         self.logger = setup_logger('ClusterGenerator')
         self.data_dir = data_dir
         self.mode = mode
@@ -49,6 +51,8 @@ class ClusterGenerator:
         self.sessions_frac = sessions_frac
         # max clusters per session is used if you don't want to train on all the clusters in a session
         self.max_clusters_per_session = max_clusters_per_session
+        # Whether to clear the cache of pickled Cluster objects
+        self.clear_cache = clear_cache
         self.parse_sessions()
 
     def set_sessions_dir(self):
@@ -76,36 +80,45 @@ class ClusterGenerator:
         Returns:
             clusters: A list of Cluster objects. See mvs_cluster.py for their declaration.
         """
-        # TODO: Cache the session data afters its been parsed into clusters so that we don't have to
-        # do this everytime since it takes a long time when we have many many sessions
+        cache_path = os.path.join(self.sessions_dir, 'clusters.pickle')
+        cache_exists = file_io.file_exists(cache_path)
         clusters = []
-        if self.mode == 'inference':
-            # If we are running inference then we only load clusters from one directory
-            self.load_clusters(self.sessions_dir, clusters)
-        else:
-            sessions = [f for f in tf.gfile.ListDirectory(
-                self.sessions_dir) if not f.startswith('.') if not f.endswith('.txt')]
-            sessions = sorted(sessions)
-            # We shuffle so that if sessions_frac < 1 we aren't biased towards one part of the alphabet
-            seed = 5
-            random.Random(seed).shuffle(sessions)
-            total_sessions = len(sessions)
+        if cache_exists and self.clear_cache is False and self.mode != 'inference':
+            # load pickled clusters from cache
             self.logger.info(
-                'There are {} total sessions'.format(total_sessions))
-            num_sessions = int(total_sessions * self.sessions_frac)
-            self.logger.info('{} sessions will be used to {} because you set the fraction of sessions to use to {}'.format(
-                num_sessions, self.mode, self.sessions_frac))
-            for s, session in enumerate(sessions[:num_sessions]):
-                session_dir = os.path.join(self.sessions_dir, session)
-                self.logger.debug('Parsing session dir {}'.format(session_dir))
-                try:
-                    self.load_clusters(session_dir, clusters)
-                except Exception as e:
+                'Loading pickled cluster objects from {}'.format(cache_path))
+            json_clusters = pickle.load(file_io.FileIO(cache_path, 'rb'))
+            for data in json_clusters:
+                clusters.append(Cluster(data['session_dir'], data['ref_index'], data['views'], data['min_depth'], data['max_depth'], data['view_num'],
+                                        data['image_width'], data['image_height'], data['depth_num'], data['interval_scale']))
+
+        else:
+            if self.mode == 'inference':
+                # If we are running inference then we only load clusters from one directory
+                self.load_clusters(self.sessions_dir, clusters)
+            else:
+                sessions = [f for f in tf.gfile.ListDirectory(
+                    self.sessions_dir) if not f.startswith('.') if not f.endswith('.txt')]
+                sessions = sorted(sessions)
+                total_sessions = len(sessions)
+                self.logger.info(
+                    'There are {} total sessions'.format(total_sessions))
+                num_sessions = int(total_sessions * self.sessions_frac)
+                self.logger.info('{} sessions will be used to {} because you set the fraction of sessions to use to {}'.format(
+                    num_sessions, self.mode, self.sessions_frac))
+                for s, session in enumerate(sessions[:num_sessions]):
+                    session_dir = os.path.join(self.sessions_dir, session)
                     self.logger.debug(
-                        'Failed to load clusters for session dir {} with exception {}'.format(session_dir, e))
-                if s % 50 == 0:
-                    self.logger.info(
-                        'Parsed {} / {} sessions'.format(s, num_sessions))
+                        'Parsing session dir {}'.format(session_dir))
+                    try:
+                        self.load_clusters(session_dir, clusters)
+                    except Exception as e:
+                        self.logger.debug(
+                            'Failed to load clusters for session dir {} with exception {}'.format(session_dir, e))
+                    if s % 50 == 0:
+                        self.logger.info(
+                            'Parsed {} / {} sessions'.format(s, num_sessions))
+                self.cache_clusters(clusters, cache_path)
 
         if self.mode == 'train' or self.mode == 'val':
             random.shuffle(clusters)
@@ -113,6 +126,14 @@ class ClusterGenerator:
             len(clusters), self.mode))
         self.clusters = clusters
         return clusters
+
+    def cache_clusters(self, clusters, path):
+        self.logger.info(
+            'Pickling cluster objects to {}'.format(path))
+        json_clusters = []
+        for c in clusters:
+            json_clusters.append(c.to_json())
+        pickle.dump(json_clusters, file_io.FileIO(path, mode='wb'), -1)
 
     def load_clusters(self, session_dir, clusters):
         """ Loads all visibility clusters in a directory """

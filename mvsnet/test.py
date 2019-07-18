@@ -24,20 +24,20 @@ tf.app.flags.DEFINE_string('input_dir', None,
 tf.app.flags.DEFINE_string('output_dir', None,
                            """Path to data to dir to output results""")
 tf.app.flags.DEFINE_string('model_dir',
-                           'gs://mvs-training-mlengine/trained-models/06-04-2019/',
+                           'gs://mvs-training-mlengine/dd7_alpha_0_25_epsilon_linear_0_005_lr_0_005_4gpu/models/',
                            """Path to restore the model.""")
-tf.app.flags.DEFINE_integer('ckpt_step', 1350000,
+tf.app.flags.DEFINE_integer('ckpt_step', 450000,
                             """ckpt  step.""")
 tf.app.flags.DEFINE_string('run_name', None,
                            """A name to use for wandb logging""")
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 4,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 16,
+tf.app.flags.DEFINE_integer('max_d', 256,
                             """Maximum depth step when testing.""")
-tf.app.flags.DEFINE_integer('width', 1024,
+tf.app.flags.DEFINE_integer('width', 512,
                             """Maximum image width when testing.""")
-tf.app.flags.DEFINE_integer('height', 768,
+tf.app.flags.DEFINE_integer('height', 384,
                             """Maximum image height when testing.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume (W and H).""")
@@ -74,12 +74,12 @@ tf.app.flags.DEFINE_bool('visualize', False,
 tf.app.flags.DEFINE_bool('benchmark', True,
                          """If benchmark is True, the network results will be benchmarked against GT.
                          This should only be used if the input_dir contains GT depth maps""")
-tf.app.flags.DEFINE_bool('write_output', True,
+tf.app.flags.DEFINE_bool('write_output', False,
                          """When benchmarking you can set this to False if you don't need the output""")
 tf.app.flags.DEFINE_bool('reuse_vars', False,
                          """A global flag representing whether variables should be reused. This should be
                           set to False by default and is switched on or off by individual methods""")
-tf.app.flags.DEFINE_integer('max_clusters_per_session', None,
+tf.app.flags.DEFINE_integer('max_clusters_per_session', 10,
                             """The maximum number of clusters to benchmark per session. If not benchmarking this should probably be set to None""")
 FLAGS = tf.app.flags.FLAGS
 
@@ -143,7 +143,7 @@ def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, output_dir=N
             mu.mkdir_p(write_dir)
             if FLAGS.write_output:
                 pl.write_output(write_dir, out_depth_map, out_prob_map, out_images,
-                             out_cams, out_full_cams, out_full_images, out_index, out_residual_depth_map)
+                                out_cams, out_full_cams, out_full_images, out_index, out_residual_depth_map)
             losses.append(out_loss)
             less_ones.append(out_less_one)
             less_threes.append(out_less_three)

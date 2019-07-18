@@ -16,5 +16,6 @@ MVSNet.egg-info/*
 .vscode/*
 wandb/*
 scratch/*
+job/*
 
 nohup.out
