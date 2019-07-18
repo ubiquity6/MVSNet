@@ -36,6 +36,56 @@ def masked_loss(y_true, y_pred, interval, alpha, beta):
         shape = tf.shape(y_pred)
         interval = tf.reshape(interval, [shape[0]])
         mask_true = tf.cast(tf.not_equal(y_true, 0.0), dtype='float32')
+        # The number of valid pixels in the depth map -- used for taking the average over only valid pixels
+        num_valid_pixels = tf.abs(tf.reduce_sum(
+            mask_true, axis=[1, 2, 3])) + 1e-6
+        denominator = y_true*num_valid_pixels + 1e-6
+        if beta != 1.0:
+            denominator = tf.math.pow(denominator, beta)
+        # Below we assume the random error in y_true used to regularize the divergence
+        # increases linearly with distance
+        epsilon = .01 * y_true
+        numerator = tf.abs(y_true - y_pred) + epsilon
+        if alpha != 1.0:
+            numerator = tf.math.pow(
+                numerator, alpha)
+        # Apply the mask to the predicions and labels
+        numerator = numerator*mask_true
+        loss = tf.reduce_sum(numerator / denominator, axis=[1, 2, 3])
+        # The normalization is chosen so that, on average, the loss is of order 1
+        avg_true_depth = tf.reduce_sum(
+            denominator, axis=[1, 2, 3]) / num_valid_pixels
+        old_normalization = tf.math.pow(
+            tf.reduce_sum(denominator, axis=[1, 2, 3]) / num_valid_pixels, beta) / tf.math.pow(interval, alpha)
+        normalization = 10000
+        loss = tf.reduce_sum(loss) * normalization     # 1
+    return loss, avg_true_depth
+
+
+def gaussian_loss(y_true, y_pred, interval, alpha, beta):
+    """ non zero mean absolute loss for one batch
+
+    This function parameterizes a loss of the general form:
+
+    Loss = N * (|y_true-y_pred| + epsilon(y_true))^alpha / y_true^beta
+
+    where alpha and beta are scalars, and N is a normalization constant which depends on 
+    alpha, beta and y_true. epsilon(y_true) is the expected noise of the measurement of y_true, and helps to prevent overfitting to noise
+    in the depth map. 
+    Additionally the numerator and denominator are multipled by a mask to mask out
+    invalid pixels in the label. This was omitted above for notational simplicity.
+
+    See this paper for a description and analysis of the noise model of the kinect sensor
+    -- https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3304120/
+
+    One key takeaway is that the random error in Kinect depth maps increases quadratically with distance and 
+    reaches a maximum of 4cm at the maximum range of 5 meters
+     """
+
+    with tf.name_scope('MAE'):
+        shape = tf.shape(y_pred)
+        interval = tf.reshape(interval, [shape[0]])
+        mask_true = tf.cast(tf.not_equal(y_true, 0.0), dtype='float32')
         denominator = tf.abs(tf.reduce_sum(mask_true, axis=[1, 2, 3])) + 1e-6
         if beta != 1.0:
             denominator = tf.math.pow(denominator, beta)
@@ -91,7 +141,7 @@ def mvsnet_regression_loss(estimated_depth_image, depth_image, depth_start, dept
     depth_interval = tf.div(depth_end-depth_start, 191.0)
     # non zero mean absulote loss
 
-    loss = masked_loss(
+    loss, denom = masked_loss(
         depth_image, estimated_depth_image, depth_interval, alpha, beta)
     # less one accuracy
     less_one_accuracy = less_one_percentage(
@@ -100,7 +150,7 @@ def mvsnet_regression_loss(estimated_depth_image, depth_image, depth_start, dept
     less_three_accuracy = less_three_percentage(
         depth_image, estimated_depth_image, depth_interval)
 
-    return loss, less_one_accuracy, less_three_accuracy
+    return loss, less_one_accuracy, less_three_accuracy, denom
 
 
 def mvsnet_classification_loss(prob_volume, gt_depth_image, depth_num, depth_start, depth_interval):

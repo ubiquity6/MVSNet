@@ -51,7 +51,7 @@ tf.app.flags.DEFINE_string('run_name', None,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 3,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 128,
+tf.app.flags.DEFINE_integer('max_d', 16,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('width', 512,
                             """Maximum image width when training.""")
@@ -70,7 +70,7 @@ tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method.""")
 tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
                            """Optimizer to use. One of 'momentum', 'rmsprop' or 'adam' """)
-tf.app.flags.DEFINE_boolean('refinement', True,
+tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for 3DCNNs""")
 tf.app.flags.DEFINE_string('refinement_train_mode', 'refine_only',
                             """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
@@ -340,9 +340,9 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
                 loss = (loss0 + loss1) / 2
         else:
             # regression loss
-            loss, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
+            loss, less_one_accuracy, less_three_accuracy, denom = mvsnet_regression_loss(
                 depth_map, depth_image, depth_start, depth_end, alpha=FLAGS.alpha, beta=FLAGS.beta)
-        return loss, less_one_accuracy, less_three_accuracy
+        return loss, less_one_accuracy, less_three_accuracy, denom
 
     elif FLAGS.regularization == 'GRU':
         # probability volume
@@ -413,7 +413,7 @@ def train():
             with tf.device('/gpu:%d' % i):
                 with tf.name_scope('Model_tower%d' % i) as scope:
                     images, cams, depth, depth_start, depth_interval, full_depth, depth_end = get_batch(training_iterator)
-                    loss, less_one_accuracy, less_three_accuracy = get_loss(images, cams, depth, depth_start, depth_interval, full_depth, depth_end,  i)
+                    loss, less_one_accuracy, less_three_accuracy, denom = get_loss(images, cams, depth, depth_start, depth_interval, full_depth, depth_end,  i)
                     grads = opt.compute_gradients(loss)
                     tower_grads.append(grads)
 
@@ -422,7 +422,7 @@ def train():
                 with tf.name_scope('Model_tower%d' % i) as scope:
                     val_images, val_cams, val_depth, val_depth_start, val_depth_interval, val_full_depth, val_depth_end = get_batch(
                         validation_iterator)
-                    val_loss, val_less_one_accuracy, val_less_three_accuracy = get_loss(
+                    val_loss, val_less_one_accuracy, val_less_three_accuracy, val_denom = get_loss(
                         val_images, val_cams, val_depth, val_depth_start, val_depth_interval, val_full_depth, val_depth_end,  i, validate=True)
 
         grads = average_gradients(tower_grads)
@@ -449,14 +449,14 @@ def train():
                 # We run this once before the for-loop because this initializes the generator and thus
                 # sets the training_sample_size parameter
                 out_opt, out_loss, out_less_one, out_less_three = sess.run(
-                    [train_opt, loss, less_one_accuracy, less_three_accuracy])
+                    [train_opt, loss, less_one_accuracy, less_three_accuracy,])
 
                 for i in range(1, training_sample_size):
                     # run one batch
                     start_time = time.time()
                     try:
-                        out_opt, out_loss, out_less_one, out_less_three = sess.run(
-                            [train_opt, loss, less_one_accuracy, less_three_accuracy])
+                        out_opt, out_loss, out_less_one, out_less_three, out_denom = sess.run(
+                            [train_opt, loss, less_one_accuracy, less_three_accuracy, denom])
                     except tf.errors.OutOfRangeError:
                         logger.warn("End of dataset")
                         break
@@ -465,6 +465,7 @@ def train():
                     out_losses.append(out_loss)
                     out_less_ones.append(out_less_one)
                     out_less_threes.append(out_less_three)
+                    print(out_denom)
 
                     # print info
                     if step % FLAGS.display == 0:
