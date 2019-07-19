@@ -121,7 +121,7 @@ tf.app.flags.DEFINE_bool('wandb', True,
 tf.app.flags.DEFINE_bool('reuse_vars', False,
                          """A global flag representing whether variables should be reused. This should be 
                           set to False by default and is switched on or off by individual methods""")
-tf.app.flags.DEFINE_string('loss_type', 'power',
+tf.app.flags.DEFINE_string('loss_type', 'original',
                            """Should be one of 'original', 'power' or 'gaussian'. See loss.py for the loss definitions""")
 tf.app.flags.DEFINE_float('alpha', 0.25,
                           """ The exponent to use in the numerator of the loss function when using mode 'power'. Canonical value is 1.0""")
