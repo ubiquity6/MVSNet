@@ -95,6 +95,8 @@ tf.app.flags.DEFINE_integer('batch_size', 1,
                             """Training batch size.""")
 tf.app.flags.DEFINE_integer('epoch', None,
                             """Training epoch number.""")
+tf.app.flags.DEFINE_integer('max_steps_per_epoch', None,
+                            """The maximum number of train steps to use per epoch. Useful for testing.""")
 tf.app.flags.DEFINE_float('base_lr', 0.001,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
@@ -119,10 +121,13 @@ tf.app.flags.DEFINE_bool('wandb', True,
 tf.app.flags.DEFINE_bool('reuse_vars', False,
                          """A global flag representing whether variables should be reused. This should be 
                           set to False by default and is switched on or off by individual methods""")
+tf.app.flags.DEFINE_string('loss_type', 'power',
+                           """Should be one of 'original', 'power' or 'gaussian'. See loss.py for the loss definitions""")
 tf.app.flags.DEFINE_float('alpha', 0.25,
-                          """ The exponent to use in the numerator of the loss function. Canonical value is 1.0""")
-tf.app.flags.DEFINE_float('beta', 1.0,
-                          """ The exponent to use in the denominator of the loss function. Canonical value is 1.0""")
+                          """ The exponent to use in the numerator of the loss function when using mode 'power'. Canonical value is 1.0""")
+tf.app.flags.DEFINE_float('beta', 0.5,
+                          """ The exponent to use in the denominator of the loss function when using mode 'power'. Canonical value is 1.0""")
+
                         
 
 FLAGS = tf.app.flags.FLAGS
@@ -321,14 +326,14 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
                 FLAGS.refinement_network, is_master_gpu, trainable=refine_trainable, upsample_depth=FLAGS.upsample_before_refinement, refine_with_confidence=FLAGS.refine_with_confidence, stereo_image=stereo_image)
                                     # regression loss
             loss0, less_one_main, less_three_main, denom = mvsnet_regression_loss(
-                depth_map, depth_image, depth_start, depth_end, alpha=FLAGS.alpha, beta=FLAGS.beta)
+                depth_map, depth_image, depth_start, depth_end, loss_type=FLAGS.loss_type, alpha=FLAGS.alpha, beta=FLAGS.beta)
             # If we upsampled the depth image to full resolution we need to compute loss with full_depth
             if FLAGS.upsample_before_refinement:
                 loss1, less_one_accuracy, less_three_accuracy, denom = mvsnet_regression_loss(
-                    refined_depth_map, full_depth, depth_start, depth_end, alpha=FLAGS.alpha, beta=FLAGS.beta)
+                    refined_depth_map, full_depth, depth_start, depth_end, loss_type=FLAGS.loss_type, alpha=FLAGS.alpha, beta=FLAGS.beta)
             else:
                 loss1, less_one_accuracy, less_three_accuracy, denom = mvsnet_regression_loss(
-                    refined_depth_map, depth_image, depth_start, depth_end, alpha=FLAGS.alpha, beta=FLAGS.beta)
+                    refined_depth_map, depth_image, depth_start, depth_end, loss_type=FLAGS.loss_type, alpha=FLAGS.alpha, beta=FLAGS.beta)
             if FLAGS.refinement_train_mode == 'refine_only':
                 # If we are only training the refinement network we are only computing gradients wrt the refinement network params
                 # These gradients on l0 will be zero, so no need to include l0 in the loss
@@ -342,7 +347,7 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
         else:
             # regression loss
             loss, less_one_accuracy, less_three_accuracy, denom = mvsnet_regression_loss(
-                depth_map, depth_image, depth_start, depth_end, alpha=FLAGS.alpha, beta=FLAGS.beta)
+                depth_map, depth_image, depth_start, depth_end, loss_type=FLAGS.loss_type, alpha=FLAGS.alpha, beta=FLAGS.beta)
         return loss, less_one_accuracy, less_three_accuracy, denom
 
     elif FLAGS.regularization == 'GRU':
@@ -460,7 +465,11 @@ def train():
                 out_opt, out_loss, out_less_one, out_less_three = sess.run(
                     [train_opt, loss, less_one_accuracy, less_three_accuracy,])
 
-                for i in range(1, training_sample_size):
+                num_steps = training_sample_size
+                if FLAGS.max_steps_per_epoch is not None:
+                    num_steps = min(num_steps, FLAGS.max_steps_per_epoch)
+
+                for i in range(1, num_steps):
                     # run one batch
                     start_time = time.time()
                     try:

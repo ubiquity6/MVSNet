@@ -12,14 +12,30 @@ import numpy as np
 FLAGS = tf.app.flags.FLAGS
 
 
-def masked_loss(y_true, y_pred, interval, alpha, beta):
+def original_loss(y_true, y_pred, interval):
+    """ non zero mean absolute loss for one batch
+        This is the original loss function used in mvsnet paper"""
+    with tf.name_scope('MAE'):
+        shape = tf.shape(y_pred)
+        interval = tf.reshape(interval, [shape[0]])
+        mask_true = tf.cast(tf.not_equal(y_true, 0.0), dtype='float32')
+        denom = tf.abs(tf.reduce_sum(mask_true, axis=[1, 2, 3])) + 1e-6
+        masked_abs_error = tf.abs(
+            mask_true * (y_true - y_pred))            # 4D
+        masked_mae = tf.reduce_sum(
+            masked_abs_error, axis=[1, 2, 3])        # 1D
+        masked_mae = tf.reduce_sum((masked_mae / interval) / denom)         # 1
+    return masked_mae, tf.no_op()
+
+
+def power_loss(y_true, y_pred, interval, alpha, beta):
     """ non zero mean absolute loss for one batch
 
     This function parameterizes a loss of the general form:
 
     Loss = N * (|y_true-y_pred| + epsilon(y_true))^alpha / y_true^beta
 
-    where alpha and beta are scalars, and N is a normalization constant which depends on 
+    where alpha and beta are scalars, and N is a normalization constant which depends on
     alpha, beta and y_true. epsilon(y_true) is the expected noise of the measurement of y_true, and helps to prevent overfitting to noise
     in the depth map. This is the loss for an individual pixel. The total loss for a depth map
     is the average taken over all valid pixels.
@@ -29,7 +45,7 @@ def masked_loss(y_true, y_pred, interval, alpha, beta):
     See this paper for a description and analysis of the noise model of the kinect sensor
     -- https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3304120/
 
-    One key takeaway is that the random error in Kinect depth maps increases quadratically with distance and 
+    One key takeaway is that the random error in Kinect depth maps increases quadratically with distance and
     reaches a maximum of 4cm at the maximum range of 5 meters
      """
 
@@ -42,12 +58,16 @@ def masked_loss(y_true, y_pred, interval, alpha, beta):
         num_valid_pixels = tf.abs(tf.reduce_sum(
             mask_true, axis=[1, 2, 3])) + 1e-6
         # Error is scaled by the depth itself
-        denominator = y_true*num_valid_pixels + 1e-6
-        if beta != 1.0:
-            denominator = tf.math.pow(denominator, beta)
+        denominator = y_true
+        if beta == 0.0:
+            # We treat the beta==0 case separately
+            denominator = num_valid_pixels
+        else:
+            denominator = tf.math.pow(y_true, beta)
+            denominator = denominator*num_valid_pixels + 1e-6
         # Below we assume the random error in y_true used to regularize the divergence
         # increases linearly with distance
-        epsilon = .01 * y_true
+        epsilon = .005 * y_true
         numerator = tf.abs(y_true - y_pred) + epsilon
         if alpha != 1.0:
             numerator = tf.math.pow(
@@ -57,27 +77,26 @@ def masked_loss(y_true, y_pred, interval, alpha, beta):
         # Divide the error by the distance
         loss = tf.reduce_sum(numerator / denominator, axis=[1, 2, 3])
         # The normalization is chosen so that, on average, the loss is of order 1
-        avg_true_depth = tf.reduce_sum(
-            denominator, axis=[1, 2, 3]) / num_valid_pixels
-        old_normalization = tf.math.pow(
-            tf.reduce_sum(denominator, axis=[1, 2, 3]) / num_valid_pixels, beta) / tf.math.pow(interval, alpha)
-        normalization = 10000
-        loss = tf.reduce_sum(loss) * normalization     # 1
-    return loss, avg_true_depth
+        mean_true_depth = tf.reduce_sum(
+            y_true * mask_true) / num_valid_pixels
+
+        normalization = tf.math.pow(
+            mean_true_depth, beta) / tf.math.pow(interval, alpha)
+        loss = loss * normalization
+    return loss, num_valid_pixels
 
 
-def gaussian_loss(y_true, y_pred, interval, alpha, beta):
+def gaussian_loss(y_true, y_pred, interval):
     """ non zero mean absolute loss for one batch
 
     This function parameterizes a loss of the form
 
-    Loss = - exp( - x^2 / 2*sigma^2 )
+    Loss = - exp(- x ^ 2 / 2*sigma ^ 2)
 
     where x = y_true - y_pred and
     sigma = eta * y_true
 
-    and eta is a constant
-
+    and eta is a constant, generally much less than 1
      """
 
     with tf.name_scope('MAE'):
@@ -131,18 +150,22 @@ def less_three_percentage(y_true, y_pred, interval):
     return tf.reduce_sum(less_three_image) / denom
 
 
-def mvsnet_regression_loss(estimated_depth_image, depth_image, depth_start, depth_end, alpha=1.0, beta=1.0, gaussian=True):
+def mvsnet_regression_loss(estimated_depth_image, depth_image, depth_start, depth_end, loss_type='original', alpha=1.0, beta=0.0, gaussian=False):
     """ compute loss and accuracy """
     # For loss and accuracy we use a depth_interval that is independent of the number of depth buckets
     # so we can easily compare results for various depth_num. We divide by 191 for historical reasons.
     depth_interval = tf.div(depth_end-depth_start, 191.0)
-    # non zero mean absulote loss
-    if gaussian:
-        loss, denom = gaussian_loss(
+    if loss_type == 'original':
+        loss, debug = original_loss(
+            depth_image, estimated_depth_image, depth_interval)
+    elif loss_type == 'power':
+        loss, debug = power_loss(
             depth_image, estimated_depth_image, depth_interval, alpha, beta)
+    elif loss_type == 'gaussian':
+        loss, debug = gaussian_loss(
+            depth_image, estimated_depth_image, depth_interval)
     else:
-        loss, denom = masked_loss(
-            depth_image, estimated_depth_image, depth_interval, alpha, beta)
+        raise NotImplementedError
     # less one accuracy
     less_one_accuracy = less_one_percentage(
         depth_image, estimated_depth_image, depth_interval)
@@ -150,7 +173,7 @@ def mvsnet_regression_loss(estimated_depth_image, depth_image, depth_start, dept
     less_three_accuracy = less_three_percentage(
         depth_image, estimated_depth_image, depth_interval)
 
-    return loss, less_one_accuracy, less_three_accuracy, denom
+    return loss, less_one_accuracy, less_three_accuracy, debug
 
 
 def mvsnet_classification_loss(prob_volume, gt_depth_image, depth_num, depth_start, depth_interval):
