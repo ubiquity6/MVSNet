@@ -52,7 +52,7 @@ tf.app.flags.DEFINE_string('run_name', None,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 3,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 16,
+tf.app.flags.DEFINE_integer('max_d', 192,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('width', 640,
                             """Maximum image width when training.""")
@@ -121,15 +121,17 @@ tf.app.flags.DEFINE_bool('wandb', True,
 tf.app.flags.DEFINE_bool('reuse_vars', False,
                          """A global flag representing whether variables should be reused. This should be 
                           set to False by default and is switched on or off by individual methods""")
-tf.app.flags.DEFINE_string('loss_type', 'power',
+tf.app.flags.DEFINE_string('loss_type', 'gaussian',
                            """Should be one of 'original', 'power' or 'gaussian'. See loss.py for the loss definitions""")
 tf.app.flags.DEFINE_float('alpha', 0.25,
                           """ The exponent to use in the numerator of the loss function when using mode 'power'. Canonical value is 1.0""")
 tf.app.flags.DEFINE_float('beta', 0.0,
                           """ The exponent to use in the denominator of the loss function when using mode 'power'. Canonical value is 1.0""")
-tf.app.flags.DEFINE_float('eta', 0.005,
+tf.app.flags.DEFINE_float('eta', 0.02,
                           """ Multiplicative constant appearing in standard deviation of Gaussian loss --- sigma = eta * y_true
                           Value used only if loss_type='gaussian'""")
+tf.app.flags.DEFINE_bool('grad_loss', True,
+                         """Whether or not to add a depth gradient term to the overall loss""")
 
                         
 FLAGS = tf.app.flags.FLAGS
@@ -328,14 +330,14 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
                 FLAGS.refinement_network, is_master_gpu, trainable=refine_trainable, upsample_depth=FLAGS.upsample_before_refinement, refine_with_confidence=FLAGS.refine_with_confidence, stereo_image=stereo_image)
                                     # regression loss
             loss0, less_one_main, less_three_main, debug= mvsnet_regression_loss(
-                depth_map, depth_image, depth_start, depth_end, loss_type=FLAGS.loss_type, alpha=FLAGS.alpha, beta=FLAGS.beta, eta=FLAGS.eta)
+                depth_map, depth_image, depth_start, depth_end, loss_type=FLAGS.loss_type, alpha=FLAGS.alpha, beta=FLAGS.beta, eta=FLAGS.eta, grad_loss=FLAGS.grad_loss)
             # If we upsampled the depth image to full resolution we need to compute loss with full_depth
             if FLAGS.upsample_before_refinement:
                 loss1, less_one_accuracy, less_three_accuracy, debug= mvsnet_regression_loss(
-                    refined_depth_map, full_depth, depth_start, depth_end, loss_type=FLAGS.loss_type, alpha=FLAGS.alpha, beta=FLAGS.beta, eta=FLAGS.eta)
+                    refined_depth_map, full_depth, depth_start, depth_end, loss_type=FLAGS.loss_type, alpha=FLAGS.alpha, beta=FLAGS.beta, eta=FLAGS.eta, grad_loss=FLAGS.grad_loss)
             else:
                 loss1, less_one_accuracy, less_three_accuracy, debug= mvsnet_regression_loss(
-                    refined_depth_map, depth_image, depth_start, depth_end, loss_type=FLAGS.loss_type, alpha=FLAGS.alpha, beta=FLAGS.beta, eta=FLAGS.eta)
+                    refined_depth_map, depth_image, depth_start, depth_end, loss_type=FLAGS.loss_type, alpha=FLAGS.alpha, beta=FLAGS.beta, eta=FLAGS.eta, grad_loss=FLAGS.grad_loss)
             if FLAGS.refinement_train_mode == 'refine_only':
                 # If we are only training the refinement network we are only computing gradients wrt the refinement network params
                 # These gradients on l0 will be zero, so no need to include l0 in the loss
@@ -349,7 +351,7 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
         else:
             # regression loss
             loss, less_one_accuracy, less_three_accuracy, debug= mvsnet_regression_loss(
-                depth_map, depth_image, depth_start, depth_end, loss_type=FLAGS.loss_type, alpha=FLAGS.alpha, beta=FLAGS.beta, eta=FLAGS.eta)
+                depth_map, depth_image, depth_start, depth_end, loss_type=FLAGS.loss_type, alpha=FLAGS.alpha, beta=FLAGS.beta, eta=FLAGS.eta, grad_loss=FLAGS.grad_loss)
         return loss, less_one_accuracy, less_three_accuracy, debug
 
     elif FLAGS.regularization == 'GRU':

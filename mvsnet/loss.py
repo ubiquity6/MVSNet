@@ -131,7 +131,7 @@ def gaussian_loss(y_true, y_pred, interval, eta):
     return loss, tf.no_op()
 
 
-def gradient_loss(y_true, y_pred):
+def log_gradient_loss(y_true, y_pred):
     """ This loss term calculate the difference in depth gradients in the horizontal and vertical
     direction and returns the log of these depth gradients """
     with tf.name_scope('grad_loss'):
@@ -203,7 +203,7 @@ def mvsnet_regression_loss(estimated_depth_image, depth_image, depth_start, dept
 
     if grad_loss:
         gamma = 0.5
-        g_loss = gradient_loss(depth_image, estimated_depth_image)
+        g_loss = log_gradient_loss(depth_image, estimated_depth_image)
         loss = loss + gamma * g_loss
         debug = g_loss
 
