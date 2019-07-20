@@ -28,7 +28,7 @@ def original_loss(y_true, y_pred, interval):
     return masked_mae, tf.no_op()
 
 
-def power_loss(y_true, y_pred, interval, alpha, beta):
+def power_loss(y_true, y_pred, interval, alpha, beta, no_interval_norm=False):
     """ non zero mean absolute loss for one batch
 
     This function parameterizes a loss of the general form:
@@ -60,11 +60,11 @@ def power_loss(y_true, y_pred, interval, alpha, beta):
         # Error is scaled by the depth itself
         denominator = y_true
         if beta == 0.0:
-            # We treat the beta==0 case separately
+            # We treat the beta==0 case separately because 0^0 = 1
             denominator = num_valid_pixels
         else:
-            denominator = tf.math.pow(y_true, beta)
-            denominator = denominator*num_valid_pixels + 1e-6
+            denominator = tf.math.pow(y_true + 1e-9, beta)
+            denominator = denominator*num_valid_pixels
         # Below we assume the random error in y_true used to regularize the divergence
         # increases linearly with distance
         epsilon = .005 * y_true
@@ -76,17 +76,21 @@ def power_loss(y_true, y_pred, interval, alpha, beta):
         numerator = numerator*mask_true
         # Divide the error by the distance
         loss = tf.reduce_sum(numerator / denominator, axis=[1, 2, 3])
-        # The normalization is chosen so that, on average, the loss is of order 1
+        # The normalization is chosen so that, on average, the loss has approximately the same
+        # magnitude as the original loss, regardless of the exponents chosen
         mean_true_depth = tf.reduce_sum(
             y_true * mask_true) / num_valid_pixels
-
-        normalization = tf.math.pow(
-            mean_true_depth, beta) / tf.math.pow(interval, alpha)
+        if no_interval_norm:
+            normalization = tf.math.pow(
+                mean_true_depth, beta)
+        else:
+            normalization = 10.0 * tf.math.pow(
+                mean_true_depth, beta) / tf.math.pow(interval, alpha)
         loss = loss * normalization
     return loss, num_valid_pixels
 
 
-def gaussian_loss(y_true, y_pred, interval):
+def gaussian_loss(y_true, y_pred, interval, eta):
     """ non zero mean absolute loss for one batch
 
     This function parameterizes a loss of the form
@@ -97,7 +101,13 @@ def gaussian_loss(y_true, y_pred, interval):
     sigma = eta * y_true
 
     and eta is a constant, generally much less than 1
-     """
+
+    Args:
+        y_true: true depth
+        y_pred: predicted depth
+        interval: depth interval used
+        eta: multiplictive constant appearing in standard deviations of gaussian loss
+    """
 
     with tf.name_scope('MAE'):
         shape = tf.shape(y_pred)
@@ -109,7 +119,6 @@ def gaussian_loss(y_true, y_pred, interval):
             mask_true, axis=[1, 2, 3])) + 1e-6
         # The standard deviation used in the gaussian is of the form eta * y_true
         # with a small offset to prevent division by zero on invalid pixels
-        eta = 0.02
         sigma = eta * y_true + 1e-6
         # Below we assume the random error in y_true used to regularize the divergence
         # increases linearly with distance
@@ -120,6 +129,31 @@ def gaussian_loss(y_true, y_pred, interval):
         # Average over the number of valid pixels
         loss = tf.reduce_sum(loss) / num_valid_pixels
     return loss, tf.no_op()
+
+
+def gradient_loss(y_true, y_pred):
+    """ This loss term calculate the difference in depth gradients in the horizontal and vertical
+    direction and returns the log of these depth gradients """
+    with tf.name_scope('grad_loss'):
+        mask = tf.cast(tf.not_equal(y_true, 0.0), dtype=tf.float32)
+        num_valid_pixels = tf.reduce_sum(mask)
+        diff = y_true - y_pred
+
+        v_gradient = diff[0:-2, :] - diff[2:, :]
+        v_mask = tf.math.multiply(mask[0:-2, :], mask[2:, :])
+        v_gradient = tf.math.multiply(v_gradient, v_mask)
+
+        h_gradient = diff[:, 0:-2] - diff[:, 2:]
+        h_mask = tf.math.multiply(mask[:, 0:-2], mask[:, 2:])
+        h_gradient = tf.math.multiply(h_gradient, h_mask)
+
+        # We add 1.0 since log(1) = 0 and log(0) = -infinity
+        v_log_grad = tf.math.log(1.0 + tf.math.abs(v_gradient))
+        h_log_grad = tf.math.log(1.0 + tf.math.abs(h_gradient))
+
+        grad_loss = tf.reduce_sum(v_log_grad) + tf.reduce_sum(h_log_grad)
+        grad_loss = grad_loss / num_valid_pixels
+    return grad_loss
 
 
 def less_one_percentage(y_true, y_pred, interval):
@@ -150,7 +184,7 @@ def less_three_percentage(y_true, y_pred, interval):
     return tf.reduce_sum(less_three_image) / denom
 
 
-def mvsnet_regression_loss(estimated_depth_image, depth_image, depth_start, depth_end, loss_type='original', alpha=1.0, beta=0.0, gaussian=False):
+def mvsnet_regression_loss(estimated_depth_image, depth_image, depth_start, depth_end, loss_type='original', alpha=1.0, beta=0.0, eta=0.02, grad_loss=True):
     """ compute loss and accuracy """
     # For loss and accuracy we use a depth_interval that is independent of the number of depth buckets
     # so we can easily compare results for various depth_num. We divide by 191 for historical reasons.
@@ -163,9 +197,16 @@ def mvsnet_regression_loss(estimated_depth_image, depth_image, depth_start, dept
             depth_image, estimated_depth_image, depth_interval, alpha, beta)
     elif loss_type == 'gaussian':
         loss, debug = gaussian_loss(
-            depth_image, estimated_depth_image, depth_interval)
+            depth_image, estimated_depth_image, depth_interval, eta)
     else:
         raise NotImplementedError
+
+    if grad_loss:
+        gamma = 0.5
+        g_loss = gradient_loss(depth_image, estimated_depth_image)
+        loss = loss + gamma * g_loss
+        debug = g_loss
+
     # less one accuracy
     less_one_accuracy = less_one_percentage(
         depth_image, estimated_depth_image, depth_interval)

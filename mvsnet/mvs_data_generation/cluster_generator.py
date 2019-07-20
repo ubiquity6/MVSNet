@@ -90,7 +90,7 @@ class ClusterGenerator:
             json_clusters = pickle.load(file_io.FileIO(cache_path, 'rb'))
             for data in json_clusters:
                 clusters.append(Cluster(data['session_dir'], data['ref_index'], data['views'], data['min_depth'], data['max_depth'], data['view_num'],
-                                        data['image_width'], data['image_height'], data['depth_num'], data['interval_scale']))
+                                        self.image_width, self.image_height, self.depth_num, self.interval_scale))
         else:
             if self.mode == 'inference':
                 # If we are running inference then we only load clusters from one directory

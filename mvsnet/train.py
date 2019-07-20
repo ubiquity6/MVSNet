@@ -54,9 +54,9 @@ tf.app.flags.DEFINE_integer('view_num', 3,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 16,
                             """Maximum depth step when training.""")
-tf.app.flags.DEFINE_integer('width', 512,
+tf.app.flags.DEFINE_integer('width', 640,
                             """Maximum image width when training.""")
-tf.app.flags.DEFINE_integer('height', 384,
+tf.app.flags.DEFINE_integer('height', 480,
                             """Maximum image height when training.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume.""")
@@ -79,12 +79,12 @@ tf.app.flags.DEFINE_string('refinement_train_mode', 'main_only',
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
 tf.app.flags.DEFINE_string('network_mode', 'normal',
                             """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
-tf.app.flags.DEFINE_string('refinement_network', 'unet',
+tf.app.flags.DEFINE_string('refinement_network', 'original',
                             """Specifies network to use for refinement. One of 'original' or 'unet'. 
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
 tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
                             """Whether to upsample depth map to input resolution before the refinement network""")
-tf.app.flags.DEFINE_boolean('refine_with_confidence', False,
+tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
 tf.app.flags.DEFINE_boolean('refine_with_stereo', False,
                             """Whether or not to inject a stereo partner into refinement network""")
@@ -101,7 +101,7 @@ tf.app.flags.DEFINE_float('base_lr', 0.001,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
-tf.app.flags.DEFINE_integer('stepvalue', 70000,
+tf.app.flags.DEFINE_integer('stepvalue', 60000,
                             """Step interval to decay learning rate.""")
 tf.app.flags.DEFINE_integer('snapshot', 5000,
                             """Step interval to save the model.""")
@@ -121,15 +121,17 @@ tf.app.flags.DEFINE_bool('wandb', True,
 tf.app.flags.DEFINE_bool('reuse_vars', False,
                          """A global flag representing whether variables should be reused. This should be 
                           set to False by default and is switched on or off by individual methods""")
-tf.app.flags.DEFINE_string('loss_type', 'original',
+tf.app.flags.DEFINE_string('loss_type', 'power',
                            """Should be one of 'original', 'power' or 'gaussian'. See loss.py for the loss definitions""")
 tf.app.flags.DEFINE_float('alpha', 0.25,
                           """ The exponent to use in the numerator of the loss function when using mode 'power'. Canonical value is 1.0""")
-tf.app.flags.DEFINE_float('beta', 0.5,
+tf.app.flags.DEFINE_float('beta', 0.0,
                           """ The exponent to use in the denominator of the loss function when using mode 'power'. Canonical value is 1.0""")
+tf.app.flags.DEFINE_float('eta', 0.005,
+                          """ Multiplicative constant appearing in standard deviation of Gaussian loss --- sigma = eta * y_true
+                          Value used only if loss_type='gaussian'""")
 
                         
-
 FLAGS = tf.app.flags.FLAGS
 
 def load_model(sess):
@@ -325,15 +327,15 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
             refined_depth_map, residual_depth_map = depth_refine(depth_map, ref_image, prob_map, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, \
                 FLAGS.refinement_network, is_master_gpu, trainable=refine_trainable, upsample_depth=FLAGS.upsample_before_refinement, refine_with_confidence=FLAGS.refine_with_confidence, stereo_image=stereo_image)
                                     # regression loss
-            loss0, less_one_main, less_three_main, denom = mvsnet_regression_loss(
-                depth_map, depth_image, depth_start, depth_end, loss_type=FLAGS.loss_type, alpha=FLAGS.alpha, beta=FLAGS.beta)
+            loss0, less_one_main, less_three_main, debug= mvsnet_regression_loss(
+                depth_map, depth_image, depth_start, depth_end, loss_type=FLAGS.loss_type, alpha=FLAGS.alpha, beta=FLAGS.beta, eta=FLAGS.eta)
             # If we upsampled the depth image to full resolution we need to compute loss with full_depth
             if FLAGS.upsample_before_refinement:
-                loss1, less_one_accuracy, less_three_accuracy, denom = mvsnet_regression_loss(
-                    refined_depth_map, full_depth, depth_start, depth_end, loss_type=FLAGS.loss_type, alpha=FLAGS.alpha, beta=FLAGS.beta)
+                loss1, less_one_accuracy, less_three_accuracy, debug= mvsnet_regression_loss(
+                    refined_depth_map, full_depth, depth_start, depth_end, loss_type=FLAGS.loss_type, alpha=FLAGS.alpha, beta=FLAGS.beta, eta=FLAGS.eta)
             else:
-                loss1, less_one_accuracy, less_three_accuracy, denom = mvsnet_regression_loss(
-                    refined_depth_map, depth_image, depth_start, depth_end, loss_type=FLAGS.loss_type, alpha=FLAGS.alpha, beta=FLAGS.beta)
+                loss1, less_one_accuracy, less_three_accuracy, debug= mvsnet_regression_loss(
+                    refined_depth_map, depth_image, depth_start, depth_end, loss_type=FLAGS.loss_type, alpha=FLAGS.alpha, beta=FLAGS.beta, eta=FLAGS.eta)
             if FLAGS.refinement_train_mode == 'refine_only':
                 # If we are only training the refinement network we are only computing gradients wrt the refinement network params
                 # These gradients on l0 will be zero, so no need to include l0 in the loss
@@ -346,9 +348,9 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
                 loss = (loss0 + loss1) / 2
         else:
             # regression loss
-            loss, less_one_accuracy, less_three_accuracy, denom = mvsnet_regression_loss(
-                depth_map, depth_image, depth_start, depth_end, loss_type=FLAGS.loss_type, alpha=FLAGS.alpha, beta=FLAGS.beta)
-        return loss, less_one_accuracy, less_three_accuracy, denom
+            loss, less_one_accuracy, less_three_accuracy, debug= mvsnet_regression_loss(
+                depth_map, depth_image, depth_start, depth_end, loss_type=FLAGS.loss_type, alpha=FLAGS.alpha, beta=FLAGS.beta, eta=FLAGS.eta)
+        return loss, less_one_accuracy, less_three_accuracy, debug
 
     elif FLAGS.regularization == 'GRU':
         # probability volume
@@ -371,16 +373,17 @@ def save_model(sess, saver, total_step, step):
                 ckpt_path, Notify.ENDC)
         saver.save(sess, ckpt_path, global_step=total_step)
 
-def validate(sess, loss, less_one_accuracy, less_three_accuracy, epoch, total_step, summary_writer):
+def validate(sess, loss, less_one_accuracy, less_three_accuracy, epoch, total_step, summary_writer, debug):
     val_loss = []
     val_less_one = []
     val_less_three = []
+    val_debugs = []
     for i in range(int(FLAGS.val_batch_size / FLAGS.num_gpus)):
         # run one batch
         start_time = time.time()
         try:
-            out_loss, out_less_one, out_less_three = sess.run(
-                [loss, less_one_accuracy, less_three_accuracy])
+            out_loss, out_less_one, out_less_three, out_debug = sess.run(
+                [loss, less_one_accuracy, less_three_accuracy, debug])
         except tf.errors.OutOfRangeError:
             # ==> "End of dataset"
             logger.warn("End of validation dataset")
@@ -394,13 +397,15 @@ def validate(sess, loss, less_one_accuracy, less_three_accuracy, epoch, total_st
         val_loss.append(out_loss)
         val_less_one.append(out_less_one)
         val_less_three.append(out_less_three)
+        val_debugs.append(out_debug)
     l = np.mean(np.asarray(val_loss))
     l1 = np.mean(np.asarray(val_less_one))
     l3 = np.mean(np.asarray(val_less_three))
+    db = np.mean(np.asarray(val_debugs))
 
     print(Notify.INFO, '\n VAL STEP COMPLETED. Average loss: {}, Average less one: {}, Average less three: {}\n'.format(
         l, l1, l3))
-    wandb.log({'val_loss':l,'val_less_one':l1,'val_less_three':l3}, step=total_step)
+    wandb.log({'val_loss':l,'val_less_one':l1,'val_less_three':l3, 'val_debug':db}, step=total_step)
     summary = Summary(value=[Summary.Value(
         tag='val_less_one', simple_value=out_less_one)])
     summary_writer.add_summary(summary)
@@ -423,7 +428,7 @@ def train():
             with tf.device('/gpu:%d' % i):
                 with tf.name_scope('Model_tower%d' % i) as scope:
                     images, cams, depth, depth_start, depth_interval, full_depth, depth_end = get_batch(training_iterator)
-                    loss, less_one_accuracy, less_three_accuracy, denom = get_loss(images, cams, depth, depth_start, depth_interval, full_depth, depth_end,  i)
+                    loss, less_one_accuracy, less_three_accuracy, debug= get_loss(images, cams, depth, depth_start, depth_interval, full_depth, depth_end,  i)
                     grads = opt.compute_gradients(loss)
                     tower_grads.append(grads)
 
@@ -432,7 +437,7 @@ def train():
                 with tf.name_scope('Model_tower%d' % i) as scope:
                     val_images, val_cams, val_depth, val_depth_start, val_depth_interval, val_full_depth, val_depth_end = get_batch(
                         validation_iterator)
-                    val_loss, val_less_one_accuracy, val_less_three_accuracy, val_denom = get_loss(
+                    val_loss, val_less_one_accuracy, val_less_three_accuracy, val_debug = get_loss(
                         val_images, val_cams, val_depth, val_depth_start, val_depth_interval, val_full_depth, val_depth_end,  i, validate=True)
         
         # Add validation metrics to tf summary
@@ -460,6 +465,10 @@ def train():
                 out_losses = []
                 out_less_ones = []
                 out_less_threes = []
+                # The debug quantity can stand for any quantity that is passed through from the loss
+                # because of tf's graph operation, one can't simply insert a print debug statement in place
+                # and instead has to pass it all the way through to the sess.run call
+                out_debugs = []
                 # We run this once before the for-loop because this initializes the generator and thus
                 # sets the training_sample_size parameter
                 out_opt, out_loss, out_less_one, out_less_three = sess.run(
@@ -473,8 +482,8 @@ def train():
                     # run one batch
                     start_time = time.time()
                     try:
-                        out_opt, out_loss, out_less_one, out_less_three, out_denom = sess.run(
-                            [train_opt, loss, less_one_accuracy, less_three_accuracy, denom])
+                        out_opt, out_loss, out_less_one, out_less_three, out_debug= sess.run(
+                            [train_opt, loss, less_one_accuracy, less_three_accuracy, debug])
                     except tf.errors.OutOfRangeError:
                         logger.warn("End of dataset")
                         break
@@ -483,7 +492,8 @@ def train():
                     out_losses.append(out_loss)
                     out_less_ones.append(out_less_one)
                     out_less_threes.append(out_less_three)
-                    print(out_denom)
+                    out_debugs.append(out_debug)
+                    print(out_debug)
 
                     # print info
                     if step % FLAGS.display == 0:
@@ -496,10 +506,12 @@ def train():
                         l = np.mean(np.asarray(out_losses))
                         l1 = np.mean(np.asarray(out_less_ones))
                         l3 = np.mean(np.asarray(out_less_threes))
-                        wandb.log({'loss': l,'less_one': l1,'less_three': l3,'time_per_step': duration}, step=total_step)
+                        db = np.mean(np.asarray(out_debugs))
+                        wandb.log({'loss': l,'less_one': l1,'less_three': l3,'time_per_step': duration, 'debug': db}, step=total_step)
                         out_losses = []
                         out_less_ones = []
                         out_less_threes = []
+                        out_debugs = []
 
                     save_model(sess, saver, total_step, step)
                     step += FLAGS.batch_size * FLAGS.num_gpus
@@ -507,7 +519,7 @@ def train():
 
                     # Validate model against validation set of data
                     if i % FLAGS.train_steps_per_val == 0:
-                        validate(sess, val_loss, val_less_one_accuracy, val_less_three_accuracy, epoch, total_step, summary_writer)
+                        validate(sess, val_loss, val_less_one_accuracy, val_less_three_accuracy, epoch, total_step, summary_writer, val_debug)
 
 
 def main(argv=None):  # pylint: disable=unused-argument
