@@ -9,7 +9,7 @@ ROOT=$(git rev-parse --show-toplevel)
 RESULTS_PATH="./results.csv"
 
 cd $ROOT
-TEST_DIR="/Users/chrisheinrich/data/mvs_test"
+TEST_DIR="/home/chrisheinrich/data/dtu_7scenes_rgbd_scenes11_copy"
 
 
 python -m mvsnet.test --input_dir=$TEST_DIR --results_path=$RESULTS_PATH --wandb \
