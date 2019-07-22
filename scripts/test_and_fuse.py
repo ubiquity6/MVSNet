@@ -11,6 +11,9 @@ on the file system.
 """
 
 
+def write_resuls(args)
+
+
 def test_and_fuse(args, dense_folder, ply_folder):
     if args.no_test is not True:
         ut.test(dense_folder, args.ckpt_step, args.model_dir)
@@ -65,5 +68,7 @@ if __name__ == '__main__':
                         help='Will not run testing, but only postprocessing, if flag is set')
     parser.add_argument('--test_only', action='store_true',
                         help='Will only run testing, and no fusing or uploading of point clouds.')
+    parser.add_argument('--results_path', type=str,
+                        default='./sketchfab_results.csv', help="The path to where to write teh sketchfab results")
     args = parser.parse_args()
     main(args)
