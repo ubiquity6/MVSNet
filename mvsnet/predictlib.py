@@ -227,6 +227,6 @@ def write_results(path, loss, less_one, less_three):
     """ Writes test results to a file. If the file doesn't exist it is created """
     ensure_header_exists(path)
     with open(path, 'a+') as f:
-        new_line = '{},{},{},{},{}'.format(
+        new_line = '{},{},{},{},{} \n'.format(
             FLAGS.model_dir, FLAGS.ckpt_step, loss, less_one, less_three)
         f.write(new_line)

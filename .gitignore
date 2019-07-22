@@ -19,3 +19,4 @@ scratch/*
 job/*
 
 nohup.out
+results.csv
