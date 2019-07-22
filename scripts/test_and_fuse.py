@@ -11,7 +11,7 @@ on the file system.
 """
 
 
-def write_resuls(args, urls):
+def write_results(args, urls):
     try:
         with open(args.results_path, 'a+') as f:
             new_line = '{},{},{} \n'.format(
@@ -30,7 +30,7 @@ def test_and_fuse(args, dense_folder, ply_folder):
             args.disp_threshold, args.num_consistent)
     ply_paths = ut.get_fusion_plys(dense_folder)
     urls = ut.handle_plys(ply_paths, dense_folder, ply_folder, args)
-    print('Sketchfab url {}'.format(urls))
+    print('Sketchfab urls {}'.format(urls))
     write_results(args, urls)
     return urls
 
