@@ -33,7 +33,7 @@ tf.app.flags.DEFINE_string('run_name', None,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 4,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 256,
+tf.app.flags.DEFINE_integer('max_d', 64,
                             """Maximum depth step when testing.""")
 tf.app.flags.DEFINE_integer('width', 640,
                             """Maximum image width when testing.""")
@@ -66,6 +66,8 @@ tf.app.flags.DEFINE_boolean('upsample_before_refinement', False,
                             """Whether to upsample depth map to input resolution before the refinement network.""")
 tf.app.flags.DEFINE_boolean('refine_with_confidence', False,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
+tf.app.flags.DEFINE_bool('grad_loss', False,
+                         """Whether or not to add a depth gradient term to the overall loss""")
 
 # Parameters for writing and benchmarking output
 tf.app.flags.DEFINE_bool('visualize', False,
@@ -81,6 +83,8 @@ tf.app.flags.DEFINE_bool('reuse_vars', False,
                           set to False by default and is switched on or off by individual methods""")
 tf.app.flags.DEFINE_integer('max_clusters_per_session', 10,
                             """The maximum number of clusters to benchmark per session. If not benchmarking this should probably be set to None""")
+tf.app.flags.DEFINE_string('results_path', './results.csv',
+                           """Path to csv file to write results to""")
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -102,7 +106,7 @@ def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, output_dir=N
     if upsample_depth:
         depth_map = tf.image.resize_bilinear(
             depth_map, [full_depth_shape[1], full_depth_shape[2]])
-    loss, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
+    loss, less_one_accuracy, less_three_accuracy, debug = mvsnet_regression_loss(
         depth_map, full_depth, depth_start, depth_end)
 
     # init option
@@ -171,6 +175,9 @@ def main(_):  # pylint: disable=unused-argument
         ' ** Average Less one = {}'.format(avg_less_one))
     logger.info(
         ' ** Average Less three = {}'.format(avg_less_three))
+    pl.write_results(FLAGS.results_path, avg_loss,
+                     avg_less_one, avg_less_three)
+
     if FLAGS.wandb:
         wandb.log(
             {'avg_loss': avg_loss, 'avg_less_three': avg_less_three, 'avg_less_one': avg_less_one})

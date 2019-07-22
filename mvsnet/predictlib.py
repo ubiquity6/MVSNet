@@ -182,6 +182,51 @@ def init_inference(input_dir, output_dir, width, height):
         FLAGS.width, FLAGS.height = width, height
     logger.info('Computing depth maps with MVSNet. Using input width x height = {} x {}.'.format(
         FLAGS.width, FLAGS.height))
+    if FLAGS.run_name is None:
+        FLAGS.run_name = 'model={}_ckpt={}'.format(
+            FLAGS.model_dir, FLAGS.ckpt_step)
     if FLAGS.wandb:
         mu.initialize_wandb(FLAGS, project='mvsnet-inference')
     return setup_output_dir(input_dir, output_dir)
+
+
+# For writing results to file
+
+
+def get_header():
+    header = 'model_dir,ckpt_step,loss,less_one,less_three \n'
+    return header
+
+
+def header_exists(path):
+    try:
+        with open(path, 'r') as f:
+            fl = f.readlines()
+            if len(fl) > 0:
+                if fl[0] == get_header():
+                    return True
+        return False
+    except Exception as e:
+        # If the above line fails its likely because file does not exist
+        # in which case we will need to create the file and write the header
+        return False
+
+
+def ensure_header_exists(path):
+    """ Ensures that the file at path has the correct header """
+    if header_exists(path):
+        return True
+    else:
+        # if header doesn't exist, we write a new file with the header
+        with open(path, 'a+') as f:
+            f.write(get_header())
+        return True
+
+
+def write_results(path, loss, less_one, less_three):
+    """ Writes test results to a file. If the file doesn't exist it is created """
+    ensure_header_exists(path)
+    with open(path, 'a+') as f:
+        new_line = '{},{},{},{},{}'.format(
+            FLAGS.model_dir, FLAGS.ckpt_step, loss, less_one, less_three)
+        f.write(new_line)
