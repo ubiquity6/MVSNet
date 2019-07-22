@@ -11,7 +11,8 @@ on the file system.
 """
 
 
-def write_resuls(args)
+def write_resuls(args):
+    print('meow')
 
 
 def test_and_fuse(args, dense_folder, ply_folder):
