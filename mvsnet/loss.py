@@ -131,9 +131,11 @@ def gaussian_loss(y_true, y_pred, interval, eta):
     return loss, tf.no_op()
 
 
-def log_gradient_loss(y_true, y_pred):
+def gradient_loss(y_true, y_pred, log=True):
     """ This loss term calculate the difference in depth gradients in the horizontal and vertical
-    direction and returns the log of these depth gradients """
+    direction and returns the average absolution value of these gradients.
+        Args:
+            log: Whether or not to take the log of the depth gradients """
     with tf.name_scope('grad_loss'):
         mask = tf.cast(tf.not_equal(y_true, 0.0), dtype=tf.float32)
         num_valid_pixels = tf.reduce_sum(mask)
@@ -141,17 +143,18 @@ def log_gradient_loss(y_true, y_pred):
 
         v_gradient = diff[0:-2, :] - diff[2:, :]
         v_mask = tf.math.multiply(mask[0:-2, :], mask[2:, :])
-        v_gradient = tf.math.multiply(v_gradient, v_mask)
+        v_gradient = tf.math.abs(tf.math.multiply(v_gradient, v_mask))
 
         h_gradient = diff[:, 0:-2] - diff[:, 2:]
         h_mask = tf.math.multiply(mask[:, 0:-2], mask[:, 2:])
-        h_gradient = tf.math.multiply(h_gradient, h_mask)
+        h_gradient = tf.math.abs(tf.math.multiply(h_gradient, h_mask))
 
-        # We add 1.0 since log(1) = 0 and log(0) = -infinity
-        v_log_grad = tf.math.log(1.0 + tf.math.abs(v_gradient))
-        h_log_grad = tf.math.log(1.0 + tf.math.abs(h_gradient))
+        if log:
+            # We add 1.0 since log(1) = 0 and log(0) = -infinity
+            v_gradient = tf.math.log(1.0 + v_gradient)
+            h_gradient = tf.math.log(1.0 + h_gradient)
 
-        grad_loss = tf.reduce_sum(v_log_grad) + tf.reduce_sum(h_log_grad)
+        grad_loss = tf.reduce_sum(v_gradient) + tf.reduce_sum(h_gradient)
         grad_loss = grad_loss / num_valid_pixels
     return grad_loss
 
@@ -203,7 +206,7 @@ def mvsnet_regression_loss(estimated_depth_image, depth_image, depth_start, dept
 
     if grad_loss:
         gamma = 0.5
-        g_loss = log_gradient_loss(depth_image, estimated_depth_image)
+        g_loss = gradient_loss(depth_image, estimated_depth_image)
         loss = loss + gamma * g_loss
         debug = g_loss
 
