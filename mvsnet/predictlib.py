@@ -21,6 +21,8 @@ logger = mu.setup_logger('predictlib')
 sys.path.append("../")
 tf.app.flags.DEFINE_bool('wandb', False,
                          """Whether or not to log inference results to wandb""")
+tf.app.flags.DEFINE_string('run_name', None,
+                           """A name to use for wandb logging""")
 
 FLAGS = tf.app.flags.FLAGS
 

@@ -11,8 +11,15 @@ on the file system.
 """
 
 
-def write_resuls(args):
-    print('meow')
+def write_resuls(args, urls):
+    try:
+        with open(args.results_path, 'a+') as f:
+            new_line = '{},{},{} \n'.format(
+                args.model_dir, args.ckpt_step, urls)
+            f.write(new_line)
+    except Exception as e:
+        logger.error('Failed to write results with exception {}'.format(e))
+        pass  # While it is too bad if results fail to write, we don't want to stop the process over it
 
 
 def test_and_fuse(args, dense_folder, ply_folder):
@@ -24,6 +31,7 @@ def test_and_fuse(args, dense_folder, ply_folder):
     ply_paths = ut.get_fusion_plys(dense_folder)
     urls = ut.handle_plys(ply_paths, dense_folder, ply_folder, args)
     print('Sketchfab url {}'.format(urls))
+    write_results(args, urls)
     return urls
 
 
@@ -70,6 +78,6 @@ if __name__ == '__main__':
     parser.add_argument('--test_only', action='store_true',
                         help='Will only run testing, and no fusing or uploading of point clouds.')
     parser.add_argument('--results_path', type=str,
-                        default='./sketchfab_results.csv', help="The path to where to write teh sketchfab results")
+                        default='./sketchfab_links.csv', help="The path to where to write teh sketchfab results")
     args = parser.parse_args()
     main(args)
