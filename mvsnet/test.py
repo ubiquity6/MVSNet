@@ -33,11 +33,11 @@ tf.app.flags.DEFINE_string('run_name', None,
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 4,
                             """Number of images (1 ref image and view_num - 1 view images).""")
-tf.app.flags.DEFINE_integer('max_d', 64,
+tf.app.flags.DEFINE_integer('max_d', 192,
                             """Maximum depth step when testing.""")
-tf.app.flags.DEFINE_integer('width', 640,
+tf.app.flags.DEFINE_integer('width', 512,
                             """Maximum image width when testing.""")
-tf.app.flags.DEFINE_integer('height', 480,
+tf.app.flags.DEFINE_integer('height', 384,
                             """Maximum image height when testing.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume (W and H).""")
@@ -81,7 +81,7 @@ tf.app.flags.DEFINE_bool('write_output', False,
 tf.app.flags.DEFINE_bool('reuse_vars', False,
                          """A global flag representing whether variables should be reused. This should be
                           set to False by default and is switched on or off by individual methods""")
-tf.app.flags.DEFINE_integer('max_clusters_per_session', 10,
+tf.app.flags.DEFINE_integer('max_clusters_per_session', 100,
                             """The maximum number of clusters to benchmark per session. If not benchmarking this should probably be set to None""")
 tf.app.flags.DEFINE_string('results_path', './results.csv',
                            """Path to csv file to write results to""")

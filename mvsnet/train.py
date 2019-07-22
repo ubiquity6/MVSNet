@@ -380,7 +380,7 @@ def validate(sess, loss, less_one_accuracy, less_three_accuracy, epoch, total_st
     val_less_one = []
     val_less_three = []
     val_debugs = []
-    for i in range(int(FLAGS.val_batch_size / FLAGS.num_gpus)):
+    for i in range(int(FLAGS.val_batch_size)):
         # run one batch
         start_time = time.time()
         try:

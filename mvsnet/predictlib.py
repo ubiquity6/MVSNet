@@ -225,8 +225,12 @@ def ensure_header_exists(path):
 
 def write_results(path, loss, less_one, less_three):
     """ Writes test results to a file. If the file doesn't exist it is created """
-    ensure_header_exists(path)
-    with open(path, 'a+') as f:
-        new_line = '{},{},{},{},{} \n'.format(
-            FLAGS.model_dir, FLAGS.ckpt_step, loss, less_one, less_three)
-        f.write(new_line)
+    try:
+        ensure_header_exists(path)
+        with open(path, 'a+') as f:
+            new_line = '{},{},{},{},{} \n'.format(
+                FLAGS.model_dir, FLAGS.ckpt_step, loss, less_one, less_three)
+            f.write(new_line)
+    except Exception as e:
+        logger.error('Failed to write results with exception {}'.format(e))
+        pass  # While it is too bad if results fail to write, we don't want to stop the process over it
