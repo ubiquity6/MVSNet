@@ -24,6 +24,6 @@ python -m mvsnet.test --input_dir=$TEST_DIR --results_path=$RESULTS_PATH --wandb
 
 python -m mvsnet.test --input_dir=$TEST_DIR --results_path=$RESULTS_PATH --wandb \
 --model_dir=gs://mvs-training-mlengine/f_refine_4gpu_alpha_0_25_epsilon_0_01_lr_0_0002_grad_unet_2/models/ \
---ckpt_step=500000 --refinement==True
+--ckpt_step=500000 --refinement=True
 
 
