@@ -56,6 +56,7 @@ def main(args):
             except Exception as e:
                 print('Failed to test and fuse on dense folder {}'.format(dense_folder))
     print('Models uploaded to:', all_urls)
+    write_results(args, all_urls)
 
 
 if __name__ == '__main__':

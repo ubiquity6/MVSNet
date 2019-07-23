@@ -502,7 +502,7 @@ def train():
                         print(Notify.INFO,
                               'epoch, %d, step %d, total_step %d, loss = %.4f, (< 1px) = %.4f, (< 3px) = %.4f (%.3f sec/step)' %
                               (epoch, step, total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
-                    if out_loss == np.nan:
+                    if np.isnan(out_loss):
                         # Stop the job if we get a nan in the loss function
                         sys.exit(1)
                     
