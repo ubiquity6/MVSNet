@@ -14,7 +14,7 @@ on the file system.
 def write_results(args, urls):
     try:
         with open(args.results_path, 'a+') as f:
-            new_line = '{},{},{} \n'.format(
+            new_line = '{}, {}, {} \n'.format(
                 args.model_dir, args.ckpt_step, urls)
             f.write(new_line)
     except Exception as e:

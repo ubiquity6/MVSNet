@@ -196,7 +196,7 @@ def init_inference(input_dir, output_dir, width, height):
 
 
 def get_header():
-    header = 'model_dir,ckpt_step,loss,less_one,less_three \n'
+    header = 'model_dir, ckpt_step, loss, less_one, less_three \n'
     return header
 
 
@@ -230,7 +230,7 @@ def write_results(path, loss, less_one, less_three):
     try:
         ensure_header_exists(path)
         with open(path, 'a+') as f:
-            new_line = '{},{},{},{},{} \n'.format(
+            new_line = '{}, {}, {}, {}, {} \n'.format(
                 FLAGS.model_dir, FLAGS.ckpt_step, loss, less_one, less_three)
             f.write(new_line)
     except Exception as e:

@@ -71,20 +71,20 @@ tf.app.flags.DEFINE_string('regularization', '3DCNNs',
                            """Regularization method.""")
 tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
                            """Optimizer to use. One of 'momentum', 'rmsprop' or 'adam' """)
-tf.app.flags.DEFINE_boolean('refinement', False,
+tf.app.flags.DEFINE_boolean('refinement', True,
                             """Whether to apply depth map refinement for 3DCNNs""")
 tf.app.flags.DEFINE_string('refinement_train_mode', 'main_only',
                             """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
                             if 'refine_only', only the refinement network is trained, and if 'all' then the whole network is trained.
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
-tf.app.flags.DEFINE_string('network_mode', 'normal',
-                            """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
-tf.app.flags.DEFINE_string('refinement_network', 'original',
+tf.app.flags.DEFINE_string('network_mode', 'ultralite',
+                            """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have 2x and 4x fewer params respectively""")
+tf.app.flags.DEFINE_string('refinement_network', 'unet',
                             """Specifies network to use for refinement. One of 'original' or 'unet'. 
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
 tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
                             """Whether to upsample depth map to input resolution before the refinement network""")
-tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
+tf.app.flags.DEFINE_boolean('refine_with_confidence', False,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
 tf.app.flags.DEFINE_boolean('refine_with_stereo', False,
                             """Whether or not to inject a stereo partner into refinement network""")
@@ -101,7 +101,7 @@ tf.app.flags.DEFINE_float('base_lr', 0.001,
                           """Base learning rate.""")
 tf.app.flags.DEFINE_integer('display', 1,
                             """Interval of loginfo display.""")
-tf.app.flags.DEFINE_integer('stepvalue', 60000,
+tf.app.flags.DEFINE_integer('stepvalue', 70000,
                             """Step interval to decay learning rate.""")
 tf.app.flags.DEFINE_integer('snapshot', 5000,
                             """Step interval to save the model.""")
@@ -130,7 +130,7 @@ tf.app.flags.DEFINE_float('beta', 0.0,
 tf.app.flags.DEFINE_float('eta', 0.02,
                           """ A multiplicative constant appearing in the standard deviation of the Gaussian loss ---> sigma = eta * y_true
                           This value used only if loss_type='gaussian'""")
-tf.app.flags.DEFINE_bool('grad_loss', False,
+tf.app.flags.DEFINE_bool('grad_loss', True,
                          """Whether or not to add a depth gradient term to the overall loss""")
 
                         
@@ -343,7 +343,7 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
                 # These gradients on l0 will be zero, so no need to include l0 in the loss
                 loss = loss1 + 1e-9*loss0
             elif FLAGS.refinement_train_mode == 'main_only':
-                loss = loss0 + 1e-9*loss1
+                loss = loss0 + 1e-12*loss1
                 less_one_accuracy = less_one_main
                 less_three_accuracy = less_three_main
             else:
