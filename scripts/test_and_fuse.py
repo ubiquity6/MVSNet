@@ -14,8 +14,8 @@ on the file system.
 def write_results(args, urls):
     try:
         with open(args.results_path, 'a+') as f:
-            new_line = '{}, {}, {} \n'.format(
-                args.model_dir, args.ckpt_step, urls)
+            new_line = '{}, {}, {}, {}, {}, {} \n'.format(
+                args.model_dir, args.ckpt_step, urls, args.prob_threshold, args.disp_threshold, args.num_consistent)
             f.write(new_line)
     except Exception as e:
         logger.error('Failed to write results with exception {}'.format(e))
