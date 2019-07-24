@@ -26,7 +26,7 @@ tf.app.flags.DEFINE_string('output_dir', None,
 tf.app.flags.DEFINE_string('model_dir',
                            'gs://mvs-training-mlengine/dd7_alpha_0_25_epsilon_linear_0_005_lr_0_005_4gpu/models/',
                            """Path to restore the model.""")
-tf.app.flags.DEFINE_integer('ckpt_step', 450000,
+tf.app.flags.DEFINE_integer('ckpt_step', 685000,
                             """ckpt  step.""")
 tf.app.flags.DEFINE_string('run_name', None,
                            """A name to use for wandb logging""")
@@ -35,9 +35,9 @@ tf.app.flags.DEFINE_integer('view_num', 4,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 256,
                             """Maximum depth step when testing.""")
-tf.app.flags.DEFINE_integer('width', 512,
+tf.app.flags.DEFINE_integer('width', 640,
                             """Maximum image width when testing.""")
-tf.app.flags.DEFINE_integer('height', 384,
+tf.app.flags.DEFINE_integer('height', 480,
                             """Maximum image height when testing.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume (W and H).""")
