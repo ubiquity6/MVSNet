@@ -13,8 +13,26 @@ TEST_DIR="/home/chrisheinrich/data/dtu_7scenes_rgbd_scenes11_copy"
 
 
 python -m mvsnet.test --input_dir=$TEST_DIR --results_path=$RESULTS_PATH --wandb \
---model_dir=gs://mvs-training-mlengine/trained-models/06-04-2019/ \
---ckpt_step=1350000 --wandb
+--model_dir gs://mvs-training-mlengine/f_grad_power_gamma_1/models/ --ckpt_step 715000
+
+
+python -m mvsnet.test --input_dir=$TEST_DIR --results_path=$RESULTS_PATH --wandb \
+--model_dir gs://mvs-training-mlengine/f_alpha_0_125_beta_0_epsilon_0_01/models/ --ckpt_step 140000
+
+python -m mvsnet.test --input_dir=$TEST_DIR --results_path=$RESULTS_PATH --wandb \
+--model_dir gs://mvs-training-mlengine/f_alpha_05_beta_1/models/ --ckpt_step 140000
+
+python -m mvsnet.test --input_dir=$TEST_DIR --results_path=$RESULTS_PATH --wandb \
+--model_dir gs://mvs-training-mlengine/f_gaussian_eta_0_01/models/ --ckpt_step 140000
+
+python -m mvsnet.test --input_dir=$TEST_DIR --results_path=$RESULTS_PATH --wandb \
+--model_dir gs://mvs-training-mlengine/f_grad_loss/models/ --ckpt_step 140000
+
+python -m mvsnet.test --input_dir=$TEST_DIR --results_path=$RESULTS_PATH --wandb \
+--model_dir gs://mvs-training-mlengine/f_alpha_025_beta_1/models/ --ckpt_step 100000
+
+
+
 
 
 
