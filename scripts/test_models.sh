@@ -15,7 +15,6 @@ TEST_DIR="/home/chrisheinrich/data/dtu_7scenes_rgbd_scenes11_copy"
 python -m mvsnet.test --input_dir=$TEST_DIR --results_path=$RESULTS_PATH --wandb \
 --model_dir gs://mvs-training-mlengine/f_grad_power_gamma_1/models/ --ckpt_step 715000
 
-
 python -m mvsnet.test --input_dir=$TEST_DIR --results_path=$RESULTS_PATH --wandb \
 --model_dir gs://mvs-training-mlengine/f_alpha_0_125_beta_0_epsilon_0_01/models/ --ckpt_step 140000
 
