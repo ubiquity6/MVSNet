@@ -11,24 +11,20 @@ RESULTS_PATH="./results.csv"
 cd $ROOT
 TEST_DIR="/home/chrisheinrich/data/dtu_7scenes_rgbd_scenes11_copy"
 
+if [ $# -gt 0 ]; then
+    TEST_DIR=$1
+fi
+
+
 
 python -m mvsnet.test --input_dir=$TEST_DIR --results_path=$RESULTS_PATH --wandb \
---model_dir gs://mvs-training-mlengine/f_grad_power_gamma_1/models/ --ckpt_step 715000
-
-python -m mvsnet.test --input_dir=$TEST_DIR --results_path=$RESULTS_PATH --wandb \
---model_dir gs://mvs-training-mlengine/f_alpha_0_125_beta_0_epsilon_0_01/models/ --ckpt_step 140000
-
-python -m mvsnet.test --input_dir=$TEST_DIR --results_path=$RESULTS_PATH --wandb \
---model_dir gs://mvs-training-mlengine/f_alpha_05_beta_1/models/ --ckpt_step 140000
-
-python -m mvsnet.test --input_dir=$TEST_DIR --results_path=$RESULTS_PATH --wandb \
---model_dir gs://mvs-training-mlengine/f_gaussian_eta_0_01/models/ --ckpt_step 140000
+--model_dir gs://mvs-training-mlengine/f_baseline/models/ --ckpt_step 140000
 
 python -m mvsnet.test --input_dir=$TEST_DIR --results_path=$RESULTS_PATH --wandb \
 --model_dir gs://mvs-training-mlengine/f_grad_loss/models/ --ckpt_step 140000
 
 python -m mvsnet.test --input_dir=$TEST_DIR --results_path=$RESULTS_PATH --wandb \
---model_dir gs://mvs-training-mlengine/f_alpha_025_beta_1/models/ --ckpt_step 100000
+--model_dir gs://mvs-training-mlengine/f_grad_loss_nolog_gamma_0_025/models/ --ckpt_step 140000
 
 
 

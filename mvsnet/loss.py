@@ -131,7 +131,7 @@ def gaussian_loss(y_true, y_pred, interval, eta):
     return loss, tf.no_op()
 
 
-def gradient_loss(y_true, y_pred, log=True):
+def gradient_loss(y_true, y_pred, log=False):
     """ This loss term calculate the difference in depth gradients in the horizontal and vertical
     direction and returns the average absolution value of these gradients.
         Args:

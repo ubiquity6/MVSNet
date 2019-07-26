@@ -196,7 +196,7 @@ def init_inference(input_dir, output_dir, width, height):
 
 
 def get_header():
-    header = 'model_dir, ckpt_step, loss, less_one, less_three \n'
+    header = 'model_dir, ckpt_step, loss, less_one, less_three, debug \n'
     return header
 
 
@@ -225,13 +225,13 @@ def ensure_header_exists(path):
         return True
 
 
-def write_results(path, loss, less_one, less_three):
+def write_results(path, loss, less_one, less_three, debug):
     """ Writes test results to a file. If the file doesn't exist it is created """
     try:
         ensure_header_exists(path)
         with open(path, 'a+') as f:
-            new_line = '{}, {}, {}, {}, {} \n'.format(
-                FLAGS.model_dir, FLAGS.ckpt_step, loss, less_one, less_three)
+            new_line = '{}, {}, {}, {}, {}, {} \n'.format(
+                FLAGS.model_dir, FLAGS.ckpt_step, loss, less_one, less_three, debug)
             f.write(new_line)
     except Exception as e:
         logger.error('Failed to write results with exception {}'.format(e))

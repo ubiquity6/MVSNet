@@ -24,9 +24,9 @@ tf.app.flags.DEFINE_string('input_dir', None,
 tf.app.flags.DEFINE_string('output_dir', None,
                            """Path to data to dir to output results""")
 tf.app.flags.DEFINE_string('model_dir',
-                           'gs://mvs-training-mlengine/dd7_alpha_0_25_epsilon_linear_0_005_lr_0_005_4gpu/models/',
+                           'gs://mvs-training-mlengine/f_refine_4gpu_alpha_0_25_epsilon_0_01_lr_0_0002_grad_unet_2/models/',
                            """Path to restore the model.""")
-tf.app.flags.DEFINE_integer('ckpt_step', 685000,
+tf.app.flags.DEFINE_integer('ckpt_step', 500000,
                             """ckpt  step.""")
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 4,
@@ -64,7 +64,7 @@ tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
                             """Whether to upsample depth map to input resolution before the refinement network.""")
 tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
-tf.app.flags.DEFINE_bool('grad_loss', False,
+tf.app.flags.DEFINE_bool('grad_loss', True,
                          """Whether or not to add a depth gradient term to the overall loss""")
 
 # Parameters for writing and benchmarking output
@@ -86,7 +86,7 @@ tf.app.flags.DEFINE_string('results_path', './results.csv',
 FLAGS = tf.app.flags.FLAGS
 
 
-def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, output_dir=None, width=None, height=None):
+def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, out_debugs, output_dir=None, width=None, height=None):
     """ Performs inference using trained MVSNet model on data located in input_dir. This method is similar to compute_depth_maps, however it benchmarks the resulting 
     data against GT depths. This is useful for benchmarking models and should only be run on input data with GT depth maps  """
     output_dir = pl.init_inference(input_dir, output_dir, width, height)
@@ -105,7 +105,7 @@ def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, output_dir=N
         depth_map = tf.image.resize_bilinear(
             depth_map, [full_depth_shape[1], full_depth_shape[2]])
     loss, less_one_accuracy, less_three_accuracy, debug = mvsnet_regression_loss(
-        depth_map, full_depth, depth_start, depth_end)
+        depth_map, full_depth, depth_start, depth_end, grad_loss=FLAGS.grad_loss)
 
     # init option
     var_init_op = tf.local_variables_initializer()
@@ -122,11 +122,11 @@ def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, output_dir=N
             start_time = time.time()
             try:
                 if FLAGS.refinement:
-                    out_depth_map, out_prob_map, out_images, out_cams, out_full_cams, out_full_images, out_index, out_session_dir, out_loss, out_less_one, out_less_three, out_residual_depth_map = sess.run(
-                        [depth_map, prob_map, scaled_images, scaled_cams, full_cams, full_images, image_index, session_dir, loss, less_one_accuracy, less_three_accuracy, residual_depth_map])
+                    out_depth_map, out_prob_map, out_images, out_cams, out_full_cams, out_full_images, out_index, out_session_dir, out_loss, out_less_one, out_less_three, out_residual_depth_map, out_debug = sess.run(
+                        [depth_map, prob_map, scaled_images, scaled_cams, full_cams, full_images, image_index, session_dir, loss, less_one_accuracy, less_three_accuracy, residual_depth_map, debug])
                 else:
-                    out_depth_map, out_prob_map, out_images, out_cams, out_full_cams, out_full_images, out_index, out_session_dir, out_loss, out_less_one, out_less_three = sess.run(
-                        [depth_map, prob_map, scaled_images, scaled_cams, full_cams, full_images, image_index, session_dir, loss, less_one_accuracy, less_three_accuracy])
+                    out_depth_map, out_prob_map, out_images, out_cams, out_full_cams, out_full_images, out_index, out_session_dir, out_loss, out_less_one, out_less_three, out_debug = sess.run(
+                        [depth_map, prob_map, scaled_images, scaled_cams, full_cams, full_images, image_index, session_dir, loss, less_one_accuracy, less_three_accuracy, debug])
             except tf.errors.OutOfRangeError:
                 print("all dense finished")  # ==> "End of dataset"
                 break
@@ -140,6 +140,8 @@ def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, output_dir=N
                 out_index, out_less_one))
             logger.info('Image {} less three = {}'.format(
                 out_index, out_less_three))
+            logger.info('Image {} debug = {}'.format(
+                out_index, out_debug))
 
             write_dir = os.path.join(str(out_session_dir[0]), 'depths_mvsnet')
             mu.mkdir_p(write_dir)
@@ -149,9 +151,10 @@ def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, output_dir=N
             losses.append(out_loss)
             less_ones.append(out_less_one)
             less_threes.append(out_less_three)
+            out_debugs.append(out_debug)
             if FLAGS.wandb:
                 wandb.log(
-                    {'loss': out_loss, 'less_three': out_less_three, 'less_one': out_less_one})
+                    {'loss': out_loss, 'less_three': out_less_three, 'less_one': out_less_one, 'debug': out_debug})
 
 
 def main(_):  # pylint: disable=unused-argument
@@ -163,18 +166,22 @@ def main(_):  # pylint: disable=unused-argument
     losses = []
     less_ones = []
     less_threes = []
+    out_debugs = []
     benchmark_depth_maps(FLAGS.input_dir, losses,
-                         less_ones, less_threes)
+                         less_ones, less_threes, out_debugs)
     avg_loss = np.asarray(losses).mean()
     avg_less_one = np.asarray(less_ones).mean()
     avg_less_three = np.asarray(less_threes).mean()
+    avg_debug = np.asarray(out_debugs).mean()
     logger.info(' ** Average Loss = {}'.format(avg_loss))
     logger.info(
         ' ** Average Less one = {}'.format(avg_less_one))
     logger.info(
         ' ** Average Less three = {}'.format(avg_less_three))
+    logger.info(
+        ' ** Average debug = {}'.format(avg_debug))
     pl.write_results(FLAGS.results_path, avg_loss,
-                     avg_less_one, avg_less_three)
+                     avg_less_one, avg_less_three, avg_debug)
 
     if FLAGS.wandb:
         wandb.log(
