@@ -43,7 +43,7 @@ def required_packages():
             'scikit-learn==0.18',
             'scipy==0.18',
             'matplotlib==1.5',
-            'tensorflow==1.12.0',
+            'tensorflow-gpu==1.1.0',
             'funcsigs==1.0.2',
             'Pillow==6.1.0',
             'imageio==2.5.0',
