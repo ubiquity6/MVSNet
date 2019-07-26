@@ -18,16 +18,5 @@ fi
 
 
 python -m mvsnet.test --input_dir=$TEST_DIR --results_path=$RESULTS_PATH --wandb \
---model_dir gs://mvs-training-mlengine/f_baseline/models/ --ckpt_step 140000
-
-python -m mvsnet.test --input_dir=$TEST_DIR --results_path=$RESULTS_PATH --wandb \
---model_dir gs://mvs-training-mlengine/f_grad_loss/models/ --ckpt_step 140000
-
-python -m mvsnet.test --input_dir=$TEST_DIR --results_path=$RESULTS_PATH --wandb \
---model_dir gs://mvs-training-mlengine/f_grad_loss_nolog_gamma_0_025/models/ --ckpt_step 140000
-
-
-
-
-
+--model_dir gs://mvs-training-mlengine/dtu_pretrained_baseline_models/models/ --ckpt_step 100000
 
