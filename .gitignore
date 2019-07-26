@@ -17,6 +17,7 @@ MVSNet.egg-info/*
 wandb/*
 scratch/*
 job/*
+.venv/*
 
 nohup.out
 results.csv
