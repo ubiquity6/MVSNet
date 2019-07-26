@@ -9,7 +9,7 @@ ROOT=$(git rev-parse --show-toplevel)
 cd $ROOT
 
 RESULTS_PATH="./sketchfab_results.csv"
-TEST_DIR="/home/chrisheinrich/data/atlas"
+TEST_DIR="/home/chrisheinrich/data/atlas_hard"
 
 
 python -m scripts.test_and_fuse --prob_threshold 0.1 --disp_threshold 0.2 --num_consistent 3 \
