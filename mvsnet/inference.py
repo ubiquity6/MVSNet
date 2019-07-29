@@ -21,12 +21,12 @@ tf.app.flags.DEFINE_string('input_dir', None,
 tf.app.flags.DEFINE_string('output_dir', None,
                            """Path to data to dir to output results""")
 tf.app.flags.DEFINE_string('model_dir',
-                           None,
+                           'gs://mvs-training-mlengine/trained-models/07-29-2019/',
                            """Path to restore the model.""")
-tf.app.flags.DEFINE_integer('ckpt_step', None,
+tf.app.flags.DEFINE_integer('ckpt_step', 340000,
                             """ckpt  step.""")
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 10,
+tf.app.flags.DEFINE_integer('view_num', 8,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 256,
                             """Maximum depth step when testing.""")
