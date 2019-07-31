@@ -11,6 +11,17 @@ on the file system.
 """
 
 
+def write_results(args, urls):
+    try:
+        with open(args.results_path, 'a+') as f:
+            new_line = '{}, {}, {}, {}, {}, {} \n'.format(
+                args.model_dir, args.ckpt_step, urls, args.prob_threshold, args.disp_threshold, args.num_consistent)
+            f.write(new_line)
+    except Exception as e:
+        logger.error('Failed to write results with exception {}'.format(e))
+        pass  # While it is too bad if results fail to write, we don't want to stop the process over it
+
+
 def test_and_fuse(args, dense_folder, ply_folder):
     if args.no_test is not True:
         ut.test(dense_folder, args.ckpt_step, args.model_dir)
@@ -19,7 +30,8 @@ def test_and_fuse(args, dense_folder, ply_folder):
             args.disp_threshold, args.num_consistent)
     ply_paths = ut.get_fusion_plys(dense_folder)
     urls = ut.handle_plys(ply_paths, dense_folder, ply_folder, args)
-    print('Sketchfab url {}'.format(urls))
+    print('Sketchfab urls {}'.format(urls))
+    write_results(args, urls)
     return urls
 
 
@@ -44,6 +56,7 @@ def main(args):
             except Exception as e:
                 print('Failed to test and fuse on dense folder {}'.format(dense_folder))
     print('Models uploaded to:', all_urls)
+    write_results(args, all_urls)
 
 
 if __name__ == '__main__':
@@ -65,5 +78,7 @@ if __name__ == '__main__':
                         help='Will not run testing, but only postprocessing, if flag is set')
     parser.add_argument('--test_only', action='store_true',
                         help='Will only run testing, and no fusing or uploading of point clouds.')
+    parser.add_argument('--results_path', type=str,
+                        default='./sketchfab_links.csv', help="The path to where to write teh sketchfab results")
     args = parser.parse_args()
     main(args)

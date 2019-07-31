@@ -21,12 +21,12 @@ tf.app.flags.DEFINE_string('input_dir', None,
 tf.app.flags.DEFINE_string('output_dir', None,
                            """Path to data to dir to output results""")
 tf.app.flags.DEFINE_string('model_dir',
-                           'gs://mvs-training-mlengine/trained-models/06-04-2019/',
+                           'gs://mvs-training-mlengine/trained-models/07-29-2019/',
                            """Path to restore the model.""")
-tf.app.flags.DEFINE_integer('ckpt_step', 1350000,
+tf.app.flags.DEFINE_integer('ckpt_step', 340000,
                             """ckpt  step.""")
 # input parameters
-tf.app.flags.DEFINE_integer('view_num', 6,
+tf.app.flags.DEFINE_integer('view_num', 8,
                             """Number of images (1 ref image and view_num - 1 view images).""")
 tf.app.flags.DEFINE_integer('max_d', 256,
                             """Maximum depth step when testing.""")
@@ -54,12 +54,12 @@ tf.app.flags.DEFINE_bool('inverse_depth', False,
                          """Whether to apply inverse depth for R-MVSNet""")
 tf.app.flags.DEFINE_string('network_mode', 'normal',
                            """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
-tf.app.flags.DEFINE_string('refinement_network', 'original',
+tf.app.flags.DEFINE_string('refinement_network', 'unet',
                            """Specifies network to use for refinement. One of 'original' or 'unet'.
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
-tf.app.flags.DEFINE_boolean('upsample_before_refinement', False,
+tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
                             """Whether to upsample depth map to input resolution before the refinement network.""")
-tf.app.flags.DEFINE_boolean('refine_with_confidence', False,
+tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
 
 # Parameters for writing and benchmarking output
@@ -76,6 +76,7 @@ tf.app.flags.DEFINE_bool('reuse_vars', False,
                           set to False by default and is switched on or off by individual methods""")
 tf.app.flags.DEFINE_integer('max_clusters_per_session', None,
                             """The maximum number of clusters to benchmark per session. If not benchmarking this should probably be set to None""")
+
 FLAGS = tf.app.flags.FLAGS
 
 
