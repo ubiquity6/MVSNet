@@ -44,6 +44,7 @@ def required_packages():
             'scipy==0.18',
             'matplotlib==1.5',
             'tensorflow-gpu==1.1.0',
+            'nvidia-ml-py==375.53.1',
             'funcsigs==1.0.2',
             'Pillow==6.1.0',
             'imageio==2.5.0',
