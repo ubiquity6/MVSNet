@@ -72,11 +72,13 @@ class Network(object):
         # The epsilon paramater in BN layer.
         self.bn_epsilon = epsilon
         self.extra_args = kwargs
-        self.base_divisor = 1  # for dividing the base_filter size of the network
+        self.base_divisor = 1.0  # for dividing the base_filter size of the network
+        if mode == 'semilite':
+            self.base_divisor = 4/3
         if mode == 'lite':
-            self.base_divisor = 2
+            self.base_divisor = 2.0
         if mode == 'ultralite':
-            self.base_divisor = 4
+            self.base_divisor = 4.0
         if mode == 'fat':
             self.base_divisor = 0.5
         if mode == 'ultrafat':

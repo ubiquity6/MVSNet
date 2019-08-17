@@ -73,12 +73,12 @@ tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
                            """Optimizer to use. One of 'momentum', 'rmsprop' or 'adam' """)
 tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for 3DCNNs""")
-tf.app.flags.DEFINE_string('refinement_train_mode', 'refine_only',
+tf.app.flags.DEFINE_string('refinement_train_mode', 'all',
                             """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
                             if 'refine_only', only the refinement network is trained, and if 'all' then the whole network is trained.
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
-tf.app.flags.DEFINE_string('network_mode', 'normal',
-                            """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have 2x and 4x fewer params respectively""")
+tf.app.flags.DEFINE_string('network_mode', 'lite',
+                            """One of 'normal', 'semilite', 'lite' or 'ultralite'. If 'semilite', 'lite' or 'ultralite' then networks have 4/3x, 2x and 4x fewer params respectively""")
 tf.app.flags.DEFINE_string('refinement_network', 'unet',
                             """Specifies network to use for refinement. One of 'original' or 'unet'. 
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")

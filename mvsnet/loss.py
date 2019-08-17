@@ -205,7 +205,7 @@ def mvsnet_regression_loss(estimated_depth_image, depth_image, depth_start, dept
         raise NotImplementedError
 
     if grad_loss:
-        gamma = 1.0
+        gamma = 0.5
         g_loss = gradient_loss(depth_image, estimated_depth_image)
         loss = loss + gamma * g_loss
         debug = g_loss
