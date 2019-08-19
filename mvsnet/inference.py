@@ -127,7 +127,7 @@ def main(_):  # pylint: disable=unused-argument
     sub_dirs = [f for f in tf.gfile.ListDirectory(
                 FLAGS.input_dir) if not f.startswith('.') if not f.endswith('.txt')]
     if run_dir:
-        compute_depth_maps(FLAGS.input_dir, width=256, height=192)
+        compute_depth_maps(FLAGS.input_dir)
     else:
         for f in sub_dirs:
             data_dir = os.path.join(
