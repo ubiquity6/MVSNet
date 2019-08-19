@@ -45,6 +45,12 @@ def mkdir_p(dir_path):
         os.mkdir(dir_path)
 
 
+
+def makedirs_p(dir_path):
+    """ Makes the directories up to dir_path if they doesn't exist """
+    if not os.path.isdir(dir_path):
+        os.makedirs(dir_path)
+
 def ml_engine():
     if 'CLOUD_ML_JOB_ID' in os.environ:
         return True
@@ -64,3 +70,31 @@ def initialize_wandb(args, project='mvsnet'):
             subprocess.call([ "python", "-m", "wandb.cli", "login", wandb_key])
     wandb.init(project=project, name=args.run_name)
     wandb.config.update(args, allow_val_change=True)
+
+
+def ckpt_path(base_dir, regularization, network_mode, build = False):
+    """ Constructs the base file path for model check points. We use a convention models with different attributes are saved / loaded
+    in different subdirs of a base_dir. This is base path to the colleciton of checkpoints. For a specific checkpoint, you also need to call
+    model_path(...)
+    Args:
+        base_dir: base model directory
+        regularization: see FLAGS.regularization
+        network_mode: see FLAGS.network_mode
+        build: A boolean indicating whether we should try to create this path
+    """
+    full_model_dir = os.path.join(base_dir, regularization, network_mode)
+    if build and not ml_engine():
+        makedirs_p(full_model_dir)
+    ckpt_path = os.path.join(full_model_dir, 'model.ckpt')
+    return ckpt_path
+
+
+def model_path(ckpt_path, ckpt_step):
+    """ Constructs the path to a specific saved model at a specific ckpt_stpe """
+    model_path = '-'.join([ckpt_path, str(ckpt_step)])
+    return model_path
+
+
+
+
+

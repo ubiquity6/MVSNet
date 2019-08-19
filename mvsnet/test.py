@@ -49,8 +49,8 @@ tf.app.flags.DEFINE_bool('adaptive_scaling', True,
                          """Let image size to fit the network, including 'scaling', 'cropping'""")
 
 # network architecture
-tf.app.flags.DEFINE_string('regularization', '3DCNNs',
-                           """Regularization method, including '3DCNNs' and 'GRU'""")
+tf.app.flags.DEFINE_string('regularization', '3DCNN',
+                           """Regularization method, including '3DCNN' and 'GRU'""")
 tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for MVSNet""")
 tf.app.flags.DEFINE_bool('inverse_depth', False,

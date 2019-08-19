@@ -11,9 +11,8 @@ import imageio
 import cv2
 import tensorflow as tf
 from mvsnet.loss import *
-from mvsnet.model import inference_mem, depth_refine, inference_winner_take_all
 from mvsnet.preprocess import *
-from mvsnet.cnn_wrapper.common import Notify
+from mvsnet.model import inference_mem, depth_refine, inference_winner_take_all
 from mvsnet.mvs_data_generation.cluster_generator import ClusterGenerator
 import mvsnet.utils as mu
 from mvsnet.mvs_data_generation.utils import scale_image
@@ -69,19 +68,17 @@ def setup_output_dir(input_dir, output_dir):
 def load_model(sess):
     """Load trained model for inference """
     if FLAGS.model_dir is not None:
-        pretrained_model_ckpt_path = os.path.join(
-            FLAGS.model_dir, FLAGS.regularization, 'model.ckpt')
+        ckpt_path = mu.ckpt_path(FLAGS.model_dir, FLAGS.regularization, FLAGS.network_mode)
         restorer = tf.train.Saver(tf.global_variables())
-        restorer.restore(
-            sess, '-'.join([pretrained_model_ckpt_path, str(FLAGS.ckpt_step)]))
-        print(Notify.INFO, 'Pre-trained model restored from %s' %
-              ('-'.join([pretrained_model_ckpt_path, str(FLAGS.ckpt_step)])), Notify.ENDC)
+        model_path = mu.model_path(ckpt_path, FLAGS.ckpt_step)
+        restorer.restore(sess, model_path)
+        logger.info('Pre-trained model restored from {}'.format(model_path))
 
 
 def get_depth_and_prob_map(full_images, scaled_cams, depth_start, depth_interval):
     """ Computes depth and prob map. Inference mode depends on regularization choice and whether refinement is used """
-    # depth map inference using 3DCNNs
-    if FLAGS.regularization == '3DCNNs':
+    # depth map inference using 3DCNN
+    if FLAGS.regularization == '3DCNN':
         depth_map, prob_map = inference_mem(
             full_images, scaled_cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, inverse_depth=FLAGS.inverse_depth)
 
@@ -189,6 +186,7 @@ def init_inference(input_dir, output_dir, width, height):
             FLAGS.model_dir, FLAGS.ckpt_step)
     if FLAGS.wandb:
         mu.initialize_wandb(FLAGS, project='mvsnet-inference')
+    logger.info('Inference Flags =\n {}'.format(FLAGS))
     return setup_output_dir(input_dir, output_dir)
 
 

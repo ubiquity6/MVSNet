@@ -8,7 +8,6 @@ import os
 import time
 import sys
 import tensorflow as tf
-from mvsnet.cnn_wrapper.common import Notify
 import mvsnet.utils as mu
 import mvsnet.predictlib as pl
 
@@ -21,7 +20,7 @@ tf.app.flags.DEFINE_string('input_dir', None,
 tf.app.flags.DEFINE_string('output_dir', None,
                            """Path to data to dir to output results""")
 tf.app.flags.DEFINE_string('model_dir',
-                           'gs://mvs-training-mlengine/trained-models/07-29-2019_ultralite/',
+                           'gs://mvs-training-mlengine/trained-models/08-19-2019/',
                            """Path to restore the model.""")
 tf.app.flags.DEFINE_integer('ckpt_step', 500000,
                             """ckpt  step.""")
@@ -46,13 +45,13 @@ tf.app.flags.DEFINE_bool('adaptive_scaling', True,
                          """Let image size to fit the network, including 'scaling', 'cropping'""")
 
 # network architecture
-tf.app.flags.DEFINE_string('regularization', '3DCNNs',
-                           """Regularization method, including '3DCNNs' and 'GRU'""")
+tf.app.flags.DEFINE_string('regularization', '3DCNN',
+                           """Regularization method, including '3DCNN' and 'GRU'""")
 tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for MVSNet""")
 tf.app.flags.DEFINE_bool('inverse_depth', False,
                          """Whether to apply inverse depth for R-MVSNet""")
-tf.app.flags.DEFINE_string('network_mode', 'ultralite',
+tf.app.flags.DEFINE_string('network_mode', 'lite',
                            """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
 tf.app.flags.DEFINE_string('refinement_network', 'unet',
                            """Specifies network to use for refinement. One of 'original' or 'unet'.
@@ -112,8 +111,7 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
             except tf.errors.OutOfRangeError:
                 logger.info("all dense finished")  # ==> "End of dataset"
                 break
-            print(Notify.INFO, 'depth inference %d/%d finished. Image index %d. (%.3f sec/step)' % (step, sample_size, out_index, time.time() - start_time),
-                  Notify.ENDC)
+            logger.info('Depth inference {}/{} finished. ({"0:.3f} sec/step)'.format(step, sample_size, time.time() - start_time))
             pl.write_output(output_dir, out_depth_map, out_prob_map, out_images,
                             out_cams, out_full_cams, out_full_images, out_index, out_residual_depth_map)
 
