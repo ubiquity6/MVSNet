@@ -53,12 +53,12 @@ tf.app.flags.DEFINE_bool('inverse_depth', False,
                          """Whether to apply inverse depth for R-MVSNet""")
 tf.app.flags.DEFINE_string('network_mode', 'lite',
                            """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
-tf.app.flags.DEFINE_string('refinement_network', 'unet',
+tf.app.flags.DEFINE_string('refinement_network', 'original',
                            """Specifies network to use for refinement. One of 'original' or 'unet'.
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
-tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
+tf.app.flags.DEFINE_boolean('upsample_before_refinement', False,
                             """Whether to upsample depth map to input resolution before the refinement network.""")
-tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
+tf.app.flags.DEFINE_boolean('refine_with_confidence', False,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
 
 # Parameters for writing and benchmarking output
@@ -79,9 +79,9 @@ tf.app.flags.DEFINE_integer('max_clusters_per_session', None,
 FLAGS = tf.app.flags.FLAGS
 
 
-def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
+def compute_depth_maps(input_dir, **kwargs):
     """ Performs inference using trained MVSNet model on data located in input_dir and writes data to disk"""
-    output_dir = pl.init_inference(input_dir, output_dir, width, height)
+    output_dir = pl.init_inference(input_dir,  **kwargs)
     mvs_iterator, sample_size = pl.setup_data_iterator(input_dir)
     scaled_images, full_images, scaled_cams, full_cams, image_index = mvs_iterator.get_next()
 
@@ -111,7 +111,7 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
             except tf.errors.OutOfRangeError:
                 logger.info("all dense finished")  # ==> "End of dataset"
                 break
-            logger.info('Depth inference {}/{} finished. ({"0:.3f} sec/step)'.format(step, sample_size, time.time() - start_time))
+            logger.info('Depth inference {}/{} finished. ({:.3f} sec/step)'.format(step, sample_size, time.time() - start_time))
             pl.write_output(output_dir, out_depth_map, out_prob_map, out_images,
                             out_cams, out_full_cams, out_full_images, out_index, out_residual_depth_map)
 
@@ -127,7 +127,7 @@ def main(_):  # pylint: disable=unused-argument
     sub_dirs = [f for f in tf.gfile.ListDirectory(
                 FLAGS.input_dir) if not f.startswith('.') if not f.endswith('.txt')]
     if run_dir:
-        compute_depth_maps(FLAGS.input_dir)
+        compute_depth_maps(FLAGS.input_dir, width=256, height=192)
     else:
         for f in sub_dirs:
             data_dir = os.path.join(

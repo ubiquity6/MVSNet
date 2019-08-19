@@ -86,10 +86,10 @@ tf.app.flags.DEFINE_string('results_path', './results.csv',
 FLAGS = tf.app.flags.FLAGS
 
 
-def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, out_debugs, output_dir=None, width=None, height=None):
+def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, out_debugs, **kwargs):
     """ Performs inference using trained MVSNet model on data located in input_dir. This method is similar to compute_depth_maps, however it benchmarks the resulting 
     data against GT depths. This is useful for benchmarking models and should only be run on input data with GT depth maps  """
-    output_dir = pl.init_inference(input_dir, output_dir, width, height)
+    output_dir = pl.init_inference(input_dir, **kwargs)
     mvs_iterator, sample_size = pl.setup_data_iterator(input_dir)
     scaled_images, full_images, scaled_cams, full_cams, full_depth, image_index, session_dir = mvs_iterator.get_next()
 

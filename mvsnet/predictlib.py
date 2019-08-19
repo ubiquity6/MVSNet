@@ -175,10 +175,12 @@ def set_shapes(scaled_images, full_images, scaled_cams, full_cams):
     return depth_start, depth_end, depth_interval, depth_num
 
 
-def init_inference(input_dir, output_dir, width, height):
+def init_inference(input_dir, **kwargs):
     """ Performs some basic initialization before the main inference method is run """
-    if width and height:
-        FLAGS.width, FLAGS.height = width, height
+    # The app flags can be set by passed in kwargs, but flag must already exist, otherwise this will raise an error
+    for key, value in kwargs.items():
+        setattr(FLAGS, key, value)
+
     logger.info('Computing depth maps with MVSNet. Using input width x height = {} x {}.'.format(
         FLAGS.width, FLAGS.height))
     if FLAGS.run_name is None:
@@ -186,11 +188,15 @@ def init_inference(input_dir, output_dir, width, height):
             FLAGS.model_dir, FLAGS.ckpt_step)
     if FLAGS.wandb:
         mu.initialize_wandb(FLAGS, project='mvsnet-inference')
-    logger.info('Inference Flags =\n {}'.format(FLAGS))
-    return setup_output_dir(input_dir, output_dir)
 
+    log_flags()
+    return setup_output_dir(input_dir, FLAGS.output_dir)
 
-# For writing results to file
+def log_flags():
+    """ Logs all flags and their values to the console """
+    logger.info('*** Logging all FLAGS ***')
+    for flag in FLAGS:
+        logger.info('{} = {}'.format(flag, getattr(FLAGS,flag)))
 
 
 def get_header():
