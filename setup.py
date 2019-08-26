@@ -4,7 +4,7 @@ import os
 
 # Package Metadata
 NAME = 'MVSNet'
-VERSION = '0.1.1'
+VERSION = '0.1.4'
 
 
 def ml_engine():
@@ -59,5 +59,4 @@ setup(
     packages=find_packages(exclude=['datasets*', 'scripts*']),
     install_requires=required_packages(),
     license='Creative Commons Attribution-Noncommercial-Share Alike license',
-    long_description=open('README.md').read(),
 )

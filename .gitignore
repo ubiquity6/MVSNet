@@ -20,3 +20,4 @@ job/*
 
 nohup.out
 results.csv
+build/*

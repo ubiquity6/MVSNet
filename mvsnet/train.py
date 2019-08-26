@@ -67,18 +67,18 @@ tf.app.flags.DEFINE_float('base_image_size', 8,
 tf.app.flags.DEFINE_bool('inverse_depth', False,
                          """Whether to apply inverse depth for R-MVSNet""")
 # network architectures
-tf.app.flags.DEFINE_string('regularization', '3DCNNs',
+tf.app.flags.DEFINE_string('regularization', '3DCNN',
                            """Regularization method.""")
 tf.app.flags.DEFINE_string('optimizer', 'rmsprop',
                            """Optimizer to use. One of 'momentum', 'rmsprop' or 'adam' """)
-tf.app.flags.DEFINE_boolean('refinement', True,
-                            """Whether to apply depth map refinement for 3DCNNs""")
-tf.app.flags.DEFINE_string('refinement_train_mode', 'refine_only',
+tf.app.flags.DEFINE_boolean('refinement', False,
+                            """Whether to apply depth map refinement for 3DCNN""")
+tf.app.flags.DEFINE_string('refinement_train_mode', 'all',
                             """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
                             if 'refine_only', only the refinement network is trained, and if 'all' then the whole network is trained.
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
-tf.app.flags.DEFINE_string('network_mode', 'normal',
-                            """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have 2x and 4x fewer params respectively""")
+tf.app.flags.DEFINE_string('network_mode', 'lite',
+                            """One of 'normal', 'semilite', 'lite' or 'ultralite'. If 'semilite', 'lite' or 'ultralite' then networks have 4/3x, 2x and 4x fewer params respectively""")
 tf.app.flags.DEFINE_string('refinement_network', 'unet',
                             """Specifies network to use for refinement. One of 'original' or 'unet'. 
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
@@ -141,16 +141,14 @@ def load_model(sess):
     total_step = 0
     if FLAGS.ckpt_step:
         if FLAGS.model_load_dir:
-            pretrained_model_path = os.path.join(
-                FLAGS.model_load_dir, FLAGS.regularization, 'model.ckpt')
+            ckpt_path = mu.ckpt_path(FLAGS.model_load_dir, FLAGS.regularization, FLAGS.network_mode)
         else:
-            pretrained_model_path = os.path.join(
-                FLAGS.model_dir, FLAGS.regularization, 'model.ckpt')
+            ckpt_path = mu.ckpt_path(FLAGS.model_dir, FLAGS.regularization, FLAGS.network_mode)
         restorer = tf.train.Saver(tf.global_variables())
+        model_path = mu.model_path(ckpt_path, FLAGS.ckpt_step)
         restorer.restore(
-            sess, '-'.join([pretrained_model_path, str(FLAGS.ckpt_step)]))
-        print(Notify.INFO, 'Pre-trained model restored from %s' %
-                ('-'.join([pretrained_model_path, str(FLAGS.ckpt_step)])), Notify.ENDC)
+            sess, model_path)
+        logger.info('Pre-trained model restored from {}'.format(model_path))
         total_step = FLAGS.ckpt_step
     return total_step
 
@@ -310,7 +308,7 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
     """ Performs inference with specified network and return loss function """
     is_master_gpu = True if i == 0 and validate == False else False
     # inference
-    if FLAGS.regularization == '3DCNNs':
+    if FLAGS.regularization == '3DCNN':
         main_trainable = False if FLAGS.refinement_train_mode == 'refine_only' and FLAGS.refinement==True else True
         # initial depth map
         depth_map, prob_map = inference(
@@ -368,11 +366,8 @@ def get_loss(images, cams, depth_image, depth_start, depth_interval, full_depth,
 def save_model(sess, saver, total_step, step):
     """" save model periodically """
     if (total_step % FLAGS.snapshot == 0 or step == (training_sample_size - 1)):
-        model_folder = os.path.join(
-            FLAGS.model_dir, FLAGS.regularization)
-        ckpt_path = os.path.join(model_folder, 'model.ckpt')
-        print(Notify.INFO, 'Saving model to %s' %
-                ckpt_path, Notify.ENDC)
+        ckpt_path = mu.ckpt_path(FLAGS.model_dir, FLAGS.regularization, FLAGS.network_mode, build=True)#os.path.join(model_folder, 'model.ckpt')
+        logger.info('Saving model to {}'.format(ckpt_path))
         saver.save(sess, ckpt_path, global_step=total_step)
 
 def validate(sess, loss, less_one_accuracy, less_three_accuracy, epoch, total_step, summary_writer, debug):

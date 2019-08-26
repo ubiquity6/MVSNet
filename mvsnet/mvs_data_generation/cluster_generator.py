@@ -237,6 +237,9 @@ class ClusterGenerator:
                     start = time.time()
                     images = c.images()
                     cams = c.cameras()
+                    load_time = time.time() - start
+                    self.logger.debug(
+                        'Cluster data load time: {}'.format(load_time))
                     # Crop, scale and center images
                     if self.mode == 'test':
                         # We also need to retrieve GT depth data if we are benchmarking
@@ -265,7 +268,10 @@ class ClusterGenerator:
 
                     image_index = c.ref_index
                     self.logger.debug(
-                        'Load time: {}'.format(time.time() - start))
+                        'Cluster transformation time: {}'.format(time.time() - start - load_time))
+
+                    self.logger.debug(
+                        'Total cluster preparation time: {}'.format(time.time() - start))
                     self.logger.debug(
                         'input image shape: {}'.format(input_images[0].shape))
                     self.logger.debug(

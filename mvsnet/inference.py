@@ -8,7 +8,6 @@ import os
 import time
 import sys
 import tensorflow as tf
-from mvsnet.cnn_wrapper.common import Notify
 import mvsnet.utils as mu
 import mvsnet.predictlib as pl
 
@@ -21,9 +20,9 @@ tf.app.flags.DEFINE_string('input_dir', None,
 tf.app.flags.DEFINE_string('output_dir', None,
                            """Path to data to dir to output results""")
 tf.app.flags.DEFINE_string('model_dir',
-                           'gs://mvs-training-mlengine/trained-models/07-29-2019/',
+                           'gs://mvs-training-mlengine/trained-models/08-19-2019/',
                            """Path to restore the model.""")
-tf.app.flags.DEFINE_integer('ckpt_step', 340000,
+tf.app.flags.DEFINE_integer('ckpt_step', 400000,
                             """ckpt  step.""")
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 8,
@@ -46,20 +45,20 @@ tf.app.flags.DEFINE_bool('adaptive_scaling', True,
                          """Let image size to fit the network, including 'scaling', 'cropping'""")
 
 # network architecture
-tf.app.flags.DEFINE_string('regularization', '3DCNNs',
-                           """Regularization method, including '3DCNNs' and 'GRU'""")
+tf.app.flags.DEFINE_string('regularization', '3DCNN',
+                           """Regularization method, including '3DCNN' and 'GRU'""")
 tf.app.flags.DEFINE_boolean('refinement', False,
                             """Whether to apply depth map refinement for MVSNet""")
 tf.app.flags.DEFINE_bool('inverse_depth', False,
                          """Whether to apply inverse depth for R-MVSNet""")
 tf.app.flags.DEFINE_string('network_mode', 'normal',
                            """One of 'normal', 'lite' or 'ultralite'. If 'lite' or 'ultralite' then networks have fewer params""")
-tf.app.flags.DEFINE_string('refinement_network', 'unet',
+tf.app.flags.DEFINE_string('refinement_network', 'original',
                            """Specifies network to use for refinement. One of 'original' or 'unet'.
                             If 'original' then the original mvsnet refinement network is used, otherwise a unet style architecture is used.""")
-tf.app.flags.DEFINE_boolean('upsample_before_refinement', True,
+tf.app.flags.DEFINE_boolean('upsample_before_refinement', False,
                             """Whether to upsample depth map to input resolution before the refinement network.""")
-tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
+tf.app.flags.DEFINE_boolean('refine_with_confidence', False,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
 
 # Parameters for writing and benchmarking output
@@ -80,9 +79,9 @@ tf.app.flags.DEFINE_integer('max_clusters_per_session', None,
 FLAGS = tf.app.flags.FLAGS
 
 
-def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
+def compute_depth_maps(input_dir, **kwargs):
     """ Performs inference using trained MVSNet model on data located in input_dir and writes data to disk"""
-    output_dir = pl.init_inference(input_dir, output_dir, width, height)
+    output_dir = pl.init_inference(input_dir,  **kwargs)
     mvs_iterator, sample_size = pl.setup_data_iterator(input_dir)
     scaled_images, full_images, scaled_cams, full_cams, image_index = mvs_iterator.get_next()
 
@@ -112,8 +111,7 @@ def compute_depth_maps(input_dir, output_dir=None, width=None, height=None):
             except tf.errors.OutOfRangeError:
                 logger.info("all dense finished")  # ==> "End of dataset"
                 break
-            print(Notify.INFO, 'depth inference %d/%d finished. Image index %d. (%.3f sec/step)' % (step, sample_size, out_index, time.time() - start_time),
-                  Notify.ENDC)
+            logger.info('Depth inference {}/{} finished. ({:.3f} sec/step)'.format(step, sample_size, time.time() - start_time))
             pl.write_output(output_dir, out_depth_map, out_prob_map, out_images,
                             out_cams, out_full_cams, out_full_images, out_index, out_residual_depth_map)
 

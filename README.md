@@ -114,7 +114,7 @@ or vice versa.
 * Train MVSNet (GTX1080Ti): 
 ``python train.py --regularization 'GRU'`` 
 * Train R-MVSNet (GTX1080Ti):
-``python train.py --regularization '3DCNNs'``
+``python train.py --regularization '3DCNN'``
 
 ### Testing
 
@@ -122,7 +122,7 @@ or vice versa.
 * Download the pre-trained MVSNet and R-MVSNet [models](https://drive.google.com/file/d/1h40Rq8ou5XLGFFSXTFBvrLla7-RMz73n/view) and upzip the file as ``MODEL_FOLDER``
 * Enter the ``MVSNet/mvsnet`` folder, in ``test.py``, set ``model_dir`` to ``MODEL_FOLDER``
 * Run MVSNet (GTX1080Ti): 
-``python test.py --dense_folder TEST_DATA_FOLDER  --regularization '3DCNNs' --width 1152 --height 864 --max_d 192 --interval_scale 1.06``
+``python test.py --dense_folder TEST_DATA_FOLDER  --regularization '3DCNN' --width 1152 --height 864 --max_d 192 --interval_scale 1.06``
 * Run R-MVSNet (GTX1080Ti): 
 ``python test.py --dense_folder TEST_DATA_FOLDER  --regularization 'GRU' --width 1600 --height 1200 --max_d 256 --interval_scale 0.8``
 * Inspect the .pfm format outputs in ``TEST_DATA_FOLDER/depths_mvsnet`` using ``python visualize.py .pfm``. For example the depth map and probability map for image `00000012` should be something like:
@@ -139,7 +139,7 @@ R/MVSNet itself only produces per-view depth maps. To generate the 3D point clou
 To run the post-processing: 
 * Check out the modified version fusibile ```git clone https://github.com/YoYo000/fusibile```
 * Install fusibile by ```cmake .``` and ```make```, which will generate the executable at ``FUSIBILE_EXE_PATH``
-* Run post-processing (--prob_threshold 0.8 if using 3DCNNs):
+* Run post-processing (--prob_threshold 0.8 if using 3DCNN):
 ``python depthfusion.py --dense_folder TEST_DATA_FOLDER --fusibile_exe_path FUSIBILE_EXE_PATH --prob_threshold 0.3``
 * The final point cloud is stored in `TEST_DATA_FOLDER/points_mvsnet/consistencyCheck-TIME/final3d_model.ply`.
 

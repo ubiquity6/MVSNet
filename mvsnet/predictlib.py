@@ -11,9 +11,8 @@ import imageio
 import cv2
 import tensorflow as tf
 from mvsnet.loss import *
-from mvsnet.model import inference_mem, depth_refine, inference_winner_take_all
 from mvsnet.preprocess import *
-from mvsnet.cnn_wrapper.common import Notify
+from mvsnet.model import inference_mem, depth_refine, inference_winner_take_all
 from mvsnet.mvs_data_generation.cluster_generator import ClusterGenerator
 import mvsnet.utils as mu
 from mvsnet.mvs_data_generation.utils import scale_image
@@ -69,19 +68,17 @@ def setup_output_dir(input_dir, output_dir):
 def load_model(sess):
     """Load trained model for inference """
     if FLAGS.model_dir is not None:
-        pretrained_model_ckpt_path = os.path.join(
-            FLAGS.model_dir, FLAGS.regularization, 'model.ckpt')
+        ckpt_path = mu.ckpt_path(FLAGS.model_dir, FLAGS.regularization, FLAGS.network_mode)
         restorer = tf.train.Saver(tf.global_variables())
-        restorer.restore(
-            sess, '-'.join([pretrained_model_ckpt_path, str(FLAGS.ckpt_step)]))
-        print(Notify.INFO, 'Pre-trained model restored from %s' %
-              ('-'.join([pretrained_model_ckpt_path, str(FLAGS.ckpt_step)])), Notify.ENDC)
+        model_path = mu.model_path(ckpt_path, FLAGS.ckpt_step)
+        restorer.restore(sess, model_path)
+        logger.info('Pre-trained model restored from {}'.format(model_path))
 
 
 def get_depth_and_prob_map(full_images, scaled_cams, depth_start, depth_interval):
     """ Computes depth and prob map. Inference mode depends on regularization choice and whether refinement is used """
-    # depth map inference using 3DCNNs
-    if FLAGS.regularization == '3DCNNs':
+    # depth map inference using 3DCNN
+    if FLAGS.regularization == '3DCNN':
         depth_map, prob_map = inference_mem(
             full_images, scaled_cams, FLAGS.max_d, depth_start, depth_interval, FLAGS.network_mode, inverse_depth=FLAGS.inverse_depth)
 
@@ -178,10 +175,12 @@ def set_shapes(scaled_images, full_images, scaled_cams, full_cams):
     return depth_start, depth_end, depth_interval, depth_num
 
 
-def init_inference(input_dir, output_dir, width, height):
+def init_inference(input_dir, **kwargs):
     """ Performs some basic initialization before the main inference method is run """
-    if width and height:
-        FLAGS.width, FLAGS.height = width, height
+    # The app flags can be set by passed in kwargs, but flag must already exist, otherwise this will raise an error
+    for key, value in kwargs.items():
+        setattr(FLAGS, key, value)
+
     logger.info('Computing depth maps with MVSNet. Using input width x height = {} x {}.'.format(
         FLAGS.width, FLAGS.height))
     if FLAGS.run_name is None:
@@ -189,10 +188,15 @@ def init_inference(input_dir, output_dir, width, height):
             FLAGS.model_dir, FLAGS.ckpt_step)
     if FLAGS.wandb:
         mu.initialize_wandb(FLAGS, project='mvsnet-inference')
-    return setup_output_dir(input_dir, output_dir)
 
+    log_flags()
+    return setup_output_dir(input_dir, FLAGS.output_dir)
 
-# For writing results to file
+def log_flags():
+    """ Logs all flags and their values to the console """
+    logger.info('*** Logging all FLAGS ***')
+    for flag in FLAGS:
+        logger.info('{} = {}'.format(flag, getattr(FLAGS,flag)))
 
 
 def get_header():
