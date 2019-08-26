@@ -263,6 +263,8 @@ def inference_mem(images, cams, depth_num, depth_start, depth_interval, network_
 
     view_features = []
     for view in range(1, FLAGS.view_num):
+        ## It looks like, as written, the feature extractor network doesn't support the batch size 
+        # dimension, since they squeeze out only the first element
         view_image = tf.squeeze(
             tf.slice(images, [0, view, 0, 0, 0], [-1, 1, -1, -1, -1]), axis=1)
         view_tower = UNetDS2GN({'data': view_image}, trainable=trainable,
@@ -288,8 +290,10 @@ def inference_mem(images, cams, depth_num, depth_start, depth_interval, network_
     with tf.name_scope('cost_volume_homography'):
         depth_costs = []
 
+        # Costs are computed at each depth, and across each view
         for d in range(depth_num):
             # compute cost (standard deviation feature)
+            # This looks like  a single pass algorithm for standard deviation calculation (CH)
             ave_feature = tf.Variable(tf.zeros(
                 [FLAGS.batch_size, feature_h, feature_w, feature_c]),
                 name='ave', trainable=False, collections=[tf.GraphKeys.LOCAL_VARIABLES])

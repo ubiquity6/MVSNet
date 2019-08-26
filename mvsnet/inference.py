@@ -39,7 +39,7 @@ tf.app.flags.DEFINE_float('interval_scale', 1.0,
                           """Downsample scale for building cost volume (D).""")
 tf.app.flags.DEFINE_float('base_image_size', 8,
                           """Base image size""")
-tf.app.flags.DEFINE_integer('batch_size', 1,
+tf.app.flags.DEFINE_integer('batch_size', 2,
                             """Testing batch size.""")
 tf.app.flags.DEFINE_bool('adaptive_scaling', True,
                          """Let image size to fit the network, including 'scaling', 'cropping'""")
