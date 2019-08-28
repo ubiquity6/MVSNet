@@ -8,6 +8,8 @@ import os
 import time
 import sys
 import tensorflow as tf
+import tensorflow.contrib.eager as tfe
+#tf.enable_eager_execution()
 import mvsnet.utils as mu
 import mvsnet.predictlib as pl
 
@@ -62,7 +64,7 @@ tf.app.flags.DEFINE_boolean('refine_with_confidence', False,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
 
 # Parameters for writing and benchmarking output
-tf.app.flags.DEFINE_bool('visualize', False,
+tf.app.flags.DEFINE_bool('visualize', True,
                          """If visualize is true, the inference script will write some auxiliary files for visualization and debugging purposes.
                          This is useful when developing and debugging, but should probably be turned off in production""")
 tf.app.flags.DEFINE_bool('benchmark', False,
@@ -84,6 +86,11 @@ def compute_depth_maps(input_dir, **kwargs):
     output_dir = pl.init_inference(input_dir,  **kwargs)
     mvs_iterator, sample_size = pl.setup_data_iterator(input_dir)
     scaled_images, full_images, scaled_cams, full_cams, image_index = mvs_iterator.get_next()
+
+    print('Scaled images shape {}'.format(tf.shape(scaled_images)))
+    print('Full images shape {}'.format(tf.shape(full_images)))
+    print('Full cams shape {}'.format(tf.shape(full_cams)))
+    print('Image index shape {}'.format(tf.shape(image_index)))
 
     depth_start, depth_end, depth_interval, depth_num = pl.set_shapes(
         scaled_images, full_images, scaled_cams, full_cams)
@@ -108,12 +115,20 @@ def compute_depth_maps(input_dir, **kwargs):
             try:
                 out_depth_map, out_prob_map, out_images, out_cams, out_full_cams, out_full_images, out_index, out_residual_depth_map = sess.run(
                     fetches)
+                pass
             except tf.errors.OutOfRangeError:
                 logger.info("all dense finished")  # ==> "End of dataset"
                 break
+            print('Out index')
             logger.info('Depth inference {}/{} finished. ({:.3f} sec/step)'.format(step, sample_size, time.time() - start_time))
-            pl.write_output(output_dir, out_depth_map, out_prob_map, out_images,
+            print('Shape of prob map out {}'.format(out_prob_map.shape))
+            print('Shape of out_index {}'.format(out_index.shape))
+            print('Shape of out_images {}'.format(out_images.shape))
+            print('Shape of out_cams {}'.format(out_cams.shape))
+            pl.write_output_batch(output_dir, out_depth_map, out_prob_map, out_images,
                             out_cams, out_full_cams, out_full_images, out_index, out_residual_depth_map)
+            
+            #pl.write_output(output_dir, depth_map, prob_map, scaled_images, scaled_cams, full_cams, full_images, image_index, residual_depth_map)
 
 
 def main(_):  # pylint: disable=unused-argument

@@ -20,12 +20,29 @@ def get_homographies(left_cam, right_cam, depth_num, depth_start, depth_interval
         t_right = tf.slice(right_cam, [0, 0, 0, 3], [-1, 1, 3, 1])
         K_left = tf.slice(left_cam, [0, 1, 0, 0], [-1, 1, 3, 3])
         K_right = tf.slice(right_cam, [0, 1, 0, 0], [-1, 1, 3, 3])
+        batch_size = tf.shape(R_left)[0]
 
         # depth 
         depth_num = tf.reshape(tf.cast(depth_num, 'int32'), [])
-        depth = depth_start[batch_index] + tf.cast(tf.range(depth_num), tf.float32) * depth_interval[batch_index]
+        #depth = depth_start[batch_index] + tf.cast(tf.range(depth_num), tf.float32) * depth_interval[batch_index]
+        #print('Depth in get_homographies {}'.format(depth))
         # preparation
-        num_depth = tf.shape(depth)[0]
+        #depth = tf.reshape(tf.tile(tf.cast(tf.range(depth_num), tf.float32),[batch_size] ), [batch_size, depth_num])
+        sample = tf.ones((1,10)) * tf.reshape(depth_interval, [batch_size, 1])
+        depth = tf.reshape(tf.cast(tf.range(depth_num), tf.float32), [1,depth_num]) * tf.reshape(depth_interval, [batch_size, 1])
+        # depth now has shape [batch_size, depth_num]
+        #depth_interval = tf.reshape(depth_interval, [1, batch_size])
+        depth_start = tf.transpose(tf.reshape(tf.tile(depth_start,[depth_num] ), [depth_num, batch_size]))
+        depth = depth + depth_start
+        print('Shape of depth start {}'.format(tf.shape(depth_start)))
+        #print('Depth start {}'.format(depth_start))
+        print('Depth interval {}'.format(depth_interval))
+        print('Sample {}'.format(sample))
+
+
+
+        num_depth = tf.shape(depth)[1]
+        print('Shape of depth {}'.format(tf.shape(depth)))
         K_left_inv = tf.matrix_inverse(tf.squeeze(K_left, axis=1))
         R_left_trans = tf.transpose(tf.squeeze(R_left, axis=1), perm=[0, 2, 1])
         R_right_trans = tf.transpose(tf.squeeze(R_right, axis=1), perm=[0, 2, 1])
@@ -37,8 +54,10 @@ def get_homographies(left_cam, right_cam, depth_num, depth_start, depth_interval
         c_relative = tf.subtract(c_right, c_left)        
 
         # compute
-        #batch_size = tf.shape(R_left)[0]
-        batch_size = 1
+        # Correctly gets the batch size from the camera
+        
+        print('Batch size in get_homographies {}'.format(batch_size))
+        #batch_size = 1
         temp_vec = tf.matmul(c_relative, fronto_direction)
         depth_mat = tf.tile(tf.reshape(depth, [batch_size, num_depth, 1, 1]), [1, 1, 3, 3])
 
@@ -245,9 +264,10 @@ def tf_transform_homography(input_image, homography):
     homography_linear = tf.slice(homography, begin=[0, 0], size=[-1, 8])
     homography_linear_div = tf.tile(tf.slice(homography, begin=[0, 8], size=[-1, 1]), [1, 8])
     homography_linear = tf.div(homography_linear, homography_linear_div)
+    # TODO: uncomment lines below
     warped_image = tf.contrib.image.transform(
         input_image, homography_linear, interpolation='BILINEAR')
-
-    # return input_image
     return warped_image
+    #return input_image
+
 
