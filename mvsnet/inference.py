@@ -9,6 +9,7 @@ import time
 import sys
 import tensorflow as tf
 import tensorflow.contrib.eager as tfe
+import numpy as np
 #tf.enable_eager_execution()
 import mvsnet.utils as mu
 import mvsnet.predictlib as pl
@@ -64,7 +65,7 @@ tf.app.flags.DEFINE_boolean('refine_with_confidence', False,
                             """Whether or not to concatenate the confidence map as an input channel to refinement network""")
 
 # Parameters for writing and benchmarking output
-tf.app.flags.DEFINE_bool('visualize', True,
+tf.app.flags.DEFINE_bool('visualize', False,
                          """If visualize is true, the inference script will write some auxiliary files for visualization and debugging purposes.
                          This is useful when developing and debugging, but should probably be turned off in production""")
 tf.app.flags.DEFINE_bool('benchmark', False,
@@ -107,7 +108,8 @@ def compute_depth_maps(input_dir, **kwargs):
         sess.run(init_op)
         pl.load_model(sess)
         sess.run(mvs_iterator.initializer)
-        for step in range(sample_size):
+        num_batches = int(np.ceil(float(sample_size) / float(FLAGS.batch_size)))
+        for step in range(num_batches):
             start_time = time.time()
             out_residual_depth_map = None
             fetches = [depth_map, prob_map, scaled_images,
@@ -120,7 +122,7 @@ def compute_depth_maps(input_dir, **kwargs):
                 logger.info("all dense finished")  # ==> "End of dataset"
                 break
             print('Out index')
-            logger.info('Depth inference {}/{} finished. ({:.3f} sec/step)'.format(step, sample_size, time.time() - start_time))
+            logger.info('Depth inference {}/{} finished. ({:.3f} sec/step)'.format(step*FLAGS.batch_size, sample_size, time.time() - start_time))
             print('Shape of prob map out {}'.format(out_prob_map.shape))
             print('Shape of out_index {}'.format(out_index.shape))
             print('Shape of out_images {}'.format(out_images.shape))
