@@ -30,10 +30,6 @@ def get_probability_map(cv_batch, depth_map_batch, depth_start_batch, depth_inte
         depth_map = depth_map_batch[i]
         cv = tf.reshape(cv, [1, depth_num, height, width ])
         depth_map = tf.reshape(depth_map, [1, height, width, 1 ])
-        print('Depth map batch shape {}'.format(tf.shape(depth_map_batch)))
-        print('CV batch shape {}'.format(tf.shape(cv_batch)))
-        print('Depth map slice shape {}'.format(tf.shape(depth_map)))
-        print('CV map slice shape {}'.format(tf.shape(cv)))
         depth_start = depth_start_batch[i]
         depth_interval = depth_interval_batch[i]
         prob_map = get_probability_map_slice(cv, depth_map, depth_start, depth_interval, inverse_depth, num_buckets)
@@ -149,7 +145,17 @@ def get_probability_map_slice(cv, depth_map, depth_start, depth_interval, invers
 
 
 def get_probability_map_batch(cv, depth_map, depth_start, depth_interval, inverse_depth = False, num_buckets=4):
-
+    """ get probability map from cost volume. works with batch_size > 1
+    The probability map is computed by summing the probabilities of the four depth slices int he cost volume that are closest
+    to the predicted depth ~ this is a simple measure of confidence that works well for downstream tasks like fusion.
+    Args:
+        cv: Cost volume
+        depth_map: The depth map
+        depth_start: The minimum depth
+        depth_interval: The depth bucket size
+        inverse_depth: True if depth buckets are sampled uniformly in inverse depth space
+        num_buckets: Number of depth buckets of cost volume to sum to compute probability map -- we support 2 or 4
+    """
     def _repeat_(x, num_repeats):
         x = tf.reshape(x, [-1])
         ones = tf.ones((1, num_repeats), dtype='int32')
@@ -159,8 +165,6 @@ def get_probability_map_batch(cv, depth_map, depth_start, depth_interval, invers
 
     shape = tf.shape(depth_map)
     batch_size = shape[0]
-    print('Batch size in get prob map {}'.format(batch_size))
-    print('Shape of cost volume {}'.format(tf.shape(cv)))
     height = shape[1]
     width = shape[2]
     depth_num = tf.shape(cv)[1]
@@ -168,19 +172,13 @@ def get_probability_map_batch(cv, depth_map, depth_start, depth_interval, invers
 
     # byx coordinate, batched & flattened
     b_coordinates = tf.range(batch_size)
-    print('B coordinates original shape {}'.format(tf.shape(b_coordinates)))
     y_coordinates = tf.range(height)
     x_coordinates = tf.range(width)
     b_coordinates, y_coordinates, x_coordinates = tf.meshgrid(
         b_coordinates, y_coordinates, x_coordinates)
-    print('B coordinates meshgrid shape {}'.format(tf.shape(b_coordinates)))
-    #b_coordinates = _repeat_(b_coordinates, batch_size)
-   #y_coordinates = _repeat_(y_coordinates, batch_size)
-    #x_coordinates = _repeat_(x_coordinates, batch_size)
     b_coordinates = _repeat_(b_coordinates, 1)
     y_coordinates = _repeat_(y_coordinates, 1)
     x_coordinates = _repeat_(x_coordinates, 1)
-    print('B coordinates repeated shape {}'.format(tf.shape(b_coordinates)))
 
     if inverse_depth:
         depth_end = depth_start + \
@@ -210,11 +208,9 @@ def get_probability_map_batch(cv, depth_map, depth_start, depth_interval, invers
 
     else:
         # d coordinate (floored and ceiled), batched & flattened
-        print('Shape of depth map {}'.format(tf.shape(depth_map)))
         # We need to subtract the starting point and divide by the depth interval for the depth map
         # but in order to do so, we need to broadcast depth_start and depth_interval to tensors of the correct shape
         # to apply the mathematical operation
-        #shifted_depth = (depth_map - depth_start) / depth_interval
         inv_depth_interval = tf.div(1.0, depth_interval)
         inv_depth_interval = tf.linalg.diag(inv_depth_interval)
         start_tensor = tf.ones((batch_size, height, width, 1))
@@ -223,18 +219,7 @@ def get_probability_map_batch(cv, depth_map, depth_start, depth_interval, invers
 
         shifted_depth = depth_map - start_tensor
         shifted_depth = tf.linalg.tensordot(inv_depth_interval,shifted_depth, [[1],[0]])
-
-        #print('First component of start tensor {}'.format(start_tensor[0]))
-        
-        print('Shape of inv depth interval {}'.format(tf.shape(inv_depth_interval)))
-        print('Inv depth {}'.format(inv_depth_interval))
-
-
-        print('Shape of depth start {} and depth interval {}'.format(tf.shape(depth_start),tf.shape(depth_interval)))
-        print('Shape of shifted depth map {}'.format(tf.shape(shifted_depth)))
-        #d_coordinates = tf.reshape(shifted_depth[:,:,:,0], [-1])
         d_coordinates = tf.reshape(shifted_depth, [-1])
-        print('Shape of d coordinates {}'.format(tf.shape(d_coordinates)))
         d_coordinates_left0 = tf.clip_by_value(
             tf.cast(tf.floor(d_coordinates), 'int32'), 0, depth_num - 1)
         d_coordinates_left1 = tf.clip_by_value(
@@ -263,8 +248,6 @@ def get_probability_map_batch(cv, depth_map, depth_start, depth_interval, invers
         prob_map_left1 = tf.gather_nd(cv, voxel_coordinates_left1)
         prob_map_right1 = tf.gather_nd(cv, voxel_coordinates_right1)
         prob_map += prob_map_left1 + prob_map_right1
-
-    print('Prob map shape {}'.format(tf.shape(prob_map)))
     
     prob_map = tf.reshape(prob_map, [batch_size, height, width, 1])
 
@@ -422,7 +405,6 @@ def inference_mem(images, cams, depth_num, depth_start, depth_interval, network_
         view_tower = UNetDS2GN({'data': view_image}, trainable=trainable,
                                training=training, mode=network_mode, reuse=True)
         view_features.append(view_tower.get_output())
-        print('View_image shape {}'.format(tf.shape(view_image)))
     view_features = tf.stack(view_features, axis=0)
 
     # get all homographies
@@ -437,9 +419,6 @@ def inference_mem(images, cams, depth_num, depth_start, depth_interval, network_
             homographies = get_homographies(ref_cam, view_cam, depth_num=depth_num,
                                             depth_start=depth_start, depth_interval=depth_interval)
         view_homographies.append(homographies)
-    print('First homography shape {}'.format(tf.shape(view_homographies[0])))
-    print('First homography for batch 1 {}'.format(view_homographies[0][0,0,:,:]))
-    print('First homography for batch 2 {}'.format(view_homographies[0][1,0,:,:]))
     view_homographies = tf.stack(view_homographies, axis=0)
 
     # build cost volume by differentialble homography

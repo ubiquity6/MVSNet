@@ -8,9 +8,7 @@ import os
 import time
 import sys
 import tensorflow as tf
-import tensorflow.contrib.eager as tfe
 import numpy as np
-#tf.enable_eager_execution()
 import mvsnet.utils as mu
 import mvsnet.predictlib as pl
 
@@ -88,11 +86,6 @@ def compute_depth_maps(input_dir, **kwargs):
     mvs_iterator, sample_size = pl.setup_data_iterator(input_dir)
     scaled_images, full_images, scaled_cams, full_cams, image_index = mvs_iterator.get_next()
 
-    print('Scaled images shape {}'.format(tf.shape(scaled_images)))
-    print('Full images shape {}'.format(tf.shape(full_images)))
-    print('Full cams shape {}'.format(tf.shape(full_cams)))
-    print('Image index shape {}'.format(tf.shape(image_index)))
-
     depth_start, depth_end, depth_interval, depth_num = pl.set_shapes(
         scaled_images, full_images, scaled_cams, full_cams)
 
@@ -121,17 +114,9 @@ def compute_depth_maps(input_dir, **kwargs):
             except tf.errors.OutOfRangeError:
                 logger.info("all dense finished")  # ==> "End of dataset"
                 break
-            print('Out index')
             logger.info('Depth inference {}/{} finished. ({:.3f} sec/step)'.format(step*FLAGS.batch_size, sample_size, time.time() - start_time))
-            print('Shape of prob map out {}'.format(out_prob_map.shape))
-            print('Shape of out_index {}'.format(out_index.shape))
-            print('Shape of out_images {}'.format(out_images.shape))
-            print('Shape of out_cams {}'.format(out_cams.shape))
-            pl.write_output_batch(output_dir, out_depth_map, out_prob_map, out_images,
+            pl.write_output(output_dir, out_depth_map, out_prob_map, out_images,
                             out_cams, out_full_cams, out_full_images, out_index, out_residual_depth_map)
-            
-            #pl.write_output(output_dir, depth_map, prob_map, scaled_images, scaled_cams, full_cams, full_images, image_index, residual_depth_map)
-
 
 def main(_):  # pylint: disable=unused-argument
     """

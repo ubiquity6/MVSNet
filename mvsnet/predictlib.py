@@ -51,10 +51,9 @@ def setup_data_iterator(input_dir):
     mvs_set = mvs_set.batch(FLAGS.batch_size)
     mvs_set = mvs_set.prefetch(buffer_size=1)
 
-    # data from dataset via iterator
-    #mvs_iterator = tfe.Iterator(mvs_set)#mvs_set.make_initializable_iterator()
-    # TODO: uncomment the line below and remove line above
     mvs_iterator = mvs_set.make_initializable_iterator()
+    # if tensorflow eager execution is enabled, use the tfe.iterator below instead. Useful for debugging.
+    #mvs_iterator = tfe.Iterator(mvs_set)#mvs_set.make_initializable_iterator()
     return mvs_iterator, sample_size
 
 
@@ -104,7 +103,7 @@ def get_depth_and_prob_map(full_images, scaled_cams, depth_start, depth_interval
 
 
 
-def write_output(output_dir, out_depth_map, out_prob_map, out_images, out_cams, out_full_cams, out_full_images, out_index, out_residual_depth_map=None):
+def write_output_slice(output_dir, out_depth_map, out_prob_map, out_images, out_cams, out_full_cams, out_full_images, out_index, out_residual_depth_map=None):
     """ Writes the output from the network to disk """
     upsample = True if FLAGS.refinement == True and FLAGS.upsample_before_refinement == True else False
     out_depth_map = np.squeeze(out_depth_map)
@@ -120,8 +119,6 @@ def write_output(output_dir, out_depth_map, out_prob_map, out_images, out_cams, 
         out_ref_image = np.squeeze(out_images)
         out_ref_cam = np.squeeze(out_cams)
         out_prob_map = np.squeeze(out_prob_map)
-    print('Shape of out ref image {}'.format(out_ref_image.shape))
-    print('Shape of out ref image {}'.format(out_ref_image.shape))
     out_ref_image = np.squeeze(out_ref_image[0, :, :, :])
     out_ref_cam = np.squeeze(out_ref_cam[0, :, :, :])
     out_index = np.squeeze(out_index)
@@ -163,7 +160,7 @@ def write_output(output_dir, out_depth_map, out_prob_map, out_images, out_cams, 
         write_inverse_depth_map(unrefined_depth_map, unrefined_path)
 
 
-def write_output_batch(output_dir, out_depth_map_batch, out_prob_map_batch, out_images_batch, out_cams_batch, out_full_cams_batch, out_full_images_batch, out_index_batch, out_residual_depth_map_batch=None):
+def write_output(output_dir, out_depth_map_batch, out_prob_map_batch, out_images_batch, out_cams_batch, out_full_cams_batch, out_full_images_batch, out_index_batch, out_residual_depth_map_batch=None):
     start = time.time()
     for i in range(FLAGS.batch_size):
         dmap = out_depth_map_batch[i]
@@ -177,7 +174,7 @@ def write_output_batch(output_dir, out_depth_map_batch, out_prob_map_batch, out_
             residual = out_residual_depth_map_batch[i]
         else:
             residual = None
-        write_output(output_dir, dmap, pmap, images, cams, full_cams, full_images, index, residual)
+        write_output_slice(output_dir, dmap, pmap, images, cams, full_cams, full_images, index, residual)
     logger.info('Time to write prediction results: {:.3f} s'.format(time.time() - start))
         
 
