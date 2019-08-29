@@ -398,8 +398,6 @@ def inference_mem(images, cams, depth_num, depth_start, depth_interval, network_
 
     view_features = []
     for view in range(1, FLAGS.view_num):
-        ## It looks like, as written, the feature extractor network doesn't support the batch size 
-        # dimension, since they squeeze out only the first element
         view_image = tf.squeeze(
             tf.slice(images, [0, view, 0, 0, 0], [-1, 1, -1, -1, -1]), axis=1)
         view_tower = UNetDS2GN({'data': view_image}, trainable=trainable,

@@ -10,7 +10,6 @@ import numpy as np
 import imageio
 import cv2
 import tensorflow as tf
-import tensorflow.contrib.eager as tfe
 from mvsnet.loss import *
 from mvsnet.preprocess import *
 from mvsnet.model import inference_mem, depth_refine, inference_winner_take_all
