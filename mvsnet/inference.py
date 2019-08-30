@@ -8,6 +8,7 @@ import os
 import time
 import sys
 import tensorflow as tf
+import numpy as np
 import mvsnet.utils as mu
 import mvsnet.predictlib as pl
 
@@ -100,7 +101,8 @@ def compute_depth_maps(input_dir, **kwargs):
         sess.run(init_op)
         pl.load_model(sess)
         sess.run(mvs_iterator.initializer)
-        for step in range(sample_size):
+        num_batches = int(np.ceil(float(sample_size) / float(FLAGS.batch_size)))
+        for step in range(num_batches):
             start_time = time.time()
             out_residual_depth_map = None
             fetches = [depth_map, prob_map, scaled_images,
@@ -108,13 +110,13 @@ def compute_depth_maps(input_dir, **kwargs):
             try:
                 out_depth_map, out_prob_map, out_images, out_cams, out_full_cams, out_full_images, out_index, out_residual_depth_map = sess.run(
                     fetches)
+                pass
             except tf.errors.OutOfRangeError:
                 logger.info("all dense finished")  # ==> "End of dataset"
                 break
-            logger.info('Depth inference {}/{} finished. ({:.3f} sec/step)'.format(step, sample_size, time.time() - start_time))
+            logger.info('Depth inference {}/{} finished. ({:.3f} sec/step)'.format(step*FLAGS.batch_size, sample_size, time.time() - start_time))
             pl.write_output(output_dir, out_depth_map, out_prob_map, out_images,
                             out_cams, out_full_cams, out_full_images, out_index, out_residual_depth_map)
-
 
 def main(_):  # pylint: disable=unused-argument
     """
