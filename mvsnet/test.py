@@ -24,9 +24,9 @@ tf.app.flags.DEFINE_string('input_dir', None,
 tf.app.flags.DEFINE_string('output_dir', None,
                            """Path to data to dir to output results""")
 tf.app.flags.DEFINE_string('model_dir',
-                           'gs://mvs-training-mlengine/f_refine_4gpu_alpha_0_25_epsilon_0_01_lr_0_0002_grad_unet_2/models/',
+                           'gs://mvs-training-mlengine/trained-models/08-19-2019/',
                            """Path to restore the model.""")
-tf.app.flags.DEFINE_integer('ckpt_step', 500000,
+tf.app.flags.DEFINE_integer('ckpt_step', 400000,
                             """ckpt  step.""")
 # input parameters
 tf.app.flags.DEFINE_integer('view_num', 4,

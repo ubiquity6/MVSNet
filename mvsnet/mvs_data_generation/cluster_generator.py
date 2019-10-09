@@ -98,6 +98,7 @@ class ClusterGenerator:
             else:
                 self.logger.info(
                     'Metadata cache does not exist or clear_cache=True. Rebuilding metadata')
+                self.logger.info('Sessions dir {}'.format(self.sessions_dir))
                 sessions = [f for f in tf.gfile.ListDirectory(
                     self.sessions_dir) if not f.startswith('.') if not f.endswith('.txt')]
                 sessions = sorted(sessions)

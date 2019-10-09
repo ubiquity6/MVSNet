@@ -89,7 +89,7 @@ tf.app.flags.DEFINE_boolean('refine_with_confidence', True,
 tf.app.flags.DEFINE_boolean('refine_with_stereo', False,
                             """Whether or not to inject a stereo partner into refinement network""")
 # training parameters
-tf.app.flags.DEFINE_integer('num_gpus', None,
+tf.app.flags.DEFINE_integer('num_gpus', 1,
                             """Number of GPUs.""")
 tf.app.flags.DEFINE_integer('batch_size', 1,
                             """Training batch size.""")

@@ -10,3 +10,4 @@ wandb==0.8.4
 Click==0.7
 imageio==2.5.0
 Pillow==6.1.0
+tensorflow-estimator==1.10.12
