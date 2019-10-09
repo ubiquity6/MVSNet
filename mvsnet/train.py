@@ -56,7 +56,7 @@ tf.app.flags.DEFINE_integer('max_d', 192,
                             """Maximum depth step when training.""")
 tf.app.flags.DEFINE_integer('width', 640,
                             """Maximum image width when training.""")
-tf.app.flags.DEFINE_integer('height', 480,
+tf.app.flags.DEFINE_integer('height', 512,
                             """Maximum image height when training.""")
 tf.app.flags.DEFINE_float('sample_scale', 0.25,
                           """Downsample scale for building cost volume.""")
