@@ -77,7 +77,7 @@ tf.app.flags.DEFINE_string('refinement_train_mode', 'all',
                             """One of 'all', 'refine_only' or 'main_only'. If 'main_only' then only the main network is trained,
                             if 'refine_only', only the refinement network is trained, and if 'all' then the whole network is trained.
                             Note this is only applicable if training with refinement=True and 3DCNN regularization """)
-tf.app.flags.DEFINE_string('network_mode', 'lite',
+tf.app.flags.DEFINE_string('network_mode', 'normal',
                             """One of 'normal', 'semilite', 'lite' or 'ultralite'. If 'semilite', 'lite' or 'ultralite' then networks have 4/3x, 2x and 4x fewer params respectively""")
 tf.app.flags.DEFINE_string('refinement_network', 'unet',
                             """Specifies network to use for refinement. One of 'original' or 'unet'. 
@@ -121,7 +121,7 @@ tf.app.flags.DEFINE_bool('wandb', True,
 tf.app.flags.DEFINE_bool('reuse_vars', False,
                          """A global flag representing whether variables should be reused. This should be 
                           set to False by default and is switched on or off by individual methods""")
-tf.app.flags.DEFINE_string('loss_type', 'power',
+tf.app.flags.DEFINE_string('loss_type', 'original',
                            """Should be one of 'original', 'power' or 'gaussian'. See loss.py for the loss definitions""")
 tf.app.flags.DEFINE_float('alpha', 0.25,
                           """ The exponent to use in the numerator of the loss function when using mode 'power'. Canonical value is 1.0""")
@@ -130,7 +130,7 @@ tf.app.flags.DEFINE_float('beta', 0.0,
 tf.app.flags.DEFINE_float('eta', 0.02,
                           """ A multiplicative constant appearing in the standard deviation of the Gaussian loss ---> sigma = eta * y_true
                           This value used only if loss_type='gaussian'""")
-tf.app.flags.DEFINE_bool('grad_loss', True,
+tf.app.flags.DEFINE_bool('grad_loss', False,
                          """Whether or not to add a depth gradient term to the overall loss""")
 
                         
