@@ -507,7 +507,10 @@ def train():
                         l = np.mean(np.asarray(out_losses))
                         l1 = np.mean(np.asarray(out_less_ones))
                         l3 = np.mean(np.asarray(out_less_threes))
-                        db = np.mean(np.asarray(out_debugs))
+                        if FLAGS.grad_loss:
+                            db = np.mean(np.asarray(out_debugs))
+                        else:
+                            db = 0
                         wandb.log({'loss': l,'less_one': l1,'less_three': l3,'time_per_step': duration, 'debug': db}, step=total_step)
                         out_losses = []
                         out_less_ones = []
