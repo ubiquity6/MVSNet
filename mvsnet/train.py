@@ -398,7 +398,10 @@ def validate(sess, loss, less_one_accuracy, less_three_accuracy, epoch, total_st
     l = np.mean(np.asarray(val_loss))
     l1 = np.mean(np.asarray(val_less_one))
     l3 = np.mean(np.asarray(val_less_three))
-    db = np.mean(np.asarray(val_debugs))
+    if FLAGS.grad_loss:
+        db = np.mean(np.asarray(val_debugs))
+    else:
+        db = 0
 
     print(Notify.INFO, '\n VAL STEP COMPLETED. Average loss: {}, Average less one: {}, Average less three: {}\n'.format(
         l, l1, l3))
