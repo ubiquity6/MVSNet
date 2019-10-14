@@ -21,8 +21,8 @@ sys.path.append("../")
 # dataset parameters
 tf.app.flags.DEFINE_string('input_dir', None,
                            """Path to data to run inference on""")
-tf.app.flags.DEFINE_string('output_dir', None,
-                           """Path to data to dir to output results""")
+tf.app.flags.DEFINE_string('output_dir', 'depths_mvsnet',
+                           """Name of directory to write output to. Base path is root of session directory""")
 tf.app.flags.DEFINE_string('model_dir',
                            'gs://mvs-training-mlengine/trained-models/08-19-2019/',
                            """Path to restore the model.""")
@@ -143,7 +143,7 @@ def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, out_debugs, 
             logger.info('Image {} debug = {}'.format(
                 out_index, out_debug))
 
-            write_dir = os.path.join(str(out_session_dir[0]), 'depths_mvsnet')
+            write_dir = os.path.join(str(out_session_dir[0]), FLAGS.output_dir)
             mu.mkdir_p(write_dir)
             if FLAGS.write_output:
                 pl.write_output(write_dir, out_depth_map, out_prob_map, out_images,
