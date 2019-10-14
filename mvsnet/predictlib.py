@@ -106,6 +106,7 @@ def write_output_slice(output_dir, out_depth_map, out_prob_map, out_images, out_
     upsample = True if FLAGS.refinement == True and FLAGS.upsample_before_refinement == True else False
     out_depth_map = np.squeeze(out_depth_map)
     mu.mkdir_p(output_dir)
+    logger.info('Writing output to {}'.format(output_dir))
 
     # If we upsampled depth map to input size, then we need to write the full sized cams, probs and ref image
     if upsample:
