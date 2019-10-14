@@ -61,8 +61,7 @@ def setup_output_dir(input_dir, output_dir):
     if output_dir is None:
         output_dir = os.path.join(input_dir, 'depths_mvsnet')
     mu.mkdir_p(output_dir)
-    logger.info('Running inference on {} and writing output to {}'.format(
-        input_dir, output_dir))
+    logger.info('Running inference on {}'.format(output_dir))
     return output_dir
 
 
