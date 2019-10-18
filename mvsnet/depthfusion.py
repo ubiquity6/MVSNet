@@ -121,11 +121,11 @@ def fake_colmap_normal(in_depth_path, out_normal_path):
     return
 
 
-def mvsnet_to_gipuma(dense_folder, gipuma_point_folder):
+def mvsnet_to_gipuma(dense_folder, gipuma_point_folder, depth_folder_name):
 
     image_folder = os.path.join(dense_folder, 'images')
     cam_folder = os.path.join(dense_folder, 'cams')
-    depth_folder = os.path.join(dense_folder, 'depths_mvsnet')
+    depth_folder = os.path.join(dense_folder, depth_folder_name)
     glob_pattern = os.path.join(depth_folder, '*.jpg')
     image_paths = glob.glob(glob_pattern)
     image_names = [f.replace(depth_folder + '/', '') for f in image_paths]
@@ -169,9 +169,9 @@ def mvsnet_to_gipuma(dense_folder, gipuma_point_folder):
         fake_colmap_normal(out_depth_dmb, fake_normal_dmb)
 
 
-def probability_filter(dense_folder, prob_threshold):
+def probability_filter(dense_folder, prob_threshold, depth_folder_name):
     image_folder = os.path.join(dense_folder, 'images')
-    depth_folder = os.path.join(dense_folder, 'depths_mvsnet')
+    depth_folder = os.path.join(dense_folder, depth_folder_name)
     glob_pattern = os.path.join(depth_folder, '*.jpg')
     image_paths = glob.glob(glob_pattern)
     image_names = [f.replace(depth_folder + '/', '') for f in image_paths]
@@ -223,6 +223,8 @@ if __name__ == '__main__':
     parser.add_argument('--prob_threshold', type=float, default='0.8')
     parser.add_argument('--disp_threshold', type=float, default='0.25')
     parser.add_argument('--num_consistent', type=float, default='3')
+    parser.add_argument('--depth_folder_name', type=str,
+                        default='depths_mvsnet')
     args = parser.parse_args()
 
     dense_folder = args.dense_folder
@@ -237,11 +239,11 @@ if __name__ == '__main__':
 
     # probability filter
     print('filter depth map with probability map')
-    probability_filter(dense_folder, prob_threshold)
+    probability_filter(dense_folder, prob_threshold, args.depth_folder_name)
 
     # convert to gipuma format
     print('Convert mvsnet output to gipuma input')
-    mvsnet_to_gipuma(dense_folder, point_folder)
+    mvsnet_to_gipuma(dense_folder, point_folder, args.depth_folder_name)
 
     # depth map fusion with gipuma
     print('Run depth map fusion & filter')

@@ -26,7 +26,7 @@ def test_and_fuse(args, dense_folder, ply_folder):
     if args.no_test is not True:
         ut.test(dense_folder, args.ckpt_step, args.model_dir)
     ut.clear_old_points(dense_folder)
-    ut.fuse(dense_folder, args.fusibile_path, args.prob_threshold,
+    ut.fuse(dense_folder, args.fusibile_path, args.depth_folder_name, args.prob_threshold,
             args.disp_threshold, args.num_consistent)
     ply_paths = ut.get_fusion_plys(dense_folder)
     urls = ut.handle_plys(ply_paths, dense_folder, ply_folder, args)
@@ -80,5 +80,7 @@ if __name__ == '__main__':
                         help='Will only run testing, and no fusing or uploading of point clouds.')
     parser.add_argument('--results_path', type=str,
                         default='./sketchfab_links.csv', help="The path to where to write teh sketchfab results")
+    parser.add_argument('--depth_folder_name', type=str,
+                        default='depths_mvsnet')
     args = parser.parse_args()
     main(args)

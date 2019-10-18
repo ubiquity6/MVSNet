@@ -16,7 +16,7 @@ def test(dense_folder, ckpt_step, model_dir):
     run(args)
 
 
-def fuse(dense_folder, fusibile_path, prob_threshold='0.1', disp_threshold='0.1', num_consistent='2'):
+def fuse(dense_folder, fusibile_path, depth_folder_name, prob_threshold='0.1', disp_threshold='0.1', num_consistent='2'):
     args = ["python", "-m", "mvsnet.depthfusion", "--dense_folder", dense_folder, "--prob_threshold",
             str(prob_threshold), "--disp_threshold", str(disp_threshold), "--num_consistent", str(num_consistent), '--fusibile_exe_path', fusibile_path]
     run(args)
