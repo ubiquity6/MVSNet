@@ -60,3 +60,9 @@ def handle_plys(ply_paths, dense_folder, ply_folder, args):
         except Exception as e:
             print('Failed to upload and copy final ply file with exception {}'.format(e))
     return urls
+
+
+def mkdir_p(dir_path):
+    """ Makes the directory dir_path if it doesn't exist """
+    if not os.path.isdir(dir_path):
+        os.mkdir(dir_path)

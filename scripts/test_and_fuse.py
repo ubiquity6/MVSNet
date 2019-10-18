@@ -43,6 +43,7 @@ def main(args):
     ply_folder = os.path.join(args.ply_folder, dir_name)
     print('Final PLY files will be written to {}'.format(ply_folder))
     os.mkdir(ply_folder)
+
     # If test_data_root is a session dir we test on that, otherwise we test on subdirs
     if os.path.isfile(os.path.join(args.test_folder_root, 'covisibility.json')):
         urls = test_and_fuse(args, args.test_folder_root, ply_folder)
@@ -68,10 +69,10 @@ if __name__ == '__main__':
     parser.add_argument('--test_folder_root', type=str,
                         default='../data/atlas', help="The directory where the sessions to be tested are located")
     parser.add_argument('--fusibile_path', type=str,
-                        default='/home/chrisheinrich/fusibile/fusibile', help="The path to the compiled fusibile executable")
+                        default='/home/chrisheinrich1/fusibile/fusibile', help="The path to the compiled fusibile executable")
     parser.add_argument('--prob_threshold', type=float, default='0.8')
     parser.add_argument('--ply_folder', type=str,
-                        default='/home/chrisheinrich/fused-point-clouds', help="The root directory for storing the saved point cloud output")
+                        default='/home/chrisheinrich1/fused-point-clouds', help="The root directory for storing the saved point cloud output")
     parser.add_argument('--disp_threshold', type=float, default='0.25')
     parser.add_argument('--num_consistent', type=float, default='3')
     parser.add_argument('--no_test', action='store_true',
