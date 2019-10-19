@@ -100,7 +100,7 @@ def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, out_debugs, 
         full_images, scaled_cams, depth_start, depth_interval)
     out_residual_depth_map = None
     full_depth_shape = tf.shape(full_depth)
-    upsample_depth = False if FLAGS.refinement == True and FLAGS.upsample_before_refinement == True else True
+    upsample_depth = True if FLAGS.refinement == True and FLAGS.upsample_before_refinement == True else False
     if upsample_depth:
         depth_map = tf.image.resize_bilinear(
             depth_map, [full_depth_shape[1], full_depth_shape[2]])
