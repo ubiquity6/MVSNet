@@ -32,9 +32,10 @@ A small library of helper functions for performing prediction with mvsnet
 
 def setup_data_iterator(input_dir):
     "Configures the data generator that is used to feed batches of data for inference"
+    downsample_depth = False if FLAGS.refinement == True and FLAGS.upsample_before_refinement == True else True # Whether or not to downsample the GT depth map
     mode = 'test' if FLAGS.benchmark else 'inference'
     data_gen = ClusterGenerator(input_dir, FLAGS.view_num, FLAGS.width, FLAGS.height, FLAGS.max_d, FLAGS.interval_scale,
-                                FLAGS.base_image_size, mode=mode, output_scale=FLAGS.sample_scale, max_clusters_per_session=FLAGS.max_clusters_per_session)
+                                FLAGS.base_image_size, mode=mode, output_scale=FLAGS.sample_scale, max_clusters_per_session=FLAGS.max_clusters_per_session, downsample_depth=downsample_depth)
     mvs_generator = iter(data_gen)
     sample_size = len(data_gen.clusters)
 

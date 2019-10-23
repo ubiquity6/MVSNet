@@ -27,7 +27,7 @@ the case of training, validation or benchmarking.
 class ClusterGenerator:
     def __init__(self, data_dir, view_num=3, image_width=1024, image_height=768, depth_num=256,
                  interval_scale=1, base_image_size=1, include_empty=False, mode='train', rescaling=True,
-                 output_scale=0.25, flip_cams=True, sessions_frac=1.0, max_clusters_per_session=None, clear_cache=False):
+                 output_scale=0.25, flip_cams=True, sessions_frac=1.0, max_clusters_per_session=None, clear_cache=False, downsample_depth=False):
         self.logger = setup_logger('ClusterGenerator')
         self.data_dir = data_dir
         self.mode = mode
@@ -53,6 +53,7 @@ class ClusterGenerator:
         self.max_clusters_per_session = max_clusters_per_session
         # Whether to clear the cache of pickled Cluster objects
         self.clear_cache = clear_cache
+        self.downsample_depth = downsample_depth
         self.parse_sessions()
 
     def set_sessions_dir(self):
@@ -266,8 +267,10 @@ class ClusterGenerator:
                         cropped_images, cropped_cams, scale=self.output_scale)
                     output_images = np.stack(output_images, axis=0)
                     output_cams = np.stack(output_cams, axis=0)
-                    depth = ut.scale_and_reshape_depth(
-                        depth, self.output_scale)
+                    if self.downsample_depth:
+                        self.logger.info('Downsampling GT depth')
+                        depth = ut.scale_and_reshape_depth(
+                            depth, self.output_scale)
 
                     image_index = c.ref_index
                     self.logger.debug(
