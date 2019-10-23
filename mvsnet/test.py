@@ -12,6 +12,7 @@ import tensorflow as tf
 import numpy as np
 from mvsnet.cnn_wrapper.common import Notify
 from mvsnet.loss import mvsnet_regression_loss
+from mvsnet.mvs_data_generation.utils import scale_and_reshape_depth
 import mvsnet.utils as mu
 import mvsnet.predictlib as pl
 
@@ -104,6 +105,9 @@ def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, out_debugs, 
     if upsample_depth:
         depth_map = tf.image.resize_bilinear(
             depth_map, [full_depth_shape[1], full_depth_shape[2]])
+    else:
+        depth_map = scale_and_reshape_depth(
+            depth_map, FLAGS.sample_scale)
     loss, less_one_accuracy, less_three_accuracy, debug = mvsnet_regression_loss(
         depth_map, full_depth, depth_start, depth_end, grad_loss=FLAGS.grad_loss)
 
