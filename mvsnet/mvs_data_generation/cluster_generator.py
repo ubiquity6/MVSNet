@@ -268,7 +268,7 @@ class ClusterGenerator:
                     output_images = np.stack(output_images, axis=0)
                     output_cams = np.stack(output_cams, axis=0)
                     if self.downsample_depth:
-                        self.logger.info('Downsampling GT depth')
+                        self.logger.debug('Downsampling GT depth')
                         depth = ut.scale_and_reshape_depth(
                             depth, self.output_scale)
 
