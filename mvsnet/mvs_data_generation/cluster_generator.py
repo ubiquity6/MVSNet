@@ -266,6 +266,8 @@ class ClusterGenerator:
                         cropped_images, cropped_cams, scale=self.output_scale)
                     output_images = np.stack(output_images, axis=0)
                     output_cams = np.stack(output_cams, axis=0)
+                    depth = ut.scale_and_reshape_depth(
+                        depth, self.output_scale)
 
                     image_index = c.ref_index
                     self.logger.debug(

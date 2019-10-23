@@ -106,8 +106,8 @@ def benchmark_depth_maps(input_dir, losses, less_ones, less_threes, out_debugs, 
         depth_map = tf.image.resize_bilinear(
             depth_map, [full_depth_shape[1], full_depth_shape[2]])
     else:
-        depth_map = scale_and_reshape_depth(
-            depth_map, FLAGS.sample_scale)
+        #full_depth = scale_and_reshape_depth(
+        #    full_depth, FLAGS.sample_scale)
     loss, less_one_accuracy, less_three_accuracy, debug = mvsnet_regression_loss(
         depth_map, full_depth, depth_start, depth_end, grad_loss=FLAGS.grad_loss)
 
