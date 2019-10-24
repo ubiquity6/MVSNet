@@ -194,7 +194,7 @@ def probability_filter(dense_folder, prob_threshold, depth_folder_name):
         print('Depth map shape {}'.format(depth_map.shape))
         print('Prob map shape {}'.format(prob_map.shape))
         if depth_map.shape != prob_map.shape:
-            rescale = prob_map.shape[0] / depth_map.shape[0]
+            rescale = float(prob_map.shape[0]) / float(depth_map.shape[0])
             print('Rescale value {}'.format(rescale))
             depth_map = scale_and_reshape_depth(depth_map, rescale)
             print('Rescale value {}'.format(rescale))
