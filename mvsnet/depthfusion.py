@@ -20,6 +20,7 @@ import glob
 
 import cv2
 import numpy as np
+from mvsnet.mvs_data_generation.utils import scale_and_reshape_depth
 
 import pylab as plt
 from mvsnet.preprocess import *
@@ -190,6 +191,10 @@ def probability_filter(dense_folder, prob_threshold, depth_folder_name):
 
         depth_map = load_pfm(open(init_depth_map_path))
         prob_map = load_pfm(open(prob_map_path))
+        if depth_map.shape != prob_map.shape:
+            rescale = prob_map.shape[0] / depth_map.shape[0]
+            depth_map = scale_and_reshape_depth(depth_map, rescale)
+
         print('Depth map shape {}'.format(depth_map.shape))
         print('Prob map shape {}'.format(prob_map.shape))
         try:
