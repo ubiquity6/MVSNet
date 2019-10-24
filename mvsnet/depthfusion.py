@@ -184,6 +184,9 @@ def probability_filter(dense_folder, prob_threshold, depth_folder_name):
         prob_map_path = os.path.join(depth_folder, image_prefix+'_prob.pfm')
         out_depth_map_path = os.path.join(
             depth_folder, image_prefix+'_prob_filtered.pfm')
+        
+        print('Depth map path {}'.format(init_depth_map_path))
+        print('Prob map path {}'.format(prob_map_path))
 
         depth_map = load_pfm(open(init_depth_map_path))
         prob_map = load_pfm(open(prob_map_path))
