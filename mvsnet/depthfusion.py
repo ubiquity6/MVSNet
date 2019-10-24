@@ -191,12 +191,15 @@ def probability_filter(dense_folder, prob_threshold, depth_folder_name):
 
         depth_map = load_pfm(open(init_depth_map_path))
         prob_map = load_pfm(open(prob_map_path))
-        if depth_map.shape != prob_map.shape:
-            rescale = prob_map.shape[0] / depth_map.shape[0]
-            depth_map = scale_and_reshape_depth(depth_map, rescale)
-
         print('Depth map shape {}'.format(depth_map.shape))
         print('Prob map shape {}'.format(prob_map.shape))
+        if depth_map.shape != prob_map.shape:
+            rescale = prob_map.shape[0] / depth_map.shape[0]
+            print('Rescale value {}'.format(rescale))
+            depth_map = scale_and_reshape_depth(depth_map, rescale)
+            print('Rescale value {}'.format(rescale))
+
+
         try:
             depth_map[prob_map < prob_threshold] = 0
             write_pfm(out_depth_map_path, depth_map)
