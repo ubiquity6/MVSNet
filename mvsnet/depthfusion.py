@@ -192,8 +192,11 @@ def probability_filter(dense_folder, prob_threshold, depth_folder_name):
         prob_map = load_pfm(open(prob_map_path))
         print('Depth map shape {}'.format(depth_map.shape))
         print('Prob map shape {}'.format(prob_map.shape))
-        depth_map[prob_map < prob_threshold] = 0
-        write_pfm(out_depth_map_path, depth_map)
+        try:
+            depth_map[prob_map < prob_threshold] = 0
+            write_pfm(out_depth_map_path, depth_map)
+        except Exception as e:
+            print('Writing new depth map failed with exception {}'.format(e))
 
 
 def depth_map_fusion(point_folder, fusibile_exe_path, disp_thresh, num_consistent):
